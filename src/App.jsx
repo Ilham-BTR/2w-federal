@@ -2978,6 +2978,15 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
               Belum ada bengkel terdaftar di kota ini.
             </p>
           )}
+          {selectedBengkel?.address && (
+            <div className="mt-2 p-2.5 bg-slate-950 border border-slate-800 rounded-lg flex items-start gap-2">
+              <MapPin className="w-3.5 h-3.5 text-blue-400 shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Alamat Bengkel</div>
+                <p className="text-xs text-slate-300 leading-snug">{selectedBengkel.address}</p>
+              </div>
+            </div>
+          )}
         </Field>
 
         {selectedBengkel && (
