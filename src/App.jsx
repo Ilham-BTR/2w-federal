@@ -2547,7 +2547,7 @@ function MDView({ currentMD, refreshKey, welcome, onWelcomeClose }) {
 
       {tab === 'absen' && <AbsenTab currentMD={currentMD} />}
       {tab === 'new' && <VisitForm currentMD={currentMD} bengkels={bengkels} regions={regions} kotas={kotas} distributors={distributors} onSubmitted={() => { reloadVisits(); setTab('history'); }} />}
-      {tab === 'history' && <VisitHistory visits={visits} bengkels={bengkels} kotas={kotas} distributors={distributors} />}
+      {tab === 'history' && <VisitHistory visits={visits} bengkels={bengkels} kotas={kotas} distributors={distributors} currentMD={currentMD} />}
       <WhatsAppCS name={currentMD.full_name} />
     </div>
   );
@@ -3105,7 +3105,8 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
   );
 }
 
-function VisitHistory({ visits, bengkels, kotas, distributors }) {
+function VisitHistory({ visits, bengkels, kotas, distributors, currentMD }) {
+  const [detailId, setDetailId] = useState(null);
   const [search, setSearch] = useState('');
   const [month, setMonth] = useState('all');
   const [status, setStatus] = useState('all');
@@ -3169,14 +3170,16 @@ function VisitHistory({ visits, bengkels, kotas, distributors }) {
         const d = findDist(v.distributor_id);
         const photoCount = PHOTO_KEYS.filter(key => v[key]).length;
         return (
-          <div key={v.id} className="bg-slate-950 border border-slate-800 rounded-xl p-4 hover:border-slate-700 transition">
-            <div className="flex items-start justify-between gap-3 mb-2">
-              <div className="min-w-0">
+          <div key={v.id} onClick={() => setDetailId(v.id)}
+            className="bg-slate-950 border border-slate-800 rounded-xl p-4 hover:border-slate-700 transition cursor-pointer">
+            <div className="mb-2 min-w-0">
+              <div className="flex items-center justify-between gap-3">
                 <div className="text-[10px] uppercase tracking-wider text-slate-500 font-mono">{b?.code || '—'}</div>
-                <h4 className="text-sm font-semibold text-slate-100 truncate">{b?.name || v.bengkel_name || '—'}</h4>
-                <div className="text-xs text-slate-500 mt-0.5">{k?.name || v.kota_name || '—'}</div>
+                <ChevronRight className="w-4 h-4 text-slate-600 shrink-0" />
               </div>
-              <StatusBadge status={v.status} />
+              <h4 className="text-sm font-semibold text-slate-100 break-words leading-snug">{b?.name || v.bengkel_name || '—'}</h4>
+              <div className="text-xs text-slate-500 mt-0.5">{k?.name || v.kota_name || '—'}</div>
+              <div className="mt-2"><StatusBadge status={v.status} /></div>
             </div>
             <div className="flex items-center gap-3 text-xs text-slate-500 pt-2 border-t border-slate-800 mt-2">
               <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{v.visit_date}{v.created_at ? ` · ${fmtAbsenTime(v.created_at)}` : ''}</span>
@@ -3193,6 +3196,22 @@ function VisitHistory({ visits, bengkels, kotas, distributors }) {
       )}
       </div>
       )}
+
+      {(() => {
+        const dv = detailId ? visits.find(x => x.id === detailId) : null;
+        if (!dv) return null;
+        const b = findBengkel(dv.bengkel_id);
+        return (
+          <VisitDetailModal
+            visit={dv}
+            bengkel={b}
+            kota={b ? findKota(b.kota_id) : null}
+            distributor={findDist(dv.distributor_id)}
+            md={currentMD}
+            onClose={() => setDetailId(null)}
+          />
+        );
+      })()}
     </div>
   );
 }
