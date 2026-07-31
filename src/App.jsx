@@ -2533,8 +2533,9 @@ function MDView({ currentMD, refreshKey, welcome, onWelcomeClose }) {
   return (
     <div className="max-w-2xl mx-auto">
       <PasskeyEnrollBanner />
-      <div className="grid grid-cols-2 gap-1 p-1 bg-slate-950 border border-slate-800 rounded-xl mb-5 sm:flex">
+      <div className="grid grid-cols-3 gap-1 p-1 bg-slate-950 border border-slate-800 rounded-xl mb-5 sm:flex">
         {[
+          { id: 'absen', label: 'Absen', icon: CalendarDays },
           { id: 'new', label: 'Visit Baru', icon: ClipboardList },
           { id: 'history', label: `History (${visits.length})`, icon: Activity },
         ].map(t => (
@@ -2545,6 +2546,7 @@ function MDView({ currentMD, refreshKey, welcome, onWelcomeClose }) {
         ))}
       </div>
 
+      {tab === 'absen' && <AbsenTab currentMD={currentMD} />}
       {tab === 'new' && <VisitForm currentMD={currentMD} bengkels={bengkels} regions={regions} kotas={kotas} distributors={distributors} onSubmitted={() => { reloadVisits(); setTab('history'); }} />}
       {tab === 'history' && <VisitHistory visits={visits} bengkels={bengkels} kotas={kotas} distributors={distributors} />}
       <WhatsAppCS name={currentMD.full_name} />
@@ -3362,6 +3364,7 @@ function AdminView({ profile }) {
         {[
           { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
           { id: 'visits', label: 'Visits', icon: ClipboardList },
+          { id: 'absen', label: 'Absen', icon: CalendarDays },
           { id: 'coverage', label: 'Coverage Map', icon: MapIcon },
           { id: 'master', label: 'Master Data', icon: Database },
         ].map(t => (
@@ -3374,6 +3377,7 @@ function AdminView({ profile }) {
 
       {tab === 'dashboard' && <DashboardTab visits={sVisits} mds={activeMds} onOpenVisit={openDetail} bengkels={bengkels} kotas={kotas} distributors={distributors} regions={regions} />}
       {tab === 'visits' && <VisitsTab visits={sVisits} mds={activeMds} bengkels={bengkels} kotas={kotas} distributors={distributors} regions={regions} onOpenVisit={openDetail} />}
+      {tab === 'absen' && <AdminAbsenTab mds={activeMds} allowedMdIds={allowedMdIds} isSuperAdmin={isSuperAdmin} regions={regions} />}
       {tab === 'coverage' &&<CoverageTab visits={sVisits} mds={activeMds} bengkels={bengkels} kotas={kotas} regions={regions} distributors={distributors} onOpenVisit={openDetail} />}
       {tab === 'master' && <MasterTab regions={regions} kotas={kotas} distributors={distributors} bengkels={bengkels} mds={sMds} accounts={sAccounts} onChange={() => loadAll(true)} isSuperAdmin={isSuperAdmin} canManageMaster={canManageMaster} />}
 
