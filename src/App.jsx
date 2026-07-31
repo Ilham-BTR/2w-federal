@@ -662,25 +662,23 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
       <div className="w-full max-w-3xl my-8 bg-slate-950 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden"
            onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between gap-3 sticky top-0 bg-slate-950 z-10">
-          <div className="min-w-0">
+        <div className="px-5 py-4 border-b border-slate-800 sticky top-0 bg-slate-950 z-10">
+          <div className="flex items-center justify-between gap-3">
             <div className="text-[10px] uppercase tracking-wider text-slate-500 font-mono">{bengkel?.code || '—'}</div>
-            <h2 className="font-display font-bold text-lg text-slate-100 truncate">{bengkel?.name || visit.bengkel_name || '—'}</h2>
-          </div>
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="flex flex-col items-end gap-1">
-              <StatusBadge status={visit.status} />
-            </div>
-            {canEdit && !editMode && (
-              <button onClick={startEdit} title="Edit data visit"
-                className="h-9 px-3 rounded-lg bg-slate-800 hover:bg-amber-600 text-slate-200 hover:text-white text-xs font-medium flex items-center gap-1.5 transition">
-                <Pencil className="w-3.5 h-3.5" />Edit
+            <div className="flex items-center gap-2 shrink-0">
+              {canEdit && !editMode && (
+                <button onClick={startEdit} title="Edit data visit"
+                  className="h-8 px-3 rounded-lg bg-slate-800 hover:bg-amber-600 text-slate-200 hover:text-white text-xs font-medium flex items-center gap-1.5 transition">
+                  <Pencil className="w-3.5 h-3.5" />Edit
+                </button>
+              )}
+              <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-100 flex items-center justify-center">
+                <X className="w-4 h-4" />
               </button>
-            )}
-            <button onClick={onClose} className="w-9 h-9 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-100 flex items-center justify-center">
-              <X className="w-4 h-4" />
-            </button>
+            </div>
           </div>
+          <h2 className="font-display font-bold text-lg text-slate-100 break-words leading-snug mt-0.5">{bengkel?.name || visit.bengkel_name || '—'}</h2>
+          <div className="mt-1.5"><StatusBadge status={visit.status} /></div>
         </div>
 
         <div className="p-5 space-y-5">
