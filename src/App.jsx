@@ -2991,28 +2991,6 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
         </Field>
       </Section>
 
-      <Section title="Hasil Visit" icon={Check}>
-        <Field label="Hasil Visit" required>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {STATUS_OPTIONS.map(s => (
-              <button key={s} onClick={() => setForm({ ...form, status: s })}
-                className={`py-2.5 px-3 rounded-lg text-xs font-medium border transition text-left sm:text-center ${
-                  form.status === s ? `${STATUS_STYLES[s].bg} ${STATUS_STYLES[s].text} ${STATUS_STYLES[s].border}` : 'bg-slate-950 border-slate-800 text-slate-500 hover:text-slate-300'
-                }`}>{s}</button>
-            ))}
-          </div>
-          {!form.status && (
-            <p className="text-[11px] text-amber-400 mt-1.5 flex items-center gap-1.5">
-              <AlertCircle className="w-3 h-3" />Pilih hasil visit.
-            </p>
-          )}
-        </Field>
-
-        {form.status && !terpasang && (
-          <p className="text-[11px] text-slate-500 -mt-1 mb-2">Hasil visit bukan "Spanduk Terpasang" — cukup foto selfie & tampak depan (before), lalu isi notes jika ada.</p>
-        )}
-      </Section>
-
       <Section title="Dokumentasi Foto" subtitle={`${photoCount} / ${requiredPhotos.length} foto wajib`} icon={Camera}>
         <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Selfie</div>
         <div className="grid grid-cols-3 gap-3">
@@ -3039,6 +3017,31 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
             <PhotoTile label="Foto Poster" required photo={form.photos.poster} onChange={v => setPhoto('poster', v)} />
           </div>
         </>)}
+      </Section>
+
+      <Section title="Hasil Visit" icon={Check}>
+        <Field label="Hasil Visit" required>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {STATUS_OPTIONS.map(s => (
+              <button key={s} onClick={() => setForm({ ...form, status: s })}
+                className={`py-2.5 px-3 rounded-lg text-xs font-medium border transition text-left sm:text-center ${
+                  form.status === s ? `${STATUS_STYLES[s].bg} ${STATUS_STYLES[s].text} ${STATUS_STYLES[s].border}` : 'bg-slate-950 border-slate-800 text-slate-500 hover:text-slate-300'
+                }`}>{s}</button>
+            ))}
+          </div>
+          {!form.status && (
+            <p className="text-[11px] text-amber-400 mt-1.5 flex items-center gap-1.5">
+              <AlertCircle className="w-3 h-3" />Pilih hasil visit.
+            </p>
+          )}
+        </Field>
+
+        {terpasang && (
+          <p className="text-[11px] text-emerald-400 -mt-1 mb-2">Spanduk Terpasang — lengkapi foto After, Spanduk & Poster di bagian Dokumentasi Foto di atas.</p>
+        )}
+        {form.status && !terpasang && (
+          <p className="text-[11px] text-slate-500 -mt-1 mb-2">Hasil visit bukan "Spanduk Terpasang" — cukup foto selfie & tampak depan (before), lalu isi notes jika ada.</p>
+        )}
       </Section>
 
       <Section title="Notes" icon={FileText}>
