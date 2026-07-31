@@ -1850,24 +1850,18 @@ function AbsenTab({ currentMD }) {
 
           <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 mb-4 space-y-3">
             <StatusRow icon={LogIn} label="Absen Masuk" time={att?.check_in_at} photo={att?.check_in_photo} done={checkedIn} />
-            <div className="border-t border-slate-800" />
-            <StatusRow icon={LogOut} label="Absen Pulang" time={att?.check_out_at} photo={att?.check_out_photo} done={checkedOut} />
-            {checkedIn && checkedOut && (
+            {checkedIn && (
               <div className="flex items-center gap-2 pt-2 border-t border-slate-800 text-emerald-400 text-xs font-medium">
-                <Check className="w-4 h-4" /> Absen hari ini lengkap. Terima kasih! 🎉
+                <Check className="w-4 h-4" /> Absen hari ini selesai. Terima kasih! 🎉
               </div>
             )}
           </div>
 
-          {!checkedIn ? (
+          {!checkedIn && (
             mode === 'in'
               ? <AbsenForm kind="in" currentMD={currentMD} todayStr={todayStr} onCancel={() => setMode(null)} onDone={() => { setMode(null); load(); }} />
               : <Button variant="primary" size="lg" className="w-full" onClick={() => setMode('in')}><LogIn className="w-4 h-4" />Absen Masuk</Button>
-          ) : !checkedOut ? (
-            mode === 'out'
-              ? <AbsenForm kind="out" currentMD={currentMD} todayStr={todayStr} onCancel={() => setMode(null)} onDone={() => { setMode(null); load(); }} />
-              : <Button variant="secondary" size="lg" className="w-full" onClick={() => setMode('out')}><LogOut className="w-4 h-4" />Absen Pulang</Button>
-          ) : null}
+          )}
         </>
       )}
     </div>
@@ -1902,7 +1896,7 @@ function AbsenHistory({ currentMD }) {
       if (dari && a.date < dari) return false;
       if (sampai && a.date > sampai) return false;
     } else if (month !== 'all' && !a.date.startsWith(month)) return false;
-    if (search.trim() && !`${a.date} ${a.check_in_note || ''} ${a.check_out_note || ''}`.toLowerCase().includes(search.trim().toLowerCase())) return false;
+    if (search.trim() && !`${a.date} ${a.check_in_note || ''}`.toLowerCase().includes(search.trim().toLowerCase())) return false;
     return true;
   });
 
@@ -1925,24 +1919,17 @@ function AbsenHistory({ currentMD }) {
       {filtered.length === 0 ? (
         <div className="text-center py-10 text-slate-500 text-sm">Tidak ada absen di bulan ini.</div>
       ) : filtered.map(a => {
-        const wh = fmtWorkDuration(a);
         return (
           <div key={a.id} className="bg-slate-950 border border-slate-800 rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm font-semibold text-slate-100">{dLabel(a.date)}</span>
-              {wh && <span className="flex items-center gap-1 text-xs text-emerald-400 bg-emerald-600/10 px-2 py-0.5 rounded-full"><Clock className="w-3 h-3" />{wh}</span>}
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              {[{ icon: LogIn, label: 'Masuk', time: a.check_in_at, photo: a.check_in_photo },
-                { icon: LogOut, label: 'Pulang', time: a.check_out_at, photo: a.check_out_photo }].map((b, i) => (
-                <div key={i} className="flex items-center gap-2.5">
-                  {b.photo ? <StoredImage src={b.photo} alt={b.label} className="w-10 h-10 rounded-lg object-cover cursor-pointer" onClick={() => setLightbox(b.photo)} />
-                    : <div className="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center"><b.icon className="w-4 h-4 text-slate-500" /></div>}
-                  <div><div className="text-[11px] text-slate-500">{b.label}</div><div className={`text-sm font-semibold ${b.time ? 'text-emerald-400' : 'text-slate-500'}`}>{b.time ? fmtAbsenTime(b.time) : 'Belum'}</div></div>
-                </div>
-              ))}
+            <div className="flex items-center gap-2.5">
+              {a.check_in_photo ? <StoredImage src={a.check_in_photo} alt="Masuk" className="w-10 h-10 rounded-lg object-cover cursor-pointer" onClick={() => setLightbox(a.check_in_photo)} />
+                : <div className="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center"><LogIn className="w-4 h-4 text-slate-500" /></div>}
+              <div><div className="text-[11px] text-slate-500">Masuk</div><div className={`text-sm font-semibold ${a.check_in_at ? 'text-emerald-400' : 'text-slate-500'}`}>{a.check_in_at ? fmtAbsenTime(a.check_in_at) : 'Belum'}</div></div>
             </div>
-            {(a.check_in_note || a.check_out_note) && <p className="text-xs text-slate-500 mt-3 pt-3 border-t border-slate-800">{[a.check_in_note, a.check_out_note].filter(Boolean).join(' · ')}</p>}
+            {a.check_in_note && <p className="text-xs text-slate-500 mt-3 pt-3 border-t border-slate-800">{a.check_in_note}</p>}
           </div>
         );
       })}
@@ -2204,14 +2191,9 @@ function AdminAbsenTab({ mds, allowedMdIds, isSuperAdmin, regions = [] }) {
       Region: areaOf(a.md_id),
       Email: a.md_email || '',
       'Jam Masuk': a.check_in_at ? fmtAbsenTime(a.check_in_at) : '',
-      'Jam Pulang': a.check_out_at ? fmtAbsenTime(a.check_out_at) : '',
-      'Jam Kerja': a.work_hours != null ? a.work_hours : '',
       'GPS Masuk': a.check_in_lat != null ? `${a.check_in_lat}, ${a.check_in_lng}` : '',
-      'GPS Pulang': a.check_out_lat != null ? `${a.check_out_lat}, ${a.check_out_lng}` : '',
       'Foto Masuk': typeof a.check_in_photo === 'string' && a.check_in_photo.startsWith('http') ? a.check_in_photo : (a.check_in_photo ? '(foto lokal/idb)' : ''),
-      'Foto Pulang': typeof a.check_out_photo === 'string' && a.check_out_photo.startsWith('http') ? a.check_out_photo : (a.check_out_photo ? '(foto lokal/idb)' : ''),
       'Catatan Masuk': a.check_in_note || '',
-      'Catatan Pulang': a.check_out_note || '',
     }));
     const ws = XLSX.utils.json_to_sheet(data, { cellDates: true });
     setColDateFormat(XLSX, ws, 'Tanggal', 'dd/mm/yyyy');
@@ -2266,19 +2248,13 @@ function AdminAbsenTab({ mds, allowedMdIds, isSuperAdmin, regions = [] }) {
                   <div className="text-[11px] text-slate-500">{dLabel(a.date)}</div>
                 </div>
                 <div className="flex items-center gap-3 sm:gap-4 ml-auto">
-                  <div className="grid grid-cols-2 gap-3 sm:gap-6">
-                    {[{ k: 'in', icon: LogIn, label: 'Masuk', time: a.check_in_at },
-                      { k: 'out', icon: LogOut, label: 'Pulang', time: a.check_out_at }].map(b => (
-                      <div key={b.k} className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 rounded-lg bg-slate-800/60 flex items-center justify-center shrink-0"><b.icon className="w-4 h-4 text-slate-400" /></div>
-                        <div><div className="text-[11px] text-slate-500">{b.label}</div><div className={`text-sm font-semibold ${b.time ? 'text-emerald-400' : 'text-slate-500'}`}>{b.time ? fmtAbsenTime(b.time) : 'Belum'}</div></div>
-                      </div>
-                    ))}
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-lg bg-slate-800/60 flex items-center justify-center shrink-0"><LogIn className="w-4 h-4 text-slate-400" /></div>
+                    <div><div className="text-[11px] text-slate-500">Masuk</div><div className={`text-sm font-semibold ${a.check_in_at ? 'text-emerald-400' : 'text-slate-500'}`}>{a.check_in_at ? fmtAbsenTime(a.check_in_at) : 'Belum'}</div></div>
                   </div>
-                  {fmtWorkDuration(a) && <span className="flex items-center gap-1 text-xs text-emerald-400 bg-emerald-600/10 px-2 py-0.5 rounded-full shrink-0"><Clock className="w-3 h-3" />{fmtWorkDuration(a)}</span>}
                 </div>
               </div>
-              {(a.check_in_note || a.check_out_note) && <p className="text-xs text-slate-500 mt-3 pt-3 border-t border-slate-800">{[a.check_in_note, a.check_out_note].filter(Boolean).join(' · ')}</p>}
+              {a.check_in_note && <p className="text-xs text-slate-500 mt-3 pt-3 border-t border-slate-800">{a.check_in_note}</p>}
             </div>
           ))}
           {filteredRows.length > visibleCount && (
@@ -2302,7 +2278,6 @@ function AdminAbsenTab({ mds, allowedMdIds, isSuperAdmin, regions = [] }) {
                 <div className="text-xs text-slate-500 truncate">{dLabel(detail.date)}{detail.md_email ? ` · ${detail.md_email}` : ''}</div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                {fmtWorkDuration(detail) && <span className="flex items-center gap-1 text-xs text-emerald-400 bg-emerald-600/10 px-2 py-0.5 rounded-full"><Clock className="w-3 h-3" />{fmtWorkDuration(detail)}</span>}
                 {isSuperAdmin && !editMode && (
                   <button onClick={startEditAbsen} title="Edit absen"
                     className="h-8 px-3 rounded-lg bg-slate-800 hover:bg-amber-600 text-slate-200 hover:text-white text-xs font-medium flex items-center gap-1.5 transition">
@@ -2313,8 +2288,7 @@ function AdminAbsenTab({ mds, allowedMdIds, isSuperAdmin, regions = [] }) {
               </div>
             </div>
             <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {[{ k: 'in', icon: LogIn, label: 'Absen Masuk', time: detail.check_in_at, photo: detail.check_in_photo, lat: detail.check_in_lat, lng: detail.check_in_lng, note: detail.check_in_note },
-                { k: 'out', icon: LogOut, label: 'Absen Pulang', time: detail.check_out_at, photo: detail.check_out_photo, lat: detail.check_out_lat, lng: detail.check_out_lng, note: detail.check_out_note }].map(s => (
+              {[{ k: 'in', icon: LogIn, label: 'Absen Masuk', time: detail.check_in_at, photo: detail.check_in_photo, lat: detail.check_in_lat, lng: detail.check_in_lng, note: detail.check_in_note }].map(s => (
                 <div key={s.k} className="bg-slate-900/40 border border-slate-800 rounded-xl p-3">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2"><s.icon className="w-4 h-4 text-slate-400" /><span className="text-sm font-semibold text-slate-200">{s.label}</span></div>
