@@ -1,0 +1,8 @@
+# Untuk Supabase CLI — `supabase link` akan baca file ini.
+# Project ID = ref dari URL dashboard: https://supabase.com/dashboard/project/<PROJECT_ID>
+project_id = "azopkafxylmhrjapnadk"
+
+# admin-create-md: verify_jwt=true (default) — caller wajib login, lalu
+# function cek role admin sendiri di dalam body.
+[functions.admin-create-md]
+verify_jwt = true

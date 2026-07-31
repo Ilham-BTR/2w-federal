@@ -1,0 +1,33 @@
+node_modules
+dist
+dist-ssr
+*.local
+.DS_Store
+.env
+.env.local
+.vscode
+.idea
+
+# Office temp/lock files
+~$*
+*.tmp
+
+# Data mentah / file lokal (gak perlu di repo)
+*.xlsx
+/npm
+
+# Cloudflare Wrangler cache (R2/Pages CLI)
+.wrangler/
+
+# Artefak non-app (presentasi budget, dsb) — bukan bagian template
+*.pptx
+*.docx
+/scripts/
+
+# Backup tooling — config berisi service_role key & hasil dump (JANGAN ke repo)
+ops/backup/backup.config.json
+ops/backup/dumps/
+ops/backup/backup.log
+
+# Playwright MCP artifacts
+.playwright-mcp/
