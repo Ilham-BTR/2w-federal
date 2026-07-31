@@ -35,17 +35,12 @@ const corsHeaders = {
 };
 
 const ALLOWED_PHOTO_KEYS = [
-  "tampak-depan",
-  "foto-in",
-  "foto-out",
-  "spanduk-before",
-  "spanduk-putih",
-  "spanduk-after",
-  "poster-before",
-  "poster-putih",
-  "poster-after",
-  "delivery-gimmick",
-  "deploy-planogram",
+  "selfie",
+  "tampak-depan-before",
+  "tampak-depan-after",
+  "spanduk-jauh",
+  "spanduk-sedang",
+  "poster",
 ];
 
 const ALLOWED_CONTENT_TYPES = ["image/jpeg", "image/png", "image/webp"];
