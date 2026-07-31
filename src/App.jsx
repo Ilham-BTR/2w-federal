@@ -3021,14 +3021,10 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
 
       <Section title="Hasil Visit" icon={Check}>
         <Field label="Hasil Visit" required>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {STATUS_OPTIONS.map(s => (
-              <button key={s} onClick={() => setForm({ ...form, status: s })}
-                className={`py-2.5 px-3 rounded-lg text-xs font-medium border transition text-left sm:text-center ${
-                  form.status === s ? `${STATUS_STYLES[s].bg} ${STATUS_STYLES[s].text} ${STATUS_STYLES[s].border}` : 'bg-slate-950 border-slate-800 text-slate-500 hover:text-slate-300'
-                }`}>{s}</button>
-            ))}
-          </div>
+          <Select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
+            <option value="">— Pilih hasil visit —</option>
+            {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+          </Select>
           {!form.status && (
             <p className="text-[11px] text-amber-400 mt-1.5 flex items-center gap-1.5">
               <AlertCircle className="w-3 h-3" />Pilih hasil visit.
