@@ -4,7 +4,8 @@
 
 body {
   margin: 0;
-  background: #0a0a0a;
+  /* Dark navy — nuansa biru Federal, bukan hitam pekat */
+  background: #020617;
   -webkit-font-smoothing: antialiased;
 }
 

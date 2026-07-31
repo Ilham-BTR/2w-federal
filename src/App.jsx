@@ -25,7 +25,7 @@ import { getPhotoURL } from './lib/photoStore';
 const PASSKEY_ENABLED = false;
 
 // Custom pin marker factory (inline SVG via divIcon — no asset path issues)
-const makePinIcon = (color = '#dc2626', pulse = true) => L.divIcon({
+const makePinIcon = (color = '#2563eb', pulse = true) => L.divIcon({
   className: 'federal2w-marker',
   html: `
     <div style="position:relative;">
@@ -42,7 +42,7 @@ const makePinIcon = (color = '#dc2626', pulse = true) => L.divIcon({
   popupAnchor: [0, -24],
 });
 
-const RED_PIN_ICON  = makePinIcon('#dc2626', true);
+const RED_PIN_ICON  = makePinIcon('#2563eb', true);
 const BLUE_PIN_ICON = makePinIcon('#3b82f6', true);
 
 // Tile peta. Kalau VITE_MAPBOX_TOKEN diisi → Mapbox "streets" (terang & detail);
@@ -226,20 +226,20 @@ const BengkelMap = ({
   // Empty state: bengkel ✗ AND user ✗ → tampilkan placeholder + retry GPS
   if (!hasBengkel && !hasUser) {
     return (
-      <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4 flex flex-col items-center justify-center gap-3 min-h-[180px]">
-        <div className="flex items-center gap-2 text-zinc-500 text-xs">
+      <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 flex flex-col items-center justify-center gap-3 min-h-[180px]">
+        <div className="flex items-center gap-2 text-slate-500 text-xs">
           {gpsStatus === 'loading'
             ? <><Loader2 className="w-4 h-4 animate-spin" />Mengambil GPS…</>
             : gpsStatus === 'error'
               ? <><AlertCircle className="w-4 h-4 text-rose-400" /><span className="text-rose-400">{gpsError || 'GPS gagal'}</span></>
               : <><MapPin className="w-4 h-4" />Menunggu GPS…</>}
         </div>
-        <p className="text-[11px] text-zinc-500 text-center max-w-xs">
+        <p className="text-[11px] text-slate-500 text-center max-w-xs">
           Bengkel ini belum punya koordinat & GPS Anda belum aktif. Aktifkan GPS untuk capture lokasi visit.
         </p>
         {onRefetchGPS && (
           <button onClick={onRefetchGPS} type="button"
-            className="text-xs text-red-400 hover:text-red-300 font-medium flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-600/30 bg-red-600/10">
+            className="text-xs text-blue-400 hover:text-blue-300 font-medium flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-blue-600/30 bg-blue-600/10">
             <Navigation className="w-3.5 h-3.5" />Ambil GPS
           </button>
         )}
@@ -253,7 +253,7 @@ const BengkelMap = ({
   const center = hasBengkel ? [lat, lng] : [userLat, userLng];
 
   return (
-    <div className="rounded-xl overflow-hidden border border-zinc-800">
+    <div className="rounded-xl overflow-hidden border border-slate-800">
       <MapContainer
         center={center}
         zoom={16}
@@ -271,9 +271,9 @@ const BengkelMap = ({
           <Marker position={[lat, lng]} icon={RED_PIN_ICON}>
             <Popup>
               <div className="text-xs">
-                <div className="font-mono text-[10px] text-zinc-400">{code}</div>
-                <div className="font-semibold text-zinc-100">{name}</div>
-                <div className="font-mono text-[10px] text-zinc-500 mt-1">{lat.toFixed(5)}, {lng.toFixed(5)}</div>
+                <div className="font-mono text-[10px] text-slate-400">{code}</div>
+                <div className="font-semibold text-slate-100">{name}</div>
+                <div className="font-mono text-[10px] text-slate-500 mt-1">{lat.toFixed(5)}, {lng.toFixed(5)}</div>
               </div>
             </Popup>
           </Marker>
@@ -294,9 +294,9 @@ const BengkelMap = ({
             >
               <Popup>
                 <div className="text-xs">
-                  <div className="font-semibold text-zinc-100">Lokasi Anda{userPinDraggable && ' (drag untuk koreksi)'}</div>
-                  <div className="font-mono text-[10px] text-zinc-500 mt-1">{userLat.toFixed(5)}, {userLng.toFixed(5)}</div>
-                  {accuracy && <div className="text-[10px] text-zinc-400 mt-0.5">Akurasi ±{Math.round(accuracy)} m</div>}
+                  <div className="font-semibold text-slate-100">Lokasi Anda{userPinDraggable && ' (drag untuk koreksi)'}</div>
+                  <div className="font-mono text-[10px] text-slate-500 mt-1">{userLat.toFixed(5)}, {userLng.toFixed(5)}</div>
+                  {accuracy && <div className="text-[10px] text-slate-400 mt-0.5">Akurasi ±{Math.round(accuracy)} m</div>}
                 </div>
               </Popup>
             </Marker>
@@ -312,32 +312,32 @@ const BengkelMap = ({
       </MapContainer>
 
       {/* Status Bar */}
-      <div className="bg-zinc-950 border-t border-zinc-800 divide-y divide-zinc-800/60">
+      <div className="bg-slate-950 border-t border-slate-800 divide-y divide-slate-800/60">
         {hasBengkel && (
           <div className="px-3 py-2 flex items-center justify-between text-xs">
-            <span className="text-zinc-400 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-red-500" />Bengkel
+            <span className="text-slate-400 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-blue-500" />Bengkel
             </span>
-            <span className="font-mono text-zinc-300">{lat.toFixed(5)}, {lng.toFixed(5)}</span>
+            <span className="font-mono text-slate-300">{lat.toFixed(5)}, {lng.toFixed(5)}</span>
           </div>
         )}
         <div className="px-3 py-2 flex items-center justify-between text-xs gap-2">
-          <span className="text-zinc-400 flex items-center gap-1.5">
-            <span className={`w-2 h-2 rounded-full ${hasUser ? 'bg-blue-500' : 'bg-zinc-700'}`} />
+          <span className="text-slate-400 flex items-center gap-1.5">
+            <span className={`w-2 h-2 rounded-full ${hasUser ? 'bg-blue-500' : 'bg-slate-700'}`} />
             {userPinDraggable ? 'Lokasi Visit (drag pin)' : 'Lokasi Saya'}
           </span>
           {gpsStatus === 'loading' && (
-            <span className="flex items-center gap-1.5 text-zinc-500"><Loader2 className="w-3 h-3 animate-spin" />Mengambil GPS…</span>
+            <span className="flex items-center gap-1.5 text-slate-500"><Loader2 className="w-3 h-3 animate-spin" />Mengambil GPS…</span>
           )}
           {gpsStatus === 'error' && (
             <span className="text-rose-400 flex items-center gap-1.5"><AlertCircle className="w-3 h-3" />{gpsError || 'GPS gagal'}</span>
           )}
           {hasUser && (
-            <span className="font-mono text-zinc-300">{userLat.toFixed(5)}, {userLng.toFixed(5)}</span>
+            <span className="font-mono text-slate-300">{userLat.toFixed(5)}, {userLng.toFixed(5)}</span>
           )}
           {onRefetchGPS && (
             <button onClick={onRefetchGPS} type="button"
-              className="ml-2 text-[11px] text-red-400 hover:text-red-300 font-medium flex items-center gap-1">
+              className="ml-2 text-[11px] text-blue-400 hover:text-blue-300 font-medium flex items-center gap-1">
               <Navigation className="w-3 h-3" />{hasUser ? 'Ulang' : 'Ambil GPS'}
             </button>
           )}
@@ -419,11 +419,11 @@ const BengkelPickerMap = ({ lat, lng, onChange }) => {
   const lngInvalid = lngText.trim() !== '' && (Number.isNaN(Number(lngText)) || Number(lngText) < -180 || Number(lngText) > 180);
 
   return (
-    <div className="rounded-xl overflow-hidden border border-zinc-800">
-      <div className="bg-zinc-950 px-3 py-2 border-b border-zinc-800 flex items-center justify-between gap-2">
-        <span className="text-[11px] text-zinc-400">Klik map, geser pin, atau ketik koordinat</span>
+    <div className="rounded-xl overflow-hidden border border-slate-800">
+      <div className="bg-slate-950 px-3 py-2 border-b border-slate-800 flex items-center justify-between gap-2">
+        <span className="text-[11px] text-slate-400">Klik map, geser pin, atau ketik koordinat</span>
         <button type="button" onClick={useMyGPS}
-          className="text-[11px] text-red-400 hover:text-red-300 font-medium flex items-center gap-1">
+          className="text-[11px] text-blue-400 hover:text-blue-300 font-medium flex items-center gap-1">
           <Navigation className="w-3 h-3" />Pakai GPS Saya
         </button>
       </div>
@@ -456,28 +456,28 @@ const BengkelPickerMap = ({ lat, lng, onChange }) => {
         {hasPin && <RecenterMap lat={lat} lng={lng} />}
       </MapContainer>
       {/* Input manual lat/lng */}
-      <div className="bg-zinc-950 px-3 py-2.5 border-t border-zinc-800">
+      <div className="bg-slate-950 px-3 py-2.5 border-t border-slate-800">
         <div className="flex items-center gap-2">
-          <span className="text-zinc-400 flex items-center gap-1.5 text-xs shrink-0"><MapPin className="w-3 h-3 text-red-500" />Lat / Lng</span>
+          <span className="text-slate-400 flex items-center gap-1.5 text-xs shrink-0"><MapPin className="w-3 h-3 text-blue-500" />Lat / Lng</span>
           <div className="flex-1 grid grid-cols-2 gap-2">
             <input
               type="text" inputMode="decimal" placeholder="-6.251787"
               value={latText}
               onChange={e => { setLatText(e.target.value); commitLat(e.target.value); }}
-              className={`w-full bg-zinc-900 border rounded-md px-2 py-1.5 text-xs font-mono text-zinc-100 placeholder-zinc-600 focus:outline-none transition ${latInvalid ? 'border-rose-600/50' : 'border-zinc-800 focus:border-red-600/50'}`}
+              className={`w-full bg-slate-900 border rounded-md px-2 py-1.5 text-xs font-mono text-slate-100 placeholder-slate-600 focus:outline-none transition ${latInvalid ? 'border-rose-600/50' : 'border-slate-800 focus:border-blue-600/50'}`}
             />
             <input
               type="text" inputMode="decimal" placeholder="107.268440"
               value={lngText}
               onChange={e => { setLngText(e.target.value); commitLng(e.target.value); }}
-              className={`w-full bg-zinc-900 border rounded-md px-2 py-1.5 text-xs font-mono text-zinc-100 placeholder-zinc-600 focus:outline-none transition ${lngInvalid ? 'border-rose-600/50' : 'border-zinc-800 focus:border-red-600/50'}`}
+              className={`w-full bg-slate-900 border rounded-md px-2 py-1.5 text-xs font-mono text-slate-100 placeholder-slate-600 focus:outline-none transition ${lngInvalid ? 'border-rose-600/50' : 'border-slate-800 focus:border-blue-600/50'}`}
             />
           </div>
         </div>
         {(latInvalid || lngInvalid) && (
           <p className="text-[10px] text-rose-400 mt-1.5">Lat harus -90..90, Lng harus -180..180</p>
         )}
-        <p className="text-[10px] text-zinc-600 mt-1.5">💡 Bisa paste "lat, lng" dari Google Maps langsung ke kolom Lat</p>
+        <p className="text-[10px] text-slate-600 mt-1.5">💡 Bisa paste "lat, lng" dari Google Maps langsung ke kolom Lat</p>
       </div>
     </div>
   );
@@ -505,7 +505,7 @@ function StoredImage({ src, alt, className, onClick }) {
   }, [src]);
 
   if (!resolved) {
-    return <div className={`flex items-center justify-center bg-zinc-900 ${className || ''}`}><Loader2 className="w-5 h-5 text-zinc-600 animate-spin" /></div>;
+    return <div className={`flex items-center justify-center bg-slate-900 ${className || ''}`}><Loader2 className="w-5 h-5 text-slate-600 animate-spin" /></div>;
   }
   return <img src={resolved} alt={alt} className={className} onClick={onClick} />;
 }
@@ -536,7 +536,7 @@ const PHOTO_COL_TO_UIKEY = Object.fromEntries(
 // muncul utuh di source; `text-${x}-500` dinamis TIDAK ke-generate (mis. sky/amber
 // jadi tak berwarna). Simpan literal di sini supaya semua warna kartu benar muncul.
 const KPI_ICON_COLOR = {
-  red: 'text-red-500', emerald: 'text-emerald-500', sky: 'text-sky-500',
+  red: 'text-blue-500', emerald: 'text-emerald-500', sky: 'text-sky-500',
   blue: 'text-blue-500', amber: 'text-amber-500', rose: 'text-rose-500',
 };
 
@@ -657,15 +657,15 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
     : null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-zinc-950/80 backdrop-blur-sm p-4 overflow-y-auto"
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-950/80 backdrop-blur-sm p-4 overflow-y-auto"
          onClick={onClose}>
-      <div className="w-full max-w-3xl my-8 bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden"
+      <div className="w-full max-w-3xl my-8 bg-slate-950 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden"
            onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="px-5 py-4 border-b border-zinc-800 flex items-center justify-between gap-3 sticky top-0 bg-zinc-950 z-10">
+        <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between gap-3 sticky top-0 bg-slate-950 z-10">
           <div className="min-w-0">
-            <div className="text-[10px] uppercase tracking-wider text-zinc-500 font-mono">{bengkel?.code || '—'}</div>
-            <h2 className="font-display font-bold text-lg text-zinc-100 truncate">{bengkel?.name || visit.bengkel_name || '—'}</h2>
+            <div className="text-[10px] uppercase tracking-wider text-slate-500 font-mono">{bengkel?.code || '—'}</div>
+            <h2 className="font-display font-bold text-lg text-slate-100 truncate">{bengkel?.name || visit.bengkel_name || '—'}</h2>
           </div>
           <div className="flex items-center gap-3 shrink-0">
             <div className="flex flex-col items-end gap-1">
@@ -673,11 +673,11 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
             </div>
             {canEdit && !editMode && (
               <button onClick={startEdit} title="Edit data visit"
-                className="h-9 px-3 rounded-lg bg-zinc-800 hover:bg-amber-600 text-zinc-200 hover:text-white text-xs font-medium flex items-center gap-1.5 transition">
+                className="h-9 px-3 rounded-lg bg-slate-800 hover:bg-amber-600 text-slate-200 hover:text-white text-xs font-medium flex items-center gap-1.5 transition">
                 <Pencil className="w-3.5 h-3.5" />Edit
               </button>
             )}
-            <button onClick={onClose} className="w-9 h-9 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 flex items-center justify-center">
+            <button onClick={onClose} className="w-9 h-9 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-100 flex items-center justify-center">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -692,33 +692,33 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <label className="block">
-                  <span className="text-[11px] text-zinc-400">Tanggal Visit</span>
+                  <span className="text-[11px] text-slate-400">Tanggal Visit</span>
                   <Input type="date" value={form.visit_date} onChange={e => setF({ visit_date: e.target.value })} />
                 </label>
                 <label className="block">
-                  <span className="text-[11px] text-zinc-400">Waktu Submit (Dibuat)</span>
+                  <span className="text-[11px] text-slate-400">Waktu Submit (Dibuat)</span>
                   <Input type="datetime-local" value={form.created_at} onChange={e => setF({ created_at: e.target.value })} />
                 </label>
                 <label className="block sm:col-span-2">
-                  <span className="text-[11px] text-zinc-400">Hasil Visit</span>
+                  <span className="text-[11px] text-slate-400">Hasil Visit</span>
                   <Select value={form.status} onChange={e => setF({ status: e.target.value })}>
                     {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                   </Select>
                 </label>
                 <div className="sm:col-span-2">
-                  <span className="text-[11px] text-zinc-400">Bengkel</span>
+                  <span className="text-[11px] text-slate-400">Bengkel</span>
                   <SearchableSelect value={form.bengkel_id} onChange={v => setF({ bengkel_id: v })}
                     options={bengkels.map(b => ({ value: b.id, label: `${b.code} - ${b.name}` }))} placeholder="Pilih bengkel…" />
                 </div>
                 <label className="block sm:col-span-2">
-                  <span className="text-[11px] text-zinc-400">Remarks</span>
+                  <span className="text-[11px] text-slate-400">Remarks</span>
                   <textarea value={form.remarks} onChange={e => setF({ remarks: e.target.value })} rows={2}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-red-600/50" />
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-600/50" />
                 </label>
               </div>
               <div className="flex items-center justify-end gap-2 pt-1">
                 <button onClick={() => setEditMode(false)} disabled={saving}
-                  className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-sm border border-zinc-700 transition disabled:opacity-60">Batal</button>
+                  className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm border border-slate-700 transition disabled:opacity-60">Batal</button>
                 <button onClick={saveEdit} disabled={saving || !form.visit_date || !form.bengkel_id}
                   className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium transition disabled:opacity-60 flex items-center gap-1.5">
                   {saving ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />Menyimpan…</> : <><Check className="w-3.5 h-3.5" />Simpan Perubahan</>}
@@ -740,10 +740,10 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
           {/* Map */}
           {(hasBengkelCoord || hasVisitCoord) && (
             <div>
-              <div className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold mb-2 flex items-center gap-2">
+              <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2 flex items-center gap-2">
                 <Navigation className="w-3 h-3" />Lokasi
               </div>
-              <div className="rounded-xl overflow-hidden border border-zinc-800">
+              <div className="rounded-xl overflow-hidden border border-slate-800">
                 <MapContainer
                   center={hasBengkelCoord ? [bengkel.lat, bengkel.lng] : [visit.visit_lat, visit.visit_lng]}
                   zoom={16}
@@ -758,12 +758,12 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
                   />
                   {hasBengkelCoord && (
                     <Marker position={[bengkel.lat, bengkel.lng]} icon={RED_PIN_ICON}>
-                      <Popup><div className="text-xs"><div className="font-semibold">{bengkel.name}</div><div className="font-mono text-[10px] text-zinc-500">{bengkel.lat.toFixed(5)}, {bengkel.lng.toFixed(5)}</div><a href={`https://www.google.com/maps?q=${bengkel.lat},${bengkel.lng}`} target="_blank" rel="noreferrer" className="text-sky-600 underline">Buka di Google Maps →</a></div></Popup>
+                      <Popup><div className="text-xs"><div className="font-semibold">{bengkel.name}</div><div className="font-mono text-[10px] text-slate-500">{bengkel.lat.toFixed(5)}, {bengkel.lng.toFixed(5)}</div><a href={`https://www.google.com/maps?q=${bengkel.lat},${bengkel.lng}`} target="_blank" rel="noreferrer" className="text-sky-600 underline">Buka di Google Maps →</a></div></Popup>
                     </Marker>
                   )}
                   {hasVisitCoord && (
                     <Marker position={[visit.visit_lat, visit.visit_lng]} icon={BLUE_PIN_ICON}>
-                      <Popup><div className="text-xs"><div className="font-semibold">Lokasi MD saat visit</div><div className="font-mono text-[10px] text-zinc-500">{visit.visit_lat.toFixed(5)}, {visit.visit_lng.toFixed(5)}</div><a href={`https://www.google.com/maps?q=${visit.visit_lat},${visit.visit_lng}`} target="_blank" rel="noreferrer" className="text-sky-600 underline">Buka di Google Maps →</a></div></Popup>
+                      <Popup><div className="text-xs"><div className="font-semibold">Lokasi MD saat visit</div><div className="font-mono text-[10px] text-slate-500">{visit.visit_lat.toFixed(5)}, {visit.visit_lng.toFixed(5)}</div><a href={`https://www.google.com/maps?q=${visit.visit_lat},${visit.visit_lng}`} target="_blank" rel="noreferrer" className="text-sky-600 underline">Buka di Google Maps →</a></div></Popup>
                     </Marker>
                   )}
                   {hasBengkelCoord && hasVisitCoord && (
@@ -775,16 +775,16 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
                     hasVisitCoord && [visit.visit_lat, visit.visit_lng],
                   ].filter(Boolean)} />
                 </MapContainer>
-                <div className="bg-zinc-950 border-t border-zinc-800 divide-y divide-zinc-800/60 text-xs">
+                <div className="bg-slate-950 border-t border-slate-800 divide-y divide-slate-800/60 text-xs">
                   {hasBengkelCoord && (
                     <div className="px-3 py-2 flex justify-between">
-                      <span className="text-zinc-400 flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-500" />Bengkel</span>
+                      <span className="text-slate-400 flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-500" />Bengkel</span>
                       <a href={`https://www.google.com/maps?q=${bengkel.lat},${bengkel.lng}`} target="_blank" rel="noreferrer" className="font-mono text-sky-400 hover:text-sky-300 inline-flex items-center gap-1" title="Buka di Google Maps">{bengkel.lat.toFixed(5)}, {bengkel.lng.toFixed(5)}<MapPin className="w-3 h-3" /></a>
                     </div>
                   )}
                   {hasVisitCoord && (
                     <div className="px-3 py-2 flex justify-between">
-                      <span className="text-zinc-400 flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-500" />MD saat visit</span>
+                      <span className="text-slate-400 flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-500" />MD saat visit</span>
                       <a href={`https://www.google.com/maps?q=${visit.visit_lat},${visit.visit_lng}`} target="_blank" rel="noreferrer" className="font-mono text-sky-400 hover:text-sky-300 inline-flex items-center gap-1" title="Buka di Google Maps">{visit.visit_lat.toFixed(5)}, {visit.visit_lng.toFixed(5)}<MapPin className="w-3 h-3" /></a>
                     </div>
                   )}
@@ -801,21 +801,21 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
 
           {/* Photo gallery */}
           <div>
-            <div className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold mb-2 flex items-center gap-2 flex-wrap">
+            <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2 flex items-center gap-2 flex-wrap">
               <Camera className="w-3 h-3" />Dokumentasi Foto ({availablePhotos.length}/{PHOTO_KEYS.length})
-              {canEdit && <span className="normal-case tracking-normal font-normal text-zinc-600">· tap "Ganti" untuk perbaiki foto</span>}
+              {canEdit && <span className="normal-case tracking-normal font-normal text-slate-600">· tap "Ganti" untuk perbaiki foto</span>}
             </div>
             {canEdit && <input ref={replaceFileRef} type="file" accept="image/*" className="hidden" onChange={onReplaceFile} />}
             {availablePhotos.length === 0 ? (
-              <div className="text-center text-sm text-zinc-500 py-8 bg-zinc-950 border border-zinc-800 rounded-xl">Tidak ada foto</div>
+              <div className="text-center text-sm text-slate-500 py-8 bg-slate-950 border border-slate-800 rounded-xl">Tidak ada foto</div>
             ) : (
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                 {availablePhotos.map((p, i) => (
                   <div key={p.key}
-                    className="relative aspect-square rounded-lg overflow-hidden border border-zinc-800 hover:border-red-600/50 transition group bg-zinc-950">
+                    className="relative aspect-square rounded-lg overflow-hidden border border-slate-800 hover:border-blue-600/50 transition group bg-slate-950">
                     <button onClick={() => setLightboxIdx(i)} className="absolute inset-0 w-full h-full">
                       {isMockPhoto(p.url) ? (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center text-zinc-600">
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-600">
                           <Camera className="w-5 h-5 mb-1" />
                           <span className="text-[9px] uppercase tracking-wider">No Foto</span>
                         </div>
@@ -823,12 +823,12 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
                         <StoredImage src={p.url} alt={p.label} className="absolute inset-0 w-full h-full object-cover" />
                       )}
                     </button>
-                    <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-zinc-950 via-zinc-950/80 to-transparent px-2 py-1.5 pointer-events-none">
-                      <div className="text-[10px] font-medium text-zinc-100 truncate">{p.label}</div>
+                    <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent px-2 py-1.5 pointer-events-none">
+                      <div className="text-[10px] font-medium text-slate-100 truncate">{p.label}</div>
                     </div>
                     {canEdit && (
                       <button onClick={() => pickReplace(p.key)} disabled={replacingCol === p.key}
-                        className="absolute top-1 right-1 z-10 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-black/70 hover:bg-red-600 text-white text-[9px] font-medium backdrop-blur-sm transition disabled:opacity-60"
+                        className="absolute top-1 right-1 z-10 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-black/70 hover:bg-blue-600 text-white text-[9px] font-medium backdrop-blur-sm transition disabled:opacity-60"
                         title="Ganti foto ini">
                         {replacingCol === p.key ? 'Uploading…' : <><Camera className="w-3 h-3" />Ganti</>}
                       </button>
@@ -841,23 +841,23 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
 
           {/* Remarks */}
           {!editMode && visit.remarks && (
-            <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4">
-              <div className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold mb-2 flex items-center gap-1.5">
+            <div className="bg-slate-950 border border-slate-800 rounded-xl p-4">
+              <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2 flex items-center gap-1.5">
                 <FileText className="w-3 h-3" />Remarks
               </div>
-              <p className="text-sm text-zinc-300 whitespace-pre-wrap">{visit.remarks}</p>
+              <p className="text-sm text-slate-300 whitespace-pre-wrap">{visit.remarks}</p>
             </div>
           )}
 
           {/* Meta footer */}
-          <div className="pt-3 border-t border-zinc-800 text-[11px] text-zinc-500 flex flex-wrap items-center gap-x-4 gap-y-1">
-            <span>Visit ID: <span className="font-mono text-zinc-400">{visit.id?.slice(0, 8)}…</span></span>
+          <div className="pt-3 border-t border-slate-800 text-[11px] text-slate-500 flex flex-wrap items-center gap-x-4 gap-y-1">
+            <span>Visit ID: <span className="font-mono text-slate-400">{visit.id?.slice(0, 8)}…</span></span>
             {visit.created_at && <span>Dibuat: {new Date(visit.created_at).toLocaleString('id-ID')}</span>}
           </div>
 
           {/* Danger zone: hapus visit */}
           {onDeleted && (
-            <div className="pt-3 mt-1 border-t border-zinc-800/50">
+            <div className="pt-3 mt-1 border-t border-slate-800/50">
               {!confirmDelete ? (
                 <button onClick={() => setConfirmDelete(true)}
                   className="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1.5 transition">
@@ -884,20 +884,20 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
         <div className="fixed inset-0 z-[2000] bg-black flex items-center justify-center"
              onClick={() => setLightboxIdx(null)}>
           <button onClick={(e) => { e.stopPropagation(); setLightboxIdx((lightboxIdx - 1 + availablePhotos.length) % availablePhotos.length); }}
-            className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-zinc-800/80 hover:bg-zinc-700 text-zinc-100 flex items-center justify-center">
+            className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-100 flex items-center justify-center">
             <ChevronLeft className="w-5 h-5" />
           </button>
           <button onClick={(e) => { e.stopPropagation(); setLightboxIdx((lightboxIdx + 1) % availablePhotos.length); }}
-            className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-zinc-800/80 hover:bg-zinc-700 text-zinc-100 flex items-center justify-center">
+            className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-100 flex items-center justify-center">
             <ChevronRight className="w-5 h-5" />
           </button>
           <button onClick={(e) => { e.stopPropagation(); setLightboxIdx(null); }}
-            className="absolute right-4 top-4 w-10 h-10 rounded-full bg-zinc-800/80 hover:bg-zinc-700 text-zinc-100 flex items-center justify-center">
+            className="absolute right-4 top-4 w-10 h-10 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-100 flex items-center justify-center">
             <X className="w-5 h-5" />
           </button>
           <div className="w-full h-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
             {isMockPhoto(availablePhotos[lightboxIdx].url) ? (
-              <div className="w-96 h-96 bg-zinc-950 border border-zinc-800 rounded-xl flex flex-col items-center justify-center text-zinc-500">
+              <div className="w-96 h-96 bg-slate-950 border border-slate-800 rounded-xl flex flex-col items-center justify-center text-slate-500">
                 <Camera className="w-16 h-16 mb-2" />
                 <span className="text-xs uppercase tracking-wider">Tidak ada foto</span>
               </div>
@@ -906,10 +906,10 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
                    className="max-w-full max-h-full w-auto h-auto object-contain" />
             )}
           </div>
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-zinc-950/90 backdrop-blur px-4 py-2 rounded-full text-sm text-zinc-200 flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-950/90 backdrop-blur px-4 py-2 rounded-full text-sm text-slate-200 flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
             <span className="font-semibold">{availablePhotos[lightboxIdx].label}</span>
-            <span className="text-zinc-500">·</span>
-            <span className="text-zinc-400 font-mono">{lightboxIdx + 1} / {availablePhotos.length}</span>
+            <span className="text-slate-500">·</span>
+            <span className="text-slate-400 font-mono">{lightboxIdx + 1} / {availablePhotos.length}</span>
           </div>
         </div>
       )}
@@ -918,11 +918,11 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
 }
 
 const InfoCell = ({ icon: Icon, label, value }) => (
-  <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-3">
-    <div className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold mb-1 flex items-center gap-1.5">
+  <div className="bg-slate-950 border border-slate-800 rounded-xl p-3">
+    <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1 flex items-center gap-1.5">
       <Icon className="w-3 h-3" />{label}
     </div>
-    <div className="text-sm text-zinc-100 font-medium truncate">{value}</div>
+    <div className="text-sm text-slate-100 font-medium truncate">{value}</div>
   </div>
 );
 
@@ -944,7 +944,7 @@ const STATUS_STYLES = {
   [HASIL_TERPASANG]:                { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/30', dot: 'bg-emerald-400' },
   'Alamat bengkel tidak ditemukan': { bg: 'bg-amber-500/10',   text: 'text-amber-400',   border: 'border-amber-500/30',   dot: 'bg-amber-400' },
   'Ditolak':                        { bg: 'bg-rose-500/10',    text: 'text-rose-400',    border: 'border-rose-500/30',    dot: 'bg-rose-400' },
-  'Bukan bengkel':                  { bg: 'bg-zinc-500/10',    text: 'text-zinc-400',    border: 'border-zinc-500/30',    dot: 'bg-zinc-400' },
+  'Bukan bengkel':                  { bg: 'bg-slate-500/10',    text: 'text-slate-400',    border: 'border-slate-500/30',    dot: 'bg-slate-400' },
   'Owner/PIC tidak di tempat':      { bg: 'bg-sky-500/10',     text: 'text-sky-400',     border: 'border-sky-500/30',     dot: 'bg-sky-400' },
   'Tidak jual oli Federal':         { bg: 'bg-orange-500/10',  text: 'text-orange-400',  border: 'border-orange-500/30',  dot: 'bg-orange-400' },
 };
@@ -960,16 +960,16 @@ const StatusBadge = ({ status }) => {
 };
 
 const Section = ({ title, subtitle, children, icon: Icon }) => (
-  <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-5 mb-4">
+  <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 mb-4">
     <div className="flex items-center gap-3 mb-4">
       {Icon && (
-        <div className="w-8 h-8 rounded-lg bg-red-600/10 border border-red-600/20 flex items-center justify-center">
-          <Icon className="w-4 h-4 text-red-500" />
+        <div className="w-8 h-8 rounded-lg bg-blue-600/10 border border-blue-600/20 flex items-center justify-center">
+          <Icon className="w-4 h-4 text-blue-500" />
         </div>
       )}
       <div>
-        <h3 className="text-sm font-semibold text-zinc-100 tracking-wide">{title}</h3>
-        {subtitle && <p className="text-xs text-zinc-500 mt-0.5">{subtitle}</p>}
+        <h3 className="text-sm font-semibold text-slate-100 tracking-wide">{title}</h3>
+        {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
       </div>
     </div>
     {children}
@@ -978,8 +978,8 @@ const Section = ({ title, subtitle, children, icon: Icon }) => (
 
 const Field = ({ label, children, required }) => (
   <div className="mb-3">
-    <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">
-      {label} {required && <span className="text-red-500">*</span>}
+    <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">
+      {label} {required && <span className="text-blue-500">*</span>}
     </label>
     {children}
   </div>
@@ -988,7 +988,7 @@ const Field = ({ label, children, required }) => (
 const Input = (props) => (
   <input
     {...props}
-    className={`w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-red-600/50 focus:ring-1 focus:ring-red-600/30 transition ${props.className || ''}`}
+    className={`w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-600/50 focus:ring-1 focus:ring-blue-600/30 transition ${props.className || ''}`}
   />
 );
 
@@ -996,18 +996,18 @@ const Select = ({ children, ...props }) => (
   <div className="relative">
     <select
       {...props}
-      className="w-full appearance-none bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2.5 pr-9 text-sm text-zinc-100 focus:outline-none focus:border-red-600/50 focus:ring-1 focus:ring-red-600/30 transition cursor-pointer"
+      className="w-full appearance-none bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 pr-9 text-sm text-slate-100 focus:outline-none focus:border-blue-600/50 focus:ring-1 focus:ring-blue-600/30 transition cursor-pointer"
     >
       {children}
     </select>
-    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
+    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
   </div>
 );
 
 const Textarea = (props) => (
   <textarea
     {...props}
-    className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-red-600/50 focus:ring-1 focus:ring-red-600/30 transition resize-none"
+    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-600/50 focus:ring-1 focus:ring-blue-600/30 transition resize-none"
   />
 );
 
@@ -1058,34 +1058,34 @@ const SearchableSelect = ({ value, onChange, options, placeholder = 'Pilih…', 
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setOpen(o => !o)}
-        className={`w-full flex items-center justify-between gap-2 bg-zinc-950 border rounded-lg px-3 py-2.5 text-sm text-left transition cursor-pointer
-          ${disabled ? 'opacity-50 cursor-not-allowed border-zinc-800' : 'border-zinc-800 hover:border-zinc-700'}
-          ${open ? 'border-red-600/50 ring-1 ring-red-600/30' : ''}`}
+        className={`w-full flex items-center justify-between gap-2 bg-slate-950 border rounded-lg px-3 py-2.5 text-sm text-left transition cursor-pointer
+          ${disabled ? 'opacity-50 cursor-not-allowed border-slate-800' : 'border-slate-800 hover:border-slate-700'}
+          ${open ? 'border-blue-600/50 ring-1 ring-blue-600/30' : ''}`}
       >
-        <span className={`truncate ${selected ? 'text-zinc-100' : 'text-zinc-600'}`}>
+        <span className={`truncate ${selected ? 'text-slate-100' : 'text-slate-600'}`}>
           {selected ? selected.label : placeholder}
         </span>
-        <ChevronDown className={`w-4 h-4 text-zinc-500 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`w-4 h-4 text-slate-500 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
-        <div className="absolute z-30 mt-1 w-full bg-zinc-900 border border-zinc-700 rounded-lg shadow-2xl overflow-hidden">
-          <div className="p-2 border-b border-zinc-800">
+        <div className="absolute z-30 mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg shadow-2xl overflow-hidden">
+          <div className="p-2 border-b border-slate-800">
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
               <input
                 ref={inputRef}
                 value={query}
                 onChange={e => { setQuery(e.target.value); setActiveIdx(0); }}
                 onKeyDown={onKeyDown}
                 placeholder="Cari…"
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-md pl-8 pr-2 py-1.5 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-red-600/50"
+                className="w-full bg-slate-950 border border-slate-800 rounded-md pl-8 pr-2 py-1.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-600/50"
               />
             </div>
           </div>
           <div ref={listRef} className="max-h-56 overflow-y-auto py-1">
             {filtered.length === 0 ? (
-              <div className="px-3 py-3 text-xs text-zinc-500 text-center">{emptyText}</div>
+              <div className="px-3 py-3 text-xs text-slate-500 text-center">{emptyText}</div>
             ) : filtered.map((o, i) => {
               const isSel = String(o.value) === String(value);
               const isActive = i === activeIdx;
@@ -1096,7 +1096,7 @@ const SearchableSelect = ({ value, onChange, options, placeholder = 'Pilih…', 
                   onMouseEnter={() => setActiveIdx(i)}
                   onClick={() => pick(o)}
                   className={`w-full text-left px-3 py-2 text-sm flex items-center justify-between gap-2 transition
-                    ${isActive ? 'bg-zinc-800' : ''} ${isSel ? 'text-red-400 font-medium' : 'text-zinc-200'}`}
+                    ${isActive ? 'bg-slate-800' : ''} ${isSel ? 'text-blue-400 font-medium' : 'text-slate-200'}`}
                 >
                   <span className="truncate">{o.label}</span>
                   {isSel && <Check className="w-3.5 h-3.5 shrink-0" />}
@@ -1104,7 +1104,7 @@ const SearchableSelect = ({ value, onChange, options, placeholder = 'Pilih…', 
               );
             })}
             {moreCount > 0 && (
-              <div className="px-3 py-2 text-[11px] text-zinc-500 text-center border-t border-zinc-800/60">
+              <div className="px-3 py-2 text-[11px] text-slate-500 text-center border-t border-slate-800/60">
                 +{moreCount} lagi — ketik untuk mempersempit
               </div>
             )}
@@ -1117,9 +1117,9 @@ const SearchableSelect = ({ value, onChange, options, placeholder = 'Pilih…', 
 
 const Button = ({ children, variant = 'primary', size = 'md', ...props }) => {
   const variants = {
-    primary: 'bg-red-600 hover:bg-red-500 text-white border-red-600 disabled:bg-red-900/50 disabled:border-red-900/50 disabled:cursor-not-allowed',
-    secondary: 'bg-zinc-950 hover:bg-zinc-800 text-zinc-100 border-zinc-800',
-    ghost: 'bg-transparent hover:bg-zinc-950 text-zinc-400 hover:text-zinc-100 border-transparent',
+    primary: 'bg-blue-600 hover:bg-blue-500 text-white border-blue-600 disabled:bg-blue-900/50 disabled:border-blue-900/50 disabled:cursor-not-allowed',
+    secondary: 'bg-slate-950 hover:bg-slate-800 text-slate-100 border-slate-800',
+    ghost: 'bg-transparent hover:bg-slate-950 text-slate-400 hover:text-slate-100 border-transparent',
   };
   const sizes = {
     sm: 'px-3 py-1.5 text-xs',
@@ -1183,33 +1183,33 @@ const PhotoTile = ({ label, photo, onChange, required, example, hint }) => {
 
   return (
     <div className="relative group">
-      <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1.5 font-medium">
-        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+      <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-1.5 font-medium">
+        {label}{required && <span className="text-blue-500 ml-0.5">*</span>}
       </div>
       <button
         type="button"
         onClick={() => { if (!hasPhoto) setShowExample(true); else inputRef.current?.click(); }}
         className={`relative w-full aspect-square rounded-xl border-2 overflow-hidden transition ${
-          hasPhoto ? 'border-emerald-600/40 border-solid' : 'border-zinc-800 border-dashed bg-zinc-950 hover:border-red-600/40 hover:bg-red-600/5'
+          hasPhoto ? 'border-emerald-600/40 border-solid' : 'border-slate-800 border-dashed bg-slate-950 hover:border-blue-600/40 hover:bg-blue-600/5'
         }`}
       >
         {hasPhoto ? (
           <>
             {photo.preview && <img src={photo.preview} alt={label} className="absolute inset-0 w-full h-full object-cover" />}
             {photo.status === 'compressing' && (
-              <div className="absolute inset-0 bg-zinc-950/70 backdrop-blur-sm flex flex-col items-center justify-center">
+              <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm flex flex-col items-center justify-center">
                 <Loader2 className="w-6 h-6 text-white animate-spin" />
                 <span className="text-[9px] text-white mt-1.5 font-medium uppercase tracking-wider">Compressing…</span>
               </div>
             )}
             {photo.status === 'uploading' && (
               <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-sky-500 flex items-center justify-center shadow-lg" title="Mengupload…">
-                <Loader2 className="w-3 h-3 text-zinc-900 animate-spin" />
+                <Loader2 className="w-3 h-3 text-slate-900 animate-spin" />
               </div>
             )}
             {(photo.status === 'ready' || photo.status === 'uploaded') && (
               <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center shadow-lg">
-                <Check className="w-3 h-3 text-zinc-900" strokeWidth={3} />
+                <Check className="w-3 h-3 text-slate-900" strokeWidth={3} />
               </div>
             )}
             {photo.status === 'error' && (
@@ -1220,7 +1220,7 @@ const PhotoTile = ({ label, photo, onChange, required, example, hint }) => {
             )}
           </>
         ) : (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 text-zinc-600 group-hover:text-red-500 transition">
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 text-slate-600 group-hover:text-blue-500 transition">
             <Camera className="w-6 h-6" />
             <span className="text-[10px] font-medium">Upload</span>
           </div>
@@ -1228,7 +1228,7 @@ const PhotoTile = ({ label, photo, onChange, required, example, hint }) => {
       </button>
       <input ref={inputRef} type="file" accept="image/*" capture="environment" onChange={handleSelect} className="hidden" />
       {!hasPhoto && (
-        <p className="text-[9px] text-zinc-600 mt-1 text-center">{example ? 'Ketuk untuk lihat contoh' : 'Ketuk untuk mulai'}</p>
+        <p className="text-[9px] text-slate-600 mt-1 text-center">{example ? 'Ketuk untuk lihat contoh' : 'Ketuk untuk mulai'}</p>
       )}
       {showExample && (
         <div className="fixed inset-0 z-[2000] bg-black/90 flex flex-col items-center justify-center p-4" onClick={() => setShowExample(false)}>
@@ -1239,15 +1239,15 @@ const PhotoTile = ({ label, photo, onChange, required, example, hint }) => {
           )}
           <div className="flex gap-2.5 mt-5" onClick={e => e.stopPropagation()}>
             <button type="button" onClick={() => setShowExample(false)}
-              className="px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-sm font-medium border border-zinc-700 transition">Tutup</button>
+              className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium border border-slate-700 transition">Tutup</button>
             <button type="button" onClick={() => { setShowExample(false); inputRef.current?.click(); }}
-              className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-semibold flex items-center gap-2 transition"><Camera className="w-4 h-4" />Ambil Foto</button>
+              className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold flex items-center gap-2 transition"><Camera className="w-4 h-4" />Ambil Foto</button>
           </div>
         </div>
       )}
       {hasPhoto && photo.status !== 'compressing' && (
-        <button type="button" onClick={handleClear} className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-zinc-800/50 hover:bg-rose-600 border border-zinc-700 flex items-center justify-center opacity-0 group-hover:opacity-100 transition z-10">
-          <X className="w-3 h-3 text-zinc-100" />
+        <button type="button" onClick={handleClear} className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-slate-800/50 hover:bg-rose-600 border border-slate-700 flex items-center justify-center opacity-0 group-hover:opacity-100 transition z-10">
+          <X className="w-3 h-3 text-slate-100" />
         </button>
       )}
     </div>
@@ -1303,25 +1303,25 @@ function LoginScreen({ onLogin }) {
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-8 relative overflow-hidden">
       <div className="absolute inset-0 -z-10">
-        <div className="absolute inset-0 bg-zinc-950" />
-        <div className="absolute inset-0 opacity-40" style={{ backgroundImage: 'radial-gradient(circle at 20% 20%, rgba(220,38,38,0.25), transparent 40%), radial-gradient(circle at 80% 80%, rgba(220,38,38,0.15), transparent 50%)' }} />
+        <div className="absolute inset-0 bg-slate-950" />
+        <div className="absolute inset-0 opacity-40" style={{ backgroundImage: 'radial-gradient(circle at 20% 20%, rgba(37,99,235,0.25), transparent 40%), radial-gradient(circle at 80% 80%, rgba(37,99,235,0.15), transparent 50%)' }} />
         <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
       </div>
 
       <div className="w-full max-w-md">
         <div className="flex flex-col items-center mb-8">
           <div className="relative mb-4">
-            <div className="absolute inset-0 bg-red-600 rounded-2xl blur-2xl opacity-30" />
+            <div className="absolute inset-0 bg-blue-600 rounded-2xl blur-2xl opacity-30" />
             <img src="/federal-logo.png" alt="2W Federal" className="relative h-16 w-auto drop-shadow-2xl" />
           </div>
-          <h1 className="font-display font-bold text-2xl text-zinc-100 tracking-tight">2W Federal POSM</h1>
-          <p className="text-xs text-zinc-500 uppercase tracking-[0.2em] mt-1">MD Field Operations</p>
+          <h1 className="font-display font-bold text-2xl text-slate-100 tracking-tight">2W Federal POSM</h1>
+          <p className="text-xs text-slate-500 uppercase tracking-[0.2em] mt-1">MD Field Operations</p>
         </div>
 
-        <div className="bg-zinc-950 backdrop-blur-xl border border-zinc-800 rounded-2xl p-6 shadow-2xl">
+        <div className="bg-slate-950 backdrop-blur-xl border border-slate-800 rounded-2xl p-6 shadow-2xl">
           <div className="mb-5">
-            <h2 className="font-display font-bold text-lg text-zinc-100">Selamat datang kembali</h2>
-            <p className="text-sm text-zinc-500 mt-1">Sign in untuk lanjut tracking visit</p>
+            <h2 className="font-display font-bold text-lg text-slate-100">Selamat datang kembali</h2>
+            <p className="text-sm text-slate-500 mt-1">Sign in untuk lanjut tracking visit</p>
           </div>
 
           {error && (
@@ -1333,24 +1333,24 @@ function LoginScreen({ onLogin }) {
 
           <Field label="Email" required>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
               <input type="email" placeholder="nama@federal.id" value={email}
                 onChange={e => setEmail(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSubmit()}
                 autoComplete="email"
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg pl-10 pr-3 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-red-600/50 focus:ring-1 focus:ring-red-600/30 transition" />
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-10 pr-3 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-600/50 focus:ring-1 focus:ring-blue-600/30 transition" />
             </div>
           </Field>
 
           <Field label="Password" required>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
               <input type={showPw ? 'text' : 'password'} placeholder="••••••••" value={password}
                 onChange={e => setPassword(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSubmit()}
                 autoComplete="current-password"
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg pl-10 pr-10 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-red-600/50 focus:ring-1 focus:ring-red-600/30 transition" />
-              <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition">
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-10 pr-10 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-600/50 focus:ring-1 focus:ring-blue-600/30 transition" />
+              <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition">
                 {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
@@ -1358,12 +1358,12 @@ function LoginScreen({ onLogin }) {
 
           <div className="flex items-center justify-between mb-5 mt-1">
             <label className="flex items-center gap-2 cursor-pointer group">
-              <div onClick={() => setRemember(!remember)} className={`w-4 h-4 rounded border flex items-center justify-center transition ${remember ? 'bg-red-600 border-red-600' : 'bg-zinc-950 border-zinc-700 group-hover:border-zinc-700'}`}>
+              <div onClick={() => setRemember(!remember)} className={`w-4 h-4 rounded border flex items-center justify-center transition ${remember ? 'bg-blue-600 border-blue-600' : 'bg-slate-950 border-slate-700 group-hover:border-slate-700'}`}>
                 {remember && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
               </div>
-              <span className="text-xs text-zinc-400">Ingat saya</span>
+              <span className="text-xs text-slate-400">Ingat saya</span>
             </label>
-            <button onClick={() => setForgotOpen(true)} className="text-xs text-red-500 hover:text-red-400 transition">Lupa password?</button>
+            <button onClick={() => setForgotOpen(true)} className="text-xs text-blue-500 hover:text-blue-400 transition">Lupa password?</button>
           </div>
 
           <Button variant="primary" size="lg" className="w-full" onClick={handleSubmit} disabled={loading || !email || !password}>
@@ -1371,16 +1371,16 @@ function LoginScreen({ onLogin }) {
           </Button>
 
           {PASSKEY_ENABLED && bioSupported && (
-            <div className="mt-4 pt-4 border-t border-zinc-800">
+            <div className="mt-4 pt-4 border-t border-slate-800">
               <button
                 type="button"
                 onClick={handlePasskeyLogin}
                 disabled={bioBusy || loading}
-                className="w-full flex items-center justify-center gap-2 py-2 text-xs text-zinc-400 hover:text-zinc-200 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                className="w-full flex items-center justify-center gap-2 py-2 text-xs text-slate-400 hover:text-slate-200 transition disabled:opacity-50 disabled:cursor-not-allowed">
                 {bioBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Fingerprint className="w-4 h-4" />}
                 Masuk dengan biometrik / passkey
               </button>
-              <p className="text-center text-[10px] text-zinc-600 mt-1.5">
+              <p className="text-center text-[10px] text-slate-600 mt-1.5">
                 Aktifkan dulu dari dalam app setelah login pertama.
               </p>
             </div>
@@ -1388,19 +1388,19 @@ function LoginScreen({ onLogin }) {
         </div>
 
         {MOCK_MODE && (
-          <div className="mt-5 p-3 bg-zinc-950 border border-zinc-800 rounded-lg">
-            <div className="flex items-start gap-2 text-[11px] text-zinc-500">
-              <Shield className="w-3.5 h-3.5 text-zinc-600 shrink-0 mt-0.5" />
+          <div className="mt-5 p-3 bg-slate-950 border border-slate-800 rounded-lg">
+            <div className="flex items-start gap-2 text-[11px] text-slate-500">
+              <Shield className="w-3.5 h-3.5 text-slate-600 shrink-0 mt-0.5" />
               <div>
                 <div className="text-amber-400 font-medium mb-0.5">🟡 Mode Demo (Mock Data)</div>
-                <span className="text-zinc-400 font-medium">MD:</span> <span className="font-mono text-zinc-400">budi@federal.id</span> / <span className="font-mono text-zinc-400">federal</span><br/>
-                <span className="text-zinc-400 font-medium">Admin:</span> <span className="font-mono text-zinc-400">admin@federal.id</span> / <span className="font-mono text-zinc-400">federal</span>
+                <span className="text-slate-400 font-medium">MD:</span> <span className="font-mono text-slate-400">budi@federal.id</span> / <span className="font-mono text-slate-400">federal</span><br/>
+                <span className="text-slate-400 font-medium">Admin:</span> <span className="font-mono text-slate-400">admin@federal.id</span> / <span className="font-mono text-slate-400">federal</span>
               </div>
             </div>
           </div>
         )}
 
-        <p className="text-center text-[11px] text-zinc-600 mt-6">© 2026 Federal Oil Indonesia · Powered by ExxonMobil</p>
+        <p className="text-center text-[11px] text-slate-600 mt-6">© 2026 Federal Oil Indonesia · Powered by ExxonMobil</p>
       </div>
     </div>
   );
@@ -1429,28 +1429,28 @@ function ForgotPasswordScreen({ onBack }) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-8 bg-zinc-950">
+    <div className="min-h-screen flex items-center justify-center px-4 py-8 bg-slate-950">
       <div className="w-full max-w-md">
-        <button onClick={onBack} className="mb-4 text-sm text-zinc-400 hover:text-zinc-100 transition flex items-center gap-1.5">
+        <button onClick={onBack} className="mb-4 text-sm text-slate-400 hover:text-slate-100 transition flex items-center gap-1.5">
           <ChevronRight className="w-4 h-4 rotate-180" /> Kembali ke login
         </button>
 
-        <div className="bg-zinc-950 backdrop-blur-xl border border-zinc-800 rounded-2xl p-6 shadow-2xl">
+        <div className="bg-slate-950 backdrop-blur-xl border border-slate-800 rounded-2xl p-6 shadow-2xl">
           {sent ? (
             <div className="text-center py-4">
               <div className="w-14 h-14 rounded-full bg-emerald-600/100/10 border border-emerald-500/30 mx-auto flex items-center justify-center mb-4">
                 <Mail className="w-6 h-6 text-emerald-500" />
               </div>
-              <h2 className="font-display font-bold text-lg text-zinc-100 mb-2">Email terkirim</h2>
-              <p className="text-sm text-zinc-400 leading-relaxed">
-                Cek inbox <span className="text-zinc-100 font-medium">{email}</span> untuk link reset password. Link berlaku 1 jam.
+              <h2 className="font-display font-bold text-lg text-slate-100 mb-2">Email terkirim</h2>
+              <p className="text-sm text-slate-400 leading-relaxed">
+                Cek inbox <span className="text-slate-100 font-medium">{email}</span> untuk link reset password. Link berlaku 1 jam.
               </p>
               <Button variant="secondary" className="w-full mt-5" onClick={onBack}>Kembali ke Login</Button>
             </div>
           ) : (
             <>
-              <h2 className="font-display font-bold text-lg text-zinc-100 mb-2">Lupa Password?</h2>
-              <p className="text-sm text-zinc-500 mb-5">Masukkan email terdaftar — kami akan kirim link untuk reset password.</p>
+              <h2 className="font-display font-bold text-lg text-slate-100 mb-2">Lupa Password?</h2>
+              <p className="text-sm text-slate-500 mb-5">Masukkan email terdaftar — kami akan kirim link untuk reset password.</p>
 
               {error && (
                 <div className="mb-4 p-3 bg-rose-600/10 border border-rose-600/30 rounded-lg flex items-start gap-2.5">
@@ -1461,9 +1461,9 @@ function ForgotPasswordScreen({ onBack }) {
 
               <Field label="Email" required>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                   <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="nama@federal.id"
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-lg pl-10 pr-3 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-red-600/50 focus:ring-1 focus:ring-red-600/30 transition" />
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-10 pr-3 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-600/50 focus:ring-1 focus:ring-blue-600/30 transition" />
                 </div>
               </Field>
 
@@ -1545,19 +1545,19 @@ function PasskeyManagerModal({ onClose }) {
 
   return (
     <div className="fixed inset-0 z-[2000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-zinc-800 flex items-center justify-between">
+      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <Fingerprint className="w-5 h-5 text-red-400" />
-            <h2 className="text-lg font-bold text-zinc-100 font-display">Kelola Passkey</h2>
+            <Fingerprint className="w-5 h-5 text-blue-400" />
+            <h2 className="text-lg font-bold text-slate-100 font-display">Kelola Passkey</h2>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 flex items-center justify-center transition">
+          <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-slate-800 text-slate-400 hover:text-slate-100 flex items-center justify-center transition">
             <X className="w-4 h-4" />
           </button>
         </div>
 
         <div className="p-5 space-y-4">
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-slate-500">
             Passkey = login biometrik tanpa password. Tiap perangkat punya passkey sendiri; password tidak pernah disimpan.
           </p>
 
@@ -1574,22 +1574,22 @@ function PasskeyManagerModal({ onClose }) {
 
           {/* Daftar perangkat */}
           {items === null ? (
-            <div className="flex items-center justify-center py-8 text-zinc-500 text-sm gap-2">
+            <div className="flex items-center justify-center py-8 text-slate-500 text-sm gap-2">
               <Loader2 className="w-4 h-4 animate-spin" />Memuat…
             </div>
           ) : items.length === 0 ? (
-            <div className="text-center py-6 text-sm text-zinc-500">Belum ada passkey terdaftar.</div>
+            <div className="text-center py-6 text-sm text-slate-500">Belum ada passkey terdaftar.</div>
           ) : (
             <div className="space-y-2">
               {items.map(p => (
-                <div key={p.id} className="flex items-center gap-3 p-3 rounded-xl bg-zinc-950 border border-zinc-800">
-                  <Fingerprint className="w-4 h-4 text-zinc-500 shrink-0" />
+                <div key={p.id} className="flex items-center gap-3 p-3 rounded-xl bg-slate-950 border border-slate-800">
+                  <Fingerprint className="w-4 h-4 text-slate-500 shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-zinc-200 truncate">{shortLabel(p.device_label)}</div>
-                    <div className="text-[10px] text-zinc-500">Dibuat {fmt(p.created_at)} · Dipakai {fmt(p.last_used_at)}</div>
+                    <div className="text-sm font-medium text-slate-200 truncate">{shortLabel(p.device_label)}</div>
+                    <div className="text-[10px] text-slate-500">Dibuat {fmt(p.created_at)} · Dipakai {fmt(p.last_used_at)}</div>
                   </div>
                   <button onClick={() => handleDelete(p.id)} disabled={busy}
-                    className="w-8 h-8 rounded-md hover:bg-rose-600/10 hover:text-rose-400 text-zinc-500 flex items-center justify-center transition disabled:opacity-50">
+                    className="w-8 h-8 rounded-md hover:bg-rose-600/10 hover:text-rose-400 text-slate-500 flex items-center justify-center transition disabled:opacity-50">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -1604,7 +1604,7 @@ function PasskeyManagerModal({ onClose }) {
               Tambah passkey di perangkat ini
             </Button>
           ) : (
-            <p className="text-[11px] text-zinc-600 text-center">
+            <p className="text-[11px] text-slate-600 text-center">
               Perangkat ini tidak mendukung biometrik / passkey (atau bukan HTTPS).
             </p>
           )}
@@ -1643,17 +1643,17 @@ function MDWelcomeModal({ currentMD, visits, onClose, onGoProgress }) {
   return (
     <div className="fixed inset-0 z-[2000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
       <div
-        className="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden animate-[fadeIn_0.2s_ease-out]"
+        className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden animate-[fadeIn_0.2s_ease-out]"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="relative px-5 pt-5 pb-4 bg-gradient-to-br from-red-600/20 to-zinc-900 border-b border-zinc-800">
-          <button onClick={onClose} className="absolute top-3 right-3 w-8 h-8 rounded-full hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 flex items-center justify-center transition">
+        <div className="relative px-5 pt-5 pb-4 bg-gradient-to-br from-blue-600/20 to-slate-900 border-b border-slate-800">
+          <button onClick={onClose} className="absolute top-3 right-3 w-8 h-8 rounded-full hover:bg-slate-800 text-slate-400 hover:text-slate-100 flex items-center justify-center transition">
             <X className="w-4 h-4" />
           </button>
-          <div className="text-xs text-zinc-400 uppercase tracking-wider">{tglLabel}</div>
-          <h2 className="text-xl font-bold text-zinc-100 font-display mt-1">Halo, {currentMD.full_name.split(' ')[0]} 👋</h2>
-          <p className="text-sm text-zinc-400 mt-0.5">
+          <div className="text-xs text-slate-400 uppercase tracking-wider">{tglLabel}</div>
+          <h2 className="text-xl font-bold text-slate-100 font-display mt-1">Halo, {currentMD.full_name.split(' ')[0]} 👋</h2>
+          <p className="text-sm text-slate-400 mt-0.5">
             {tercapai
               ? 'Target bulan ini sudah tercapai. Mantap! 🎉'
               : `Sisa ${daysLeft} hari untuk kejar target bulan ini.`}
@@ -1663,23 +1663,23 @@ function MDWelcomeModal({ currentMD, visits, onClose, onGoProgress }) {
         {/* Stat grid */}
         <div className="p-5 space-y-4">
           <div className="grid grid-cols-3 gap-2.5">
-            <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-center">
-              <div className="text-2xl font-bold text-zinc-100">{daysLeft}</div>
-              <div className="text-[10px] text-zinc-500 uppercase tracking-wider mt-0.5">Sisa Hari</div>
+            <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 text-center">
+              <div className="text-2xl font-bold text-slate-100">{daysLeft}</div>
+              <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">Sisa Hari</div>
             </div>
-            <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-center">
-              <div className="text-2xl font-bold text-zinc-100">{done}<span className="text-sm text-zinc-500">/{monthlyTarget}</span></div>
-              <div className="text-[10px] text-zinc-500 uppercase tracking-wider mt-0.5">Visit</div>
+            <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 text-center">
+              <div className="text-2xl font-bold text-slate-100">{done}<span className="text-sm text-slate-500">/{monthlyTarget}</span></div>
+              <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">Visit</div>
             </div>
-            <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-center">
+            <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 text-center">
               <div className={`text-2xl font-bold ${achievement >= 80 ? 'text-emerald-400' : achievement >= 50 ? 'text-amber-400' : 'text-rose-400'}`}>{achievement}%</div>
-              <div className="text-[10px] text-zinc-500 uppercase tracking-wider mt-0.5">Achievement</div>
+              <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">Achievement</div>
             </div>
           </div>
 
           {/* Progress bar */}
           <div>
-            <div className="h-2.5 bg-zinc-800/60 rounded-full overflow-hidden">
+            <div className="h-2.5 bg-slate-800/60 rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all ${achievement >= 80 ? 'bg-emerald-500' : achievement >= 50 ? 'bg-amber-500' : 'bg-rose-500'}`}
                 style={{ width: `${Math.min(achievement, 100)}%` }}
@@ -1695,17 +1695,17 @@ function MDWelcomeModal({ currentMD, visits, onClose, onGoProgress }) {
             </div>
           ) : (
             <div className="space-y-2">
-              <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-950 border border-zinc-800">
-                <span className="text-sm text-zinc-400 flex items-center gap-2"><Target className="w-4 h-4 text-amber-400" />Belum terlaksana</span>
-                <span className="text-sm font-semibold text-zinc-100">{sisaTarget} visit</span>
+              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800">
+                <span className="text-sm text-slate-400 flex items-center gap-2"><Target className="w-4 h-4 text-amber-400" />Belum terlaksana</span>
+                <span className="text-sm font-semibold text-slate-100">{sisaTarget} visit</span>
               </div>
-              <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-950 border border-zinc-800">
-                <span className="text-sm text-zinc-400 flex items-center gap-2"><Activity className="w-4 h-4 text-red-400" />Perlu per hari</span>
-                <span className="text-sm font-semibold text-zinc-100">±{perDayNeeded} visit/hari</span>
+              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800">
+                <span className="text-sm text-slate-400 flex items-center gap-2"><Activity className="w-4 h-4 text-blue-400" />Perlu per hari</span>
+                <span className="text-sm font-semibold text-slate-100">±{perDayNeeded} visit/hari</span>
               </div>
-              <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-950 border border-zinc-800">
-                <span className="text-sm text-zinc-400 flex items-center gap-2"><Check className="w-4 h-4 text-sky-400" />Visit hari ini</span>
-                <span className="text-sm font-semibold text-zinc-100">{todayCount}</span>
+              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800">
+                <span className="text-sm text-slate-400 flex items-center gap-2"><Check className="w-4 h-4 text-sky-400" />Visit hari ini</span>
+                <span className="text-sm font-semibold text-slate-100">{todayCount}</span>
               </div>
             </div>
           )}
@@ -1758,12 +1758,12 @@ function PasskeyEnrollBanner() {
   };
 
   return (
-    <div className="mb-4 rounded-xl border border-red-600/30 bg-red-600/10 p-3.5">
+    <div className="mb-4 rounded-xl border border-blue-600/30 bg-blue-600/10 p-3.5">
       <div className="flex items-start gap-3">
-        <Fingerprint className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+        <Fingerprint className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-zinc-100">Login lebih cepat dengan biometrik</div>
-          <div className="text-xs text-zinc-400 mt-0.5">
+          <div className="text-sm font-medium text-slate-100">Login lebih cepat dengan biometrik</div>
+          <div className="text-xs text-slate-400 mt-0.5">
             Aktifkan passkey di HP ini supaya lain kali cukup sidik jari / Face ID — tanpa ketik password.
           </div>
           {msg === 'ok'
@@ -1822,11 +1822,11 @@ function AbsenTab({ currentMD }) {
   const StatusRow = ({ icon: Icon, label, time, photo, done }) => (
     <div className="flex items-center gap-3">
       {photo ? <StoredImage src={photo} alt={label} className="w-11 h-11 rounded-lg object-cover" />
-        : <div className="w-11 h-11 rounded-lg bg-zinc-800 flex items-center justify-center"><Icon className="w-4 h-4 text-zinc-500" /></div>}
+        : <div className="w-11 h-11 rounded-lg bg-slate-800 flex items-center justify-center"><Icon className="w-4 h-4 text-slate-500" /></div>}
       <div className="flex-1">
-        <div className="text-sm font-semibold text-zinc-100">{label}</div>
-        <div className="flex items-center gap-1 text-xs mt-0.5"><Clock className={`w-3 h-3 ${done ? 'text-emerald-400' : 'text-zinc-600'}`} />
-          <span className={done ? 'text-emerald-400' : 'text-zinc-500'}>{done ? `Pukul ${fmtAbsenTime(time)}` : 'Belum'}</span></div>
+        <div className="text-sm font-semibold text-slate-100">{label}</div>
+        <div className="flex items-center gap-1 text-xs mt-0.5"><Clock className={`w-3 h-3 ${done ? 'text-emerald-400' : 'text-slate-600'}`} />
+          <span className={done ? 'text-emerald-400' : 'text-slate-500'}>{done ? `Pukul ${fmtAbsenTime(time)}` : 'Belum'}</span></div>
       </div>
       {done && <Check className="w-5 h-5 text-emerald-400" />}
     </div>
@@ -1834,23 +1834,23 @@ function AbsenTab({ currentMD }) {
 
   return (
     <div>
-      <div className="flex gap-1 p-1 bg-zinc-950 border border-zinc-800 rounded-xl mb-4">
-        <button onClick={() => setView('today')} className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${view === 'today' ? 'bg-red-600 text-white' : 'text-zinc-400 hover:text-zinc-100'}`}>Hari Ini</button>
-        <button onClick={() => setView('history')} className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${view === 'history' ? 'bg-red-600 text-white' : 'text-zinc-400 hover:text-zinc-100'}`}>Riwayat</button>
+      <div className="flex gap-1 p-1 bg-slate-950 border border-slate-800 rounded-xl mb-4">
+        <button onClick={() => setView('today')} className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${view === 'today' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-100'}`}>Hari Ini</button>
+        <button onClick={() => setView('history')} className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${view === 'history' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-100'}`}>Riwayat</button>
       </div>
 
       {view === 'history' ? <AbsenHistory currentMD={currentMD} /> : (
         <>
           <div className="flex items-center gap-2 mb-4">
-            <CalendarDays className="w-4 h-4 text-red-400" /><span className="text-sm font-medium text-zinc-200">{dateLabel}</span>
+            <CalendarDays className="w-4 h-4 text-blue-400" /><span className="text-sm font-medium text-slate-200">{dateLabel}</span>
           </div>
 
-          <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 mb-4 space-y-3">
+          <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 mb-4 space-y-3">
             <StatusRow icon={LogIn} label="Absen Masuk" time={att?.check_in_at} photo={att?.check_in_photo} done={checkedIn} />
-            <div className="border-t border-zinc-800" />
+            <div className="border-t border-slate-800" />
             <StatusRow icon={LogOut} label="Absen Pulang" time={att?.check_out_at} photo={att?.check_out_photo} done={checkedOut} />
             {checkedIn && checkedOut && (
-              <div className="flex items-center gap-2 pt-2 border-t border-zinc-800 text-emerald-400 text-xs font-medium">
+              <div className="flex items-center gap-2 pt-2 border-t border-slate-800 text-emerald-400 text-xs font-medium">
                 <Check className="w-4 h-4" /> Absen hari ini lengkap. Terima kasih! 🎉
               </div>
             )}
@@ -1891,7 +1891,7 @@ function AbsenHistory({ currentMD }) {
   const availableMonths = useMemo(() => [...new Set(rows.map(a => a.date.slice(0, 7)))].sort().reverse(), [rows]);
 
   if (loading) return <Loading />;
-  if (rows.length === 0) return <div className="text-center py-12 text-zinc-500 text-sm">Belum ada riwayat absen.</div>;
+  if (rows.length === 0) return <div className="text-center py-12 text-slate-500 text-sm">Belum ada riwayat absen.</div>;
 
   const dLabel = (d) => new Date(d + 'T00:00:00').toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
   const filtered = rows.filter(a => {
@@ -1908,9 +1908,9 @@ function AbsenHistory({ currentMD }) {
       <div className="space-y-2">
         <div className="grid grid-cols-2 gap-2">
           <div className="relative col-span-2 sm:col-span-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Cari catatan / tanggal…"
-              className="w-full bg-zinc-950 border border-zinc-800 rounded-lg pl-9 pr-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-red-600/50" />
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-600/50" />
           </div>
           <Select value={month} onChange={e => setMonth(e.target.value)}>
             <option value="all">Semua Bulan</option>
@@ -1920,13 +1920,13 @@ function AbsenHistory({ currentMD }) {
         <DateRangeRow dari={dari} sampai={sampai} onDari={setDari} onSampai={setSampai} onReset={() => { setDari(''); setSampai(''); }} />
       </div>
       {filtered.length === 0 ? (
-        <div className="text-center py-10 text-zinc-500 text-sm">Tidak ada absen di bulan ini.</div>
+        <div className="text-center py-10 text-slate-500 text-sm">Tidak ada absen di bulan ini.</div>
       ) : filtered.map(a => {
         const wh = fmtWorkDuration(a);
         return (
-          <div key={a.id} className="bg-zinc-950 border border-zinc-800 rounded-xl p-4">
+          <div key={a.id} className="bg-slate-950 border border-slate-800 rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-semibold text-zinc-100">{dLabel(a.date)}</span>
+              <span className="text-sm font-semibold text-slate-100">{dLabel(a.date)}</span>
               {wh && <span className="flex items-center gap-1 text-xs text-emerald-400 bg-emerald-600/10 px-2 py-0.5 rounded-full"><Clock className="w-3 h-3" />{wh}</span>}
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -1934,12 +1934,12 @@ function AbsenHistory({ currentMD }) {
                 { icon: LogOut, label: 'Pulang', time: a.check_out_at, photo: a.check_out_photo }].map((b, i) => (
                 <div key={i} className="flex items-center gap-2.5">
                   {b.photo ? <StoredImage src={b.photo} alt={b.label} className="w-10 h-10 rounded-lg object-cover cursor-pointer" onClick={() => setLightbox(b.photo)} />
-                    : <div className="w-10 h-10 rounded-lg bg-zinc-800 flex items-center justify-center"><b.icon className="w-4 h-4 text-zinc-500" /></div>}
-                  <div><div className="text-[11px] text-zinc-500">{b.label}</div><div className={`text-sm font-semibold ${b.time ? 'text-emerald-400' : 'text-zinc-500'}`}>{b.time ? fmtAbsenTime(b.time) : 'Belum'}</div></div>
+                    : <div className="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center"><b.icon className="w-4 h-4 text-slate-500" /></div>}
+                  <div><div className="text-[11px] text-slate-500">{b.label}</div><div className={`text-sm font-semibold ${b.time ? 'text-emerald-400' : 'text-slate-500'}`}>{b.time ? fmtAbsenTime(b.time) : 'Belum'}</div></div>
                 </div>
               ))}
             </div>
-            {(a.check_in_note || a.check_out_note) && <p className="text-xs text-zinc-500 mt-3 pt-3 border-t border-zinc-800">{[a.check_in_note, a.check_out_note].filter(Boolean).join(' · ')}</p>}
+            {(a.check_in_note || a.check_out_note) && <p className="text-xs text-slate-500 mt-3 pt-3 border-t border-slate-800">{[a.check_in_note, a.check_out_note].filter(Boolean).join(' · ')}</p>}
           </div>
         );
       })}
@@ -2010,37 +2010,37 @@ function AbsenForm({ kind, currentMD, todayStr, onCancel, onDone }) {
       <Field label="Selfie" required>
         <input ref={inputRef} type="file" accept="image/*" capture="user" onChange={handleSelfie} className="hidden" />
         <button type="button" onClick={() => inputRef.current?.click()}
-          className={`relative w-40 h-40 rounded-xl border-2 overflow-hidden transition ${selfie ? 'border-emerald-600/40 border-solid' : 'border-zinc-800 border-dashed bg-zinc-950 hover:border-red-600/40'}`}>
+          className={`relative w-40 h-40 rounded-xl border-2 overflow-hidden transition ${selfie ? 'border-emerald-600/40 border-solid' : 'border-slate-800 border-dashed bg-slate-950 hover:border-blue-600/40'}`}>
           {selfie ? <>
             {selfie.preview && <img src={selfie.preview} alt="selfie" className="absolute inset-0 w-full h-full object-cover" />}
-            {selfie.status === 'compressing' && <div className="absolute inset-0 bg-zinc-950/70 flex items-center justify-center"><Loader2 className="w-6 h-6 text-white animate-spin" /></div>}
-            {selfie.status === 'uploading' && <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-sky-500 flex items-center justify-center" title="Mengupload…"><Loader2 className="w-3 h-3 text-zinc-900 animate-spin" /></div>}
-            {(selfie.status === 'ready' || selfie.status === 'uploaded') && <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center"><Check className="w-3 h-3 text-zinc-900" strokeWidth={3} /></div>}
+            {selfie.status === 'compressing' && <div className="absolute inset-0 bg-slate-950/70 flex items-center justify-center"><Loader2 className="w-6 h-6 text-white animate-spin" /></div>}
+            {selfie.status === 'uploading' && <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-sky-500 flex items-center justify-center" title="Mengupload…"><Loader2 className="w-3 h-3 text-slate-900 animate-spin" /></div>}
+            {(selfie.status === 'ready' || selfie.status === 'uploaded') && <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center"><Check className="w-3 h-3 text-slate-900" strokeWidth={3} /></div>}
             {selfie.status === 'error' && <div className="absolute inset-0 bg-rose-600/30 flex items-center justify-center"><span className="text-[10px] text-rose-100 font-semibold">Gagal upload — ketuk ulangi</span></div>}
-          </> : <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 text-zinc-600"><Camera className="w-6 h-6" /><span className="text-[10px] font-medium">Ambil Selfie</span></div>}
+          </> : <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 text-slate-600"><Camera className="w-6 h-6" /><span className="text-[10px] font-medium">Ambil Selfie</span></div>}
         </button>
       </Field>
 
       <Field label="Lokasi" required>
-        <div className="flex items-center gap-2.5 bg-zinc-950 border border-zinc-800 rounded-lg p-3">
-          <MapPin className={`w-4 h-4 shrink-0 ${gps.status === 'ready' ? 'text-emerald-400' : gps.status === 'error' ? 'text-rose-400' : 'text-zinc-500'}`} />
+        <div className="flex items-center gap-2.5 bg-slate-950 border border-slate-800 rounded-lg p-3">
+          <MapPin className={`w-4 h-4 shrink-0 ${gps.status === 'ready' ? 'text-emerald-400' : gps.status === 'error' ? 'text-rose-400' : 'text-slate-500'}`} />
           <div className="flex-1 text-xs">
-            {gps.status === 'loading' ? <span className="text-zinc-400">Mengambil lokasi…</span>
-              : gps.status === 'ready' ? <span className="text-zinc-300">{gps.lat.toFixed(5)}, {gps.lng.toFixed(5)}{gps.accuracy ? `  ±${Math.round(gps.accuracy)}m` : ''}</span>
+            {gps.status === 'loading' ? <span className="text-slate-400">Mengambil lokasi…</span>
+              : gps.status === 'ready' ? <span className="text-slate-300">{gps.lat.toFixed(5)}, {gps.lng.toFixed(5)}{gps.accuracy ? `  ±${Math.round(gps.accuracy)}m` : ''}</span>
               : gps.status === 'error' ? <span className="text-rose-400">{gps.error}</span>
-              : <span className="text-zinc-500">GPS belum ditangkap</span>}
+              : <span className="text-slate-500">GPS belum ditangkap</span>}
           </div>
-          <button type="button" onClick={fetchGPS} className="text-zinc-500 hover:text-zinc-300"><Navigation className="w-4 h-4" /></button>
+          <button type="button" onClick={fetchGPS} className="text-slate-500 hover:text-slate-300"><Navigation className="w-4 h-4" /></button>
         </div>
         {gps.status === 'ready' && (
-          <div className="mt-2 rounded-lg overflow-hidden border border-zinc-800">
+          <div className="mt-2 rounded-lg overflow-hidden border border-slate-800">
             <MapContainer center={[gps.lat, gps.lng]} zoom={16} scrollWheelZoom={false} style={{ height: '170px', width: '100%' }}>
               <TileLayer attribution={TILE_ATTR} url={TILE_URL} subdomains="abcd" maxZoom={19} />
               <Marker position={[gps.lat, gps.lng]} icon={BLUE_PIN_ICON} />
               <RecenterMap lat={gps.lat} lng={gps.lng} />
             </MapContainer>
             <a href={`https://www.google.com/maps?q=${gps.lat},${gps.lng}`} target="_blank" rel="noreferrer"
-              className="block bg-zinc-950 border-t border-zinc-800 px-3 py-1.5 text-[11px] text-sky-400 hover:text-sky-300">Buka di Google Maps →</a>
+              className="block bg-slate-950 border-t border-slate-800 px-3 py-1.5 text-[11px] text-sky-400 hover:text-sky-300">Buka di Google Maps →</a>
           </div>
         )}
       </Field>
@@ -2063,17 +2063,17 @@ function AbsenForm({ kind, currentMD, todayStr, onCancel, onDone }) {
 // Baris filter rentang tanggal (Dari–Sampai + Reset) — dipakai di beberapa tab admin
 function DateRangeRow({ dari, sampai, onDari, onSampai, onReset, className = '' }) {
   return (
-    <div className={`flex items-center gap-2 text-xs text-zinc-500 ${className}`}>
+    <div className={`flex items-center gap-2 text-xs text-slate-500 ${className}`}>
       <span className="flex items-center gap-1.5 shrink-0">
         <CalendarDays className="w-3.5 h-3.5" /><span className="hidden sm:inline">Rentang tanggal:</span>
       </span>
       <input type="date" value={dari} onChange={e => onDari(e.target.value)}
-        className="flex-1 min-w-0 bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1.5 text-sm text-zinc-100 focus:outline-none focus:border-red-600/50 [color-scheme:dark]" />
-      <span className="text-zinc-600 shrink-0">–</span>
+        className="flex-1 min-w-0 bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-600/50 [color-scheme:dark]" />
+      <span className="text-slate-600 shrink-0">–</span>
       <input type="date" value={sampai} onChange={e => onSampai(e.target.value)}
-        className="flex-1 min-w-0 bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1.5 text-sm text-zinc-100 focus:outline-none focus:border-red-600/50 [color-scheme:dark]" />
+        className="flex-1 min-w-0 bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-600/50 [color-scheme:dark]" />
       {(dari || sampai) && (
-        <button onClick={onReset} className="text-red-400 hover:text-red-300 font-medium shrink-0">Reset</button>
+        <button onClick={onReset} className="text-blue-400 hover:text-blue-300 font-medium shrink-0">Reset</button>
       )}
     </div>
   );
@@ -2222,17 +2222,17 @@ function AdminAbsenTab({ mds, allowedMdIds, isSuperAdmin, regions = [] }) {
     <div>
       <div className="flex items-center justify-between mb-5 gap-3 flex-wrap">
         <div>
-          <h2 className="text-2xl font-bold text-zinc-100 tracking-tight font-display">Rekap Absen</h2>
-          <p className="text-sm text-zinc-500 mt-1">{filteredRows.length} absen · {(dari || sampai) ? 'rentang tanggal' : `bulan ${monthLabel(month)}`}</p>
+          <h2 className="text-2xl font-bold text-slate-100 tracking-tight font-display">Rekap Absen</h2>
+          <p className="text-sm text-slate-500 mt-1">{filteredRows.length} absen · {(dari || sampai) ? 'rentang tanggal' : `bulan ${monthLabel(month)}`}</p>
         </div>
         <Button variant="secondary" onClick={exportExcel} disabled={filteredRows.length === 0}><Download className="w-4 h-4" />Export Excel ({filteredRows.length})</Button>
       </div>
 
-      <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-3 mb-5 grid grid-cols-2 md:grid-cols-3 gap-2">
+      <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 mb-5 grid grid-cols-2 md:grid-cols-3 gap-2">
         <div className="col-span-2 md:col-span-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Cari nama MD…"
-            className="w-full bg-zinc-950 border border-zinc-800 rounded-lg pl-9 pr-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-red-600/50" />
+            className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-600/50" />
         </div>
         <Select value={month} onChange={e => setMonth(e.target.value)}>
           {monthsList.map(m => <option key={m} value={m}>{monthLabel(m)}</option>)}
@@ -2248,39 +2248,39 @@ function AdminAbsenTab({ mds, allowedMdIds, isSuperAdmin, regions = [] }) {
         onReset={() => { setDari(''); setSampai(''); }} />
 
       {loading ? <Loading /> : filteredRows.length === 0 ? (
-        <div className="text-center py-12 text-zinc-500 text-sm"><Users className="w-6 h-6 mx-auto mb-2 text-zinc-600" />{search || mdId !== 'all' ? 'Tidak ada absen sesuai filter.' : 'Belum ada absen di bulan ini.'}</div>
+        <div className="text-center py-12 text-slate-500 text-sm"><Users className="w-6 h-6 mx-auto mb-2 text-slate-600" />{search || mdId !== 'all' ? 'Tidak ada absen sesuai filter.' : 'Belum ada absen di bulan ini.'}</div>
       ) : (
         <div className="space-y-3">
           {filteredRows.slice(0, visibleCount).map(a => (
             <div key={a.id} onClick={() => setDetail(a)}
-              className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 cursor-pointer hover:border-zinc-700 transition">
+              className="bg-slate-950 border border-slate-800 rounded-xl p-4 cursor-pointer hover:border-slate-700 transition">
               <div className="flex items-start justify-between gap-4 flex-wrap">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <div className="text-sm font-bold text-zinc-100 truncate">{a.md_name || a.md_email || '—'}</div>
-                    {areaOf(a.md_id) && <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-zinc-800 text-zinc-300 shrink-0 flex items-center gap-1"><MapPin className="w-2.5 h-2.5" />{areaOf(a.md_id)}</span>}
+                    <div className="text-sm font-bold text-slate-100 truncate">{a.md_name || a.md_email || '—'}</div>
+                    {areaOf(a.md_id) && <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-slate-800 text-slate-300 shrink-0 flex items-center gap-1"><MapPin className="w-2.5 h-2.5" />{areaOf(a.md_id)}</span>}
                   </div>
-                  <div className="text-[11px] text-zinc-500">{dLabel(a.date)}</div>
+                  <div className="text-[11px] text-slate-500">{dLabel(a.date)}</div>
                 </div>
                 <div className="flex items-center gap-3 sm:gap-4 ml-auto">
                   <div className="grid grid-cols-2 gap-3 sm:gap-6">
                     {[{ k: 'in', icon: LogIn, label: 'Masuk', time: a.check_in_at },
                       { k: 'out', icon: LogOut, label: 'Pulang', time: a.check_out_at }].map(b => (
                       <div key={b.k} className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 rounded-lg bg-zinc-800/60 flex items-center justify-center shrink-0"><b.icon className="w-4 h-4 text-zinc-400" /></div>
-                        <div><div className="text-[11px] text-zinc-500">{b.label}</div><div className={`text-sm font-semibold ${b.time ? 'text-emerald-400' : 'text-zinc-500'}`}>{b.time ? fmtAbsenTime(b.time) : 'Belum'}</div></div>
+                        <div className="w-9 h-9 rounded-lg bg-slate-800/60 flex items-center justify-center shrink-0"><b.icon className="w-4 h-4 text-slate-400" /></div>
+                        <div><div className="text-[11px] text-slate-500">{b.label}</div><div className={`text-sm font-semibold ${b.time ? 'text-emerald-400' : 'text-slate-500'}`}>{b.time ? fmtAbsenTime(b.time) : 'Belum'}</div></div>
                       </div>
                     ))}
                   </div>
                   {fmtWorkDuration(a) && <span className="flex items-center gap-1 text-xs text-emerald-400 bg-emerald-600/10 px-2 py-0.5 rounded-full shrink-0"><Clock className="w-3 h-3" />{fmtWorkDuration(a)}</span>}
                 </div>
               </div>
-              {(a.check_in_note || a.check_out_note) && <p className="text-xs text-zinc-500 mt-3 pt-3 border-t border-zinc-800">{[a.check_in_note, a.check_out_note].filter(Boolean).join(' · ')}</p>}
+              {(a.check_in_note || a.check_out_note) && <p className="text-xs text-slate-500 mt-3 pt-3 border-t border-slate-800">{[a.check_in_note, a.check_out_note].filter(Boolean).join(' · ')}</p>}
             </div>
           ))}
           {filteredRows.length > visibleCount && (
             <button onClick={() => setVisibleCount(c => c + 100)}
-              className="w-full py-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-sm text-zinc-300 transition">
+              className="w-full py-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-sm text-slate-300 transition">
               Tampilkan lebih banyak · {filteredRows.length - visibleCount} lagi (dari {filteredRows.length})
             </button>
           )}
@@ -2289,32 +2289,32 @@ function AdminAbsenTab({ mds, allowedMdIds, isSuperAdmin, regions = [] }) {
 
       {detail && (
         <div className="fixed inset-0 z-40 bg-black/80 flex items-end sm:items-center justify-center sm:p-4">
-          <div className="bg-zinc-950 border border-zinc-800 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-3xl lg:max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-start justify-between gap-3 p-4 border-b border-zinc-800 sticky top-0 bg-zinc-950">
+          <div className="bg-slate-950 border border-slate-800 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-3xl lg:max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start justify-between gap-3 p-4 border-b border-slate-800 sticky top-0 bg-slate-950">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <div className="text-base font-bold text-zinc-100 truncate">{detail.md_name || detail.md_email || '—'}</div>
-                  {areaOf(detail.md_id) && <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-zinc-800 text-zinc-300 shrink-0 flex items-center gap-1"><MapPin className="w-2.5 h-2.5" />{areaOf(detail.md_id)}</span>}
+                  <div className="text-base font-bold text-slate-100 truncate">{detail.md_name || detail.md_email || '—'}</div>
+                  {areaOf(detail.md_id) && <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-slate-800 text-slate-300 shrink-0 flex items-center gap-1"><MapPin className="w-2.5 h-2.5" />{areaOf(detail.md_id)}</span>}
                 </div>
-                <div className="text-xs text-zinc-500 truncate">{dLabel(detail.date)}{detail.md_email ? ` · ${detail.md_email}` : ''}</div>
+                <div className="text-xs text-slate-500 truncate">{dLabel(detail.date)}{detail.md_email ? ` · ${detail.md_email}` : ''}</div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 {fmtWorkDuration(detail) && <span className="flex items-center gap-1 text-xs text-emerald-400 bg-emerald-600/10 px-2 py-0.5 rounded-full"><Clock className="w-3 h-3" />{fmtWorkDuration(detail)}</span>}
                 {isSuperAdmin && !editMode && (
                   <button onClick={startEditAbsen} title="Edit absen"
-                    className="h-8 px-3 rounded-lg bg-zinc-800 hover:bg-amber-600 text-zinc-200 hover:text-white text-xs font-medium flex items-center gap-1.5 transition">
+                    className="h-8 px-3 rounded-lg bg-slate-800 hover:bg-amber-600 text-slate-200 hover:text-white text-xs font-medium flex items-center gap-1.5 transition">
                     <Pencil className="w-3.5 h-3.5" />Edit
                   </button>
                 )}
-                <button onClick={() => setDetail(null)} className="text-zinc-400 hover:text-zinc-100"><X className="w-5 h-5" /></button>
+                <button onClick={() => setDetail(null)} className="text-slate-400 hover:text-slate-100"><X className="w-5 h-5" /></button>
               </div>
             </div>
             <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
               {[{ k: 'in', icon: LogIn, label: 'Absen Masuk', time: detail.check_in_at, photo: detail.check_in_photo, lat: detail.check_in_lat, lng: detail.check_in_lng, note: detail.check_in_note },
                 { k: 'out', icon: LogOut, label: 'Absen Pulang', time: detail.check_out_at, photo: detail.check_out_photo, lat: detail.check_out_lat, lng: detail.check_out_lng, note: detail.check_out_note }].map(s => (
-                <div key={s.k} className="bg-zinc-900/40 border border-zinc-800 rounded-xl p-3">
+                <div key={s.k} className="bg-slate-900/40 border border-slate-800 rounded-xl p-3">
                   <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2"><s.icon className="w-4 h-4 text-zinc-400" /><span className="text-sm font-semibold text-zinc-200">{s.label}</span></div>
+                    <div className="flex items-center gap-2"><s.icon className="w-4 h-4 text-slate-400" /><span className="text-sm font-semibold text-slate-200">{s.label}</span></div>
                     {editMode && (
                       <button onClick={() => clearSession(s.k)} className="text-[11px] text-rose-300 hover:text-rose-200 flex items-center gap-1"><Trash2 className="w-3 h-3" />Kosongkan</button>
                     )}
@@ -2322,10 +2322,10 @@ function AdminAbsenTab({ mds, allowedMdIds, isSuperAdmin, regions = [] }) {
                   <div className="relative mb-3">
                     {(editMode ? eform[`check_${s.k}_photo`] : s.photo)
                       ? <StoredImage src={editMode ? eform[`check_${s.k}_photo`] : s.photo} alt={s.label} className="w-full h-56 rounded-lg object-cover cursor-pointer" onClick={() => { if (!editMode) setLightbox(s.photo); }} />
-                      : <div className="w-full h-56 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-600 text-xs">Tidak ada foto</div>}
+                      : <div className="w-full h-56 rounded-lg bg-slate-800 flex items-center justify-center text-slate-600 text-xs">Tidak ada foto</div>}
                     {editMode && (
                       <button onClick={() => pickReplaceAbsen(s.k)} disabled={replacingKind === s.k}
-                        className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-md bg-black/70 hover:bg-red-600 text-white text-[10px] font-medium backdrop-blur-sm transition disabled:opacity-60">
+                        className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-md bg-black/70 hover:bg-blue-600 text-white text-[10px] font-medium backdrop-blur-sm transition disabled:opacity-60">
                         {replacingKind === s.k ? 'Uploading…' : <><Camera className="w-3 h-3" />Ganti</>}
                       </button>
                     )}
@@ -2333,22 +2333,22 @@ function AdminAbsenTab({ mds, allowedMdIds, isSuperAdmin, regions = [] }) {
                   {editMode ? (
                     <div className="space-y-2">
                       <div>
-                        <div className="text-[11px] text-zinc-500 mb-0.5">Jam</div>
+                        <div className="text-[11px] text-slate-500 mb-0.5">Jam</div>
                         <Input type="datetime-local" value={eform[`check_${s.k}_at`]} onChange={e => setEF({ [`check_${s.k}_at`]: e.target.value })} />
                       </div>
                       <div>
-                        <div className="text-[11px] text-zinc-500 mb-0.5">Catatan</div>
+                        <div className="text-[11px] text-slate-500 mb-0.5">Catatan</div>
                         <Input value={eform[`check_${s.k}_note`]} onChange={e => setEF({ [`check_${s.k}_note`]: e.target.value })} placeholder="—" />
                       </div>
                     </div>
                   ) : (<>
-                    <div className="text-[11px] text-zinc-500">Jam</div>
-                    <div className={`text-sm font-semibold mb-2 ${s.time ? 'text-emerald-400' : 'text-zinc-500'}`}>{s.time ? fmtAbsenTime(s.time) : 'Belum'}</div>
-                    <div className="text-[11px] text-zinc-500">Lokasi</div>
+                    <div className="text-[11px] text-slate-500">Jam</div>
+                    <div className={`text-sm font-semibold mb-2 ${s.time ? 'text-emerald-400' : 'text-slate-500'}`}>{s.time ? fmtAbsenTime(s.time) : 'Belum'}</div>
+                    <div className="text-[11px] text-slate-500">Lokasi</div>
                     {s.lat != null && s.lng != null
-                      ? <a href={`https://www.google.com/maps?q=${s.lat},${s.lng}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm text-red-400 hover:text-red-300"><MapPin className="w-3.5 h-3.5" />{Number(s.lat).toFixed(5)}, {Number(s.lng).toFixed(5)}</a>
-                      : <div className="text-sm text-zinc-500">—</div>}
-                    {s.note && <><div className="text-[11px] text-zinc-500 mt-2">Catatan</div><div className="text-sm text-zinc-300">{s.note}</div></>}
+                      ? <a href={`https://www.google.com/maps?q=${s.lat},${s.lng}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300"><MapPin className="w-3.5 h-3.5" />{Number(s.lat).toFixed(5)}, {Number(s.lng).toFixed(5)}</a>
+                      : <div className="text-sm text-slate-500">—</div>}
+                    {s.note && <><div className="text-[11px] text-slate-500 mt-2">Catatan</div><div className="text-sm text-slate-300">{s.note}</div></>}
                   </>)}
                 </div>
               ))}
@@ -2359,18 +2359,18 @@ function AdminAbsenTab({ mds, allowedMdIds, isSuperAdmin, regions = [] }) {
               if (!inP && !outP) return null;
               return (
                 <div className="px-4 pb-4">
-                  <div className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold mb-2 flex items-center gap-2"><Navigation className="w-3 h-3" />Lokasi di Peta</div>
-                  <div className="rounded-xl overflow-hidden border border-zinc-800">
+                  <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2 flex items-center gap-2"><Navigation className="w-3 h-3" />Lokasi di Peta</div>
+                  <div className="rounded-xl overflow-hidden border border-slate-800">
                     <MapContainer center={inP || outP} zoom={16} scrollWheelZoom={false} style={{ height: '220px', width: '100%' }}>
                       <TileLayer attribution={TILE_ATTR} url={TILE_URL} subdomains="abcd" maxZoom={19} />
-                      {inP && <Marker position={inP} icon={BLUE_PIN_ICON}><Popup><div className="text-xs"><div className="font-semibold">Absen Masuk</div><div className="font-mono text-[10px] text-zinc-500">{inP[0].toFixed(5)}, {inP[1].toFixed(5)}</div><a href={`https://www.google.com/maps?q=${inP[0]},${inP[1]}`} target="_blank" rel="noreferrer" className="text-sky-600 underline">Buka di Google Maps →</a></div></Popup></Marker>}
-                      {outP && <Marker position={outP} icon={RED_PIN_ICON}><Popup><div className="text-xs"><div className="font-semibold">Absen Pulang</div><div className="font-mono text-[10px] text-zinc-500">{outP[0].toFixed(5)}, {outP[1].toFixed(5)}</div><a href={`https://www.google.com/maps?q=${outP[0]},${outP[1]}`} target="_blank" rel="noreferrer" className="text-sky-600 underline">Buka di Google Maps →</a></div></Popup></Marker>}
+                      {inP && <Marker position={inP} icon={BLUE_PIN_ICON}><Popup><div className="text-xs"><div className="font-semibold">Absen Masuk</div><div className="font-mono text-[10px] text-slate-500">{inP[0].toFixed(5)}, {inP[1].toFixed(5)}</div><a href={`https://www.google.com/maps?q=${inP[0]},${inP[1]}`} target="_blank" rel="noreferrer" className="text-sky-600 underline">Buka di Google Maps →</a></div></Popup></Marker>}
+                      {outP && <Marker position={outP} icon={RED_PIN_ICON}><Popup><div className="text-xs"><div className="font-semibold">Absen Pulang</div><div className="font-mono text-[10px] text-slate-500">{outP[0].toFixed(5)}, {outP[1].toFixed(5)}</div><a href={`https://www.google.com/maps?q=${outP[0]},${outP[1]}`} target="_blank" rel="noreferrer" className="text-sky-600 underline">Buka di Google Maps →</a></div></Popup></Marker>}
                       {inP && outP && <Polyline positions={[inP, outP]} pathOptions={{ color: '#71717a', weight: 2, dashArray: '6 4' }} />}
                       <FitBounds points={[inP, outP].filter(Boolean)} />
                     </MapContainer>
-                    <div className="bg-zinc-950 border-t border-zinc-800 px-3 py-2 flex items-center gap-4 text-[11px] text-zinc-500">
+                    <div className="bg-slate-950 border-t border-slate-800 px-3 py-2 flex items-center gap-4 text-[11px] text-slate-500">
                       {inP && <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-500" />Masuk</span>}
-                      {outP && <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-500" />Pulang</span>}
+                      {outP && <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-500" />Pulang</span>}
                     </div>
                   </div>
                 </div>
@@ -2382,7 +2382,7 @@ function AdminAbsenTab({ mds, allowedMdIds, isSuperAdmin, regions = [] }) {
                 {editMode ? (
                   <div className="flex items-center justify-end gap-2">
                     <button onClick={() => setEditMode(false)} disabled={saving}
-                      className="px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-sm border border-zinc-700 transition disabled:opacity-60">Batal</button>
+                      className="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm border border-slate-700 transition disabled:opacity-60">Batal</button>
                     <button onClick={saveAbsen} disabled={saving}
                       className="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium transition disabled:opacity-60 flex items-center gap-1.5">
                       {saving ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />Menyimpan…</> : <><Check className="w-3.5 h-3.5" />Simpan Perubahan</>}
@@ -2419,18 +2419,18 @@ function WhatsAppCS({ name }) {
   return (
     <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end gap-3">
       {open && (
-        <div className="w-64 bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-2">
+        <div className="w-64 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-2">
           <div className="bg-[#25D366] px-4 py-3 flex items-center gap-2">
             <MessageCircle className="w-5 h-5 text-white" />
             <div className="text-white text-sm font-semibold">Admin 2W Federal POSM</div>
           </div>
           <div className="p-4">
-            <p className="text-sm text-zinc-300 mb-3">Ada kendala atau pertanyaan? Chat Admin kami langsung via WhatsApp.</p>
+            <p className="text-sm text-slate-300 mb-3">Ada kendala atau pertanyaan? Chat Admin kami langsung via WhatsApp.</p>
             <a href={waUrl} target="_blank" rel="noreferrer"
               className="w-full flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1ebe5d] text-white text-sm font-semibold rounded-xl py-2.5 transition">
               <MessageCircle className="w-4 h-4" />Chat Sekarang
             </a>
-            <p className="text-[11px] text-zinc-500 text-center mt-2">0815-5300-6168</p>
+            <p className="text-[11px] text-slate-500 text-center mt-2">0815-5300-6168</p>
           </div>
         </div>
       )}
@@ -2530,13 +2530,13 @@ function MDView({ currentMD, refreshKey, welcome, onWelcomeClose }) {
   return (
     <div className="max-w-2xl mx-auto">
       <PasskeyEnrollBanner />
-      <div className="grid grid-cols-2 gap-1 p-1 bg-zinc-950 border border-zinc-800 rounded-xl mb-5 sm:flex">
+      <div className="grid grid-cols-2 gap-1 p-1 bg-slate-950 border border-slate-800 rounded-xl mb-5 sm:flex">
         {[
           { id: 'new', label: 'Visit Baru', icon: ClipboardList },
           { id: 'history', label: `History (${visits.length})`, icon: Activity },
         ].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
-            className={`flex-1 flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-lg text-[11px] font-medium transition sm:flex-row sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm whitespace-nowrap ${tab === t.id ? 'bg-red-600 text-white' : 'text-zinc-400 hover:text-zinc-100'}`}>
+            className={`flex-1 flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-lg text-[11px] font-medium transition sm:flex-row sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm whitespace-nowrap ${tab === t.id ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-100'}`}>
             <t.icon className="w-4 h-4 shrink-0" /><span>{t.label}</span>
           </button>
         ))}
@@ -2603,8 +2603,8 @@ function MDDashboard({ currentMD, visits, bengkels, kotas }) {
     <div>
       <div className="flex items-center justify-between mb-5 gap-3 flex-wrap">
         <div>
-          <h2 className="text-2xl font-bold text-zinc-100 tracking-tight font-display">Progres Target</h2>
-          <p className="text-sm text-zinc-500 mt-1">{currentMD.full_name} · tracking visit per hari</p>
+          <h2 className="text-2xl font-bold text-slate-100 tracking-tight font-display">Progres Target</h2>
+          <p className="text-sm text-slate-500 mt-1">{currentMD.full_name} · tracking visit per hari</p>
         </div>
         <div className="w-40">
           <Select value={month} onChange={e => setMonth(e.target.value)}>
@@ -2621,30 +2621,30 @@ function MDDashboard({ currentMD, visits, bengkels, kotas }) {
           { label: isCurrentMonth ? 'Visit Hari Ini' : 'Hari Aktif', value: isCurrentMonth ? todayCount : activeDays, sub: isCurrentMonth ? `target ${dailyTarget}/hari` : 'hari ada visit', icon: Check, color: 'sky' },
           { label: 'Sisa Target', value: sisaTarget, sub: sisaTarget === 0 ? 'target tercapai 🎉' : 'visit lagi', icon: ClipboardList, color: 'amber' },
         ].map((k, i) => (
-          <div key={i} className="bg-zinc-950 border border-zinc-800 rounded-xl p-4">
+          <div key={i} className="bg-slate-950 border border-slate-800 rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs text-zinc-500 uppercase tracking-wider font-medium">{k.label}</span>
-              <k.icon className={`w-4 h-4 ${KPI_ICON_COLOR[k.color] || 'text-zinc-400'}`} />
+              <span className="text-xs text-slate-500 uppercase tracking-wider font-medium">{k.label}</span>
+              <k.icon className={`w-4 h-4 ${KPI_ICON_COLOR[k.color] || 'text-slate-400'}`} />
             </div>
-            <div className="text-2xl font-bold text-zinc-100 mb-0.5">{k.value}</div>
-            <div className="text-xs text-zinc-500">{k.sub}</div>
+            <div className="text-2xl font-bold text-slate-100 mb-0.5">{k.value}</div>
+            <div className="text-xs text-slate-500">{k.sub}</div>
           </div>
         ))}
       </div>
 
       {/* Progress bar bulanan */}
-      <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 mb-5">
+      <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 mb-5">
         <div className="flex items-center justify-between text-sm mb-2">
-          <span className="text-zinc-400">Pencapaian bulan {monthLabel(month)}</span>
-          <span className="font-semibold text-zinc-100">{totalThisMonth}<span className="text-zinc-500">/{monthlyTarget}</span></span>
+          <span className="text-slate-400">Pencapaian bulan {monthLabel(month)}</span>
+          <span className="font-semibold text-slate-100">{totalThisMonth}<span className="text-slate-500">/{monthlyTarget}</span></span>
         </div>
-        <div className="h-2.5 bg-zinc-800/60 rounded-full overflow-hidden">
+        <div className="h-2.5 bg-slate-800/60 rounded-full overflow-hidden">
           <div
             className={`h-full rounded-full transition-all ${achievement >= 80 ? 'bg-emerald-500' : achievement >= 50 ? 'bg-amber-500' : 'bg-rose-500'}`}
             style={{ width: `${Math.min(achievement, 100)}%` }}
           />
         </div>
-        <div className="flex items-center justify-between text-[11px] text-zinc-500 mt-2">
+        <div className="flex items-center justify-between text-[11px] text-slate-500 mt-2">
           <span>Terpasang: <span className="text-emerald-400 font-medium">{pemasangan}</span> · Lainnya: <span className="text-sky-400 font-medium">{revisit}</span></span>
           <span>{achievement}%</span>
         </div>
@@ -2668,7 +2668,7 @@ function MDDashboard({ currentMD, visits, bengkels, kotas }) {
               <ReferenceLine y={dailyTarget} stroke="#a1a1aa" strokeDasharray="4 4" />
               <Bar dataKey="Visit" radius={[4, 4, 0, 0]}>
                 {dailyData.map((d, i) => (
-                  <Cell key={i} fill={d.Visit >= dailyTarget ? '#10b981' : d.Visit > 0 ? '#dc2626' : '#3f3f46'} />
+                  <Cell key={i} fill={d.Visit >= dailyTarget ? '#10b981' : d.Visit > 0 ? '#2563eb' : '#3f3f46'} />
                 ))}
               </Bar>
             </BarChart>
@@ -2676,24 +2676,24 @@ function MDDashboard({ currentMD, visits, bengkels, kotas }) {
         </div>
 
         <div className="grid grid-cols-3 gap-2 mt-4">
-          <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-center">
-            <div className="text-lg font-bold text-zinc-100">{activeDays}</div>
-            <div className="text-[10px] text-zinc-500 uppercase tracking-wider">Hari Aktif</div>
+          <div className="bg-slate-950 border border-slate-800 rounded-lg p-3 text-center">
+            <div className="text-lg font-bold text-slate-100">{activeDays}</div>
+            <div className="text-[10px] text-slate-500 uppercase tracking-wider">Hari Aktif</div>
           </div>
-          <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-center">
-            <div className="text-lg font-bold text-zinc-100">{avgPerActiveDay}</div>
-            <div className="text-[10px] text-zinc-500 uppercase tracking-wider">Rata2 / Hari</div>
+          <div className="bg-slate-950 border border-slate-800 rounded-lg p-3 text-center">
+            <div className="text-lg font-bold text-slate-100">{avgPerActiveDay}</div>
+            <div className="text-[10px] text-slate-500 uppercase tracking-wider">Rata2 / Hari</div>
           </div>
-          <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-center">
-            <div className="text-lg font-bold text-zinc-100">{bestDay.Visit > 0 ? `${bestDay.Visit}` : '0'}</div>
-            <div className="text-[10px] text-zinc-500 uppercase tracking-wider">Terbanyak {bestDay.Visit > 0 ? `(tgl ${bestDay.day})` : ''}</div>
+          <div className="bg-slate-950 border border-slate-800 rounded-lg p-3 text-center">
+            <div className="text-lg font-bold text-slate-100">{bestDay.Visit > 0 ? `${bestDay.Visit}` : '0'}</div>
+            <div className="text-[10px] text-slate-500 uppercase tracking-wider">Terbanyak {bestDay.Visit > 0 ? `(tgl ${bestDay.day})` : ''}</div>
           </div>
         </div>
       </Section>
 
       {monthVisits.length === 0 && (
-        <div className="text-center text-zinc-500 text-sm py-8">
-          Belum ada visit di bulan ini. Mulai dari tab <span className="text-red-400 font-medium">Visit Baru</span>.
+        <div className="text-center text-slate-500 text-sm py-8">
+          Belum ada visit di bulan ini. Mulai dari tab <span className="text-blue-400 font-medium">Visit Baru</span>.
         </div>
       )}
     </div>
@@ -2893,7 +2893,7 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
       {submitted && (
         <div className="mb-4 p-4 bg-emerald-600/10 border border-emerald-600/30 rounded-xl flex items-start gap-3">
           <div className="w-8 h-8 rounded-full bg-emerald-600/100 flex items-center justify-center shrink-0">
-            <Check className="w-5 h-5 text-zinc-900" strokeWidth={3} />
+            <Check className="w-5 h-5 text-slate-900" strokeWidth={3} />
           </div>
           <div className="min-w-0">
             <p className="text-sm font-semibold text-emerald-400">Visit berhasil disimpan</p>
@@ -2929,13 +2929,13 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
 
       <Section title="Info MD & Bengkel" subtitle="Pilih bengkel target visit" icon={Building2}>
         <div className="grid grid-cols-2 gap-3 mb-1">
-          <div className="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2.5">
-            <div className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Nama MD</div>
-            <div className="text-sm text-zinc-100 font-medium truncate">{currentMD.full_name}</div>
+          <div className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5">
+            <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Nama MD</div>
+            <div className="text-sm text-slate-100 font-medium truncate">{currentMD.full_name}</div>
           </div>
-          <div className="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2.5">
-            <div className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Area</div>
-            <div className="text-sm text-zinc-100 font-medium truncate">{regions.find(r => r.id === form.regionId)?.name || '—'}</div>
+          <div className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5">
+            <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Area</div>
+            <div className="text-sm text-slate-100 font-medium truncate">{regions.find(r => r.id === form.regionId)?.name || '—'}</div>
           </div>
         </div>
         <Field label="Region" required>
@@ -2947,7 +2947,7 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
             disabled={regionLocked}
           />
           {regionLocked
-            ? <p className="text-[11px] text-zinc-500 mt-1 flex items-center gap-1"><Lock className="w-3 h-3" />Terkunci ke region kamu — hubungi admin kalau perlu diubah.</p>
+            ? <p className="text-[11px] text-slate-500 mt-1 flex items-center gap-1"><Lock className="w-3 h-3" />Terkunci ke region kamu — hubungi admin kalau perlu diubah.</p>
             : <p className="text-[11px] text-amber-400 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />Region kamu belum diset admin. Pilih manual dulu.</p>}
         </Field>
         <Field label="Kota" required>
@@ -3000,7 +3000,7 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
         <Field label="Tanggal Visit">
           <Input type="date" value={form.date} readOnly disabled tabIndex={-1}
             className="opacity-80 cursor-not-allowed" />
-          <p className="text-[10px] text-zinc-500 mt-1">Otomatis hari ini · tidak bisa diubah</p>
+          <p className="text-[10px] text-slate-500 mt-1">Otomatis hari ini · tidak bisa diubah</p>
         </Field>
       </Section>
 
@@ -3017,7 +3017,7 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
             {STATUS_OPTIONS.map(s => (
               <button key={s} onClick={() => setForm({ ...form, status: s })}
                 className={`py-2.5 px-3 rounded-lg text-xs font-medium border transition text-left sm:text-center ${
-                  form.status === s ? `${STATUS_STYLES[s].bg} ${STATUS_STYLES[s].text} ${STATUS_STYLES[s].border}` : 'bg-zinc-950 border-zinc-800 text-zinc-500 hover:text-zinc-300'
+                  form.status === s ? `${STATUS_STYLES[s].bg} ${STATUS_STYLES[s].text} ${STATUS_STYLES[s].border}` : 'bg-slate-950 border-slate-800 text-slate-500 hover:text-slate-300'
                 }`}>{s}</button>
             ))}
           </div>
@@ -3039,7 +3039,7 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
           </Field>
         )}
         {form.status && !terpasang && (
-          <p className="text-[11px] text-zinc-500 -mt-1 mb-2">Hasil visit bukan "Spanduk Terpasang" — foto lanjutan tidak diperlukan, cukup isi notes jika ada.</p>
+          <p className="text-[11px] text-slate-500 -mt-1 mb-2">Hasil visit bukan "Spanduk Terpasang" — foto lanjutan tidak diperlukan, cukup isi notes jika ada.</p>
         )}
 
         <Field label="Notes (tulis jika ada)">
@@ -3112,16 +3112,16 @@ function VisitHistory({ visits, bengkels, kotas, distributors }) {
   });
 
   if (visits.length === 0) {
-    return <div className="text-center py-12 text-zinc-500 text-sm">Belum ada visit tercatat.</div>;
+    return <div className="text-center py-12 text-slate-500 text-sm">Belum ada visit tercatat.</div>;
   }
 
   return (
     <div>
       <div className="space-y-2 mb-3">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Cari bengkel / PIC…"
-            className="w-full bg-zinc-950 border border-zinc-800 rounded-lg pl-9 pr-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-red-600/50" />
+            className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-600/50" />
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           <Select value={month} onChange={e => setMonth(e.target.value)}>
@@ -3136,7 +3136,7 @@ function VisitHistory({ visits, bengkels, kotas, distributors }) {
         <DateRangeRow dari={dari} sampai={sampai} onDari={setDari} onSampai={setSampai} onReset={() => { setDari(''); setSampai(''); }} />
       </div>
       {filtered.length === 0 ? (
-        <div className="text-center py-10 text-zinc-500 text-sm">Tidak ada visit sesuai filter.</div>
+        <div className="text-center py-10 text-slate-500 text-sm">Tidak ada visit sesuai filter.</div>
       ) : (
       <div className="space-y-3">
       {filtered.slice(0, visibleCount).map(v => {
@@ -3145,16 +3145,16 @@ function VisitHistory({ visits, bengkels, kotas, distributors }) {
         const d = findDist(v.distributor_id);
         const photoCount = PHOTO_KEYS.filter(key => v[key]).length;
         return (
-          <div key={v.id} className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 hover:border-zinc-700 transition">
+          <div key={v.id} className="bg-slate-950 border border-slate-800 rounded-xl p-4 hover:border-slate-700 transition">
             <div className="flex items-start justify-between gap-3 mb-2">
               <div className="min-w-0">
-                <div className="text-[10px] uppercase tracking-wider text-zinc-500 font-mono">{b?.code || '—'}</div>
-                <h4 className="text-sm font-semibold text-zinc-100 truncate">{b?.name || v.bengkel_name || '—'}</h4>
-                <div className="text-xs text-zinc-500 mt-0.5">{k?.name || v.kota_name || '—'}</div>
+                <div className="text-[10px] uppercase tracking-wider text-slate-500 font-mono">{b?.code || '—'}</div>
+                <h4 className="text-sm font-semibold text-slate-100 truncate">{b?.name || v.bengkel_name || '—'}</h4>
+                <div className="text-xs text-slate-500 mt-0.5">{k?.name || v.kota_name || '—'}</div>
               </div>
               <StatusBadge status={v.status} />
             </div>
-            <div className="flex items-center gap-3 text-xs text-zinc-500 pt-2 border-t border-zinc-800 mt-2">
+            <div className="flex items-center gap-3 text-xs text-slate-500 pt-2 border-t border-slate-800 mt-2">
               <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{v.visit_date}{v.created_at ? ` · ${fmtAbsenTime(v.created_at)}` : ''}</span>
               <span className="flex items-center gap-1"><Camera className="w-3 h-3" />{photoCount} foto</span>
             </div>
@@ -3163,7 +3163,7 @@ function VisitHistory({ visits, bengkels, kotas, distributors }) {
       })}
       {filtered.length > visibleCount && (
         <button onClick={() => setVisibleCount(c => c + 100)}
-          className="w-full py-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-sm text-zinc-300 transition">
+          className="w-full py-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-sm text-slate-300 transition">
           Tampilkan lebih banyak · {filtered.length - visibleCount} lagi (dari {filtered.length})
         </button>
       )}
@@ -3213,23 +3213,23 @@ function LeaderboardTab({ visits, mds, regions }) {
   const totalVisits = ranked.reduce((s, r) => s + r.total, 0);
   const medal = (i) => i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null;
   const rankRing = (i) => i === 0 ? 'border-amber-500/50 bg-amber-500/10 text-amber-300'
-    : i === 1 ? 'border-zinc-400/40 bg-zinc-400/10 text-zinc-200'
+    : i === 1 ? 'border-slate-400/40 bg-slate-400/10 text-slate-200'
     : i === 2 ? 'border-orange-700/50 bg-orange-700/15 text-orange-300'
-    : 'border-zinc-800 bg-zinc-900 text-zinc-500';
+    : 'border-slate-800 bg-slate-900 text-slate-500';
 
   return (
     <div>
       <div className="flex items-center justify-between mb-5 gap-3 flex-wrap">
         <div>
-          <h2 className="text-2xl font-bold text-zinc-100 tracking-tight font-display flex items-center gap-2">
+          <h2 className="text-2xl font-bold text-slate-100 tracking-tight font-display flex items-center gap-2">
             <Trophy className="w-5 h-5 text-amber-400" />Ranking MD
           </h2>
-          <p className="text-sm text-zinc-500 mt-1">{ranked.length} MD · {totalVisits} visit · {(dari || sampai) ? 'rentang tanggal' : `bulan ${monthLabel(month)}`}</p>
+          <p className="text-sm text-slate-500 mt-1">{ranked.length} MD · {totalVisits} visit · {(dari || sampai) ? 'rentang tanggal' : `bulan ${monthLabel(month)}`}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex gap-1 p-1 bg-zinc-950 border border-zinc-800 rounded-lg">
-            <button onClick={() => setMetric('visits')} className={`px-3 py-1.5 rounded-md text-xs font-medium transition ${metric === 'visits' ? 'bg-red-600 text-white' : 'text-zinc-400 hover:text-zinc-100'}`}>Jumlah Visit</button>
-            <button onClick={() => setMetric('achievement')} className={`px-3 py-1.5 rounded-md text-xs font-medium transition ${metric === 'achievement' ? 'bg-red-600 text-white' : 'text-zinc-400 hover:text-zinc-100'}`}>Achievement</button>
+          <div className="flex gap-1 p-1 bg-slate-950 border border-slate-800 rounded-lg">
+            <button onClick={() => setMetric('visits')} className={`px-3 py-1.5 rounded-md text-xs font-medium transition ${metric === 'visits' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-100'}`}>Jumlah Visit</button>
+            <button onClick={() => setMetric('achievement')} className={`px-3 py-1.5 rounded-md text-xs font-medium transition ${metric === 'achievement' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-100'}`}>Achievement</button>
           </div>
           <div className="w-36"><Select value={month} onChange={e => setMonth(e.target.value)}>{monthsList.map(m => <option key={m} value={m}>{monthLabel(m)}</option>)}</Select></div>
         </div>
@@ -3240,26 +3240,26 @@ function LeaderboardTab({ visits, mds, regions }) {
         onReset={() => { setDari(''); setSampai(''); }} />
 
       {ranked.length === 0 ? (
-        <div className="text-center py-12 text-zinc-500 text-sm">Belum ada MD aktif.</div>
+        <div className="text-center py-12 text-slate-500 text-sm">Belum ada MD aktif.</div>
       ) : (
         <div className="space-y-1.5">
           {ranked.map((r, i) => (
-            <div key={r.md.id} className="bg-zinc-950 border border-zinc-800 rounded-xl p-3 flex items-center gap-3">
+            <div key={r.md.id} className="bg-slate-950 border border-slate-800 rounded-xl p-3 flex items-center gap-3">
               <div className={`w-9 h-9 rounded-lg border flex items-center justify-center text-sm font-bold shrink-0 ${rankRing(i)}`}>
                 {medal(i) || (i + 1)}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="text-sm font-semibold text-zinc-100 truncate">{r.md.full_name}</div>
-                <div className="text-[11px] text-zinc-500 truncate">
+                <div className="text-sm font-semibold text-slate-100 truncate">{r.md.full_name}</div>
+                <div className="text-[11px] text-slate-500 truncate">
                   {regionName(r.md.region_id) && <>{regionName(r.md.region_id)} · </>}
                   {r.activeDays} hari aktif · <span className="text-emerald-400">{r.pemasangan} pasang</span> · <span className="text-sky-400">{r.revisit} revisit</span>
                 </div>
-                <div className="mt-1.5 h-1.5 bg-zinc-800/60 rounded-full overflow-hidden">
+                <div className="mt-1.5 h-1.5 bg-slate-800/60 rounded-full overflow-hidden">
                   <div className={`h-full rounded-full ${r.achievement >= 80 ? 'bg-emerald-500' : r.achievement >= 50 ? 'bg-amber-500' : 'bg-rose-500'}`} style={{ width: `${Math.min(r.achievement, 100)}%` }} />
                 </div>
               </div>
               <div className="text-right shrink-0">
-                <div className="text-lg font-bold text-zinc-100 leading-none">{r.total}<span className="text-xs text-zinc-500 font-normal">/{r.target}</span></div>
+                <div className="text-lg font-bold text-slate-100 leading-none">{r.total}<span className="text-xs text-slate-500 font-normal">/{r.target}</span></div>
                 <div className={`text-xs font-medium mt-0.5 ${r.achievement >= 80 ? 'text-emerald-400' : r.achievement >= 50 ? 'text-amber-400' : 'text-rose-400'}`}>{r.achievement}%</div>
               </div>
             </div>
@@ -3333,7 +3333,7 @@ function AdminView({ profile }) {
 
   return (
     <div className="max-w-6xl mx-auto">
-      <div className="grid grid-cols-3 gap-1 p-1 bg-zinc-950 border border-zinc-800 rounded-xl mb-5 sm:flex">
+      <div className="grid grid-cols-3 gap-1 p-1 bg-slate-950 border border-slate-800 rounded-xl mb-5 sm:flex">
         {[
           { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
           { id: 'ranking', label: 'Ranking', icon: Trophy },
@@ -3342,7 +3342,7 @@ function AdminView({ profile }) {
           { id: 'master', label: 'Master Data', icon: Database },
         ].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
-            className={`flex-1 flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-lg text-[11px] font-medium transition sm:flex-row sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm whitespace-nowrap ${tab === t.id ? 'bg-red-600 text-white' : 'text-zinc-400 hover:text-zinc-100'}`}>
+            className={`flex-1 flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-lg text-[11px] font-medium transition sm:flex-row sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm whitespace-nowrap ${tab === t.id ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-100'}`}>
             <t.icon className="w-4 h-4 shrink-0" /><span>{t.label}</span>
           </button>
         ))}
@@ -3450,8 +3450,8 @@ function VisitsTab({ visits, mds, bengkels, kotas, distributors, regions, onOpen
     <div>
       <div className="mb-5 flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="text-2xl font-bold text-zinc-100 tracking-tight font-display">Daftar Visit</h2>
-          <p className="text-sm text-zinc-500 mt-1">{filtered.length} dari {visits.length} visit · klik untuk lihat detail</p>
+          <h2 className="text-2xl font-bold text-slate-100 tracking-tight font-display">Daftar Visit</h2>
+          <p className="text-sm text-slate-500 mt-1">{filtered.length} dari {visits.length} visit · klik untuk lihat detail</p>
         </div>
         <Button variant="secondary" onClick={handleExport} disabled={filtered.length === 0}>
           <Download className="w-4 h-4" />Export Excel ({filtered.length})
@@ -3459,12 +3459,12 @@ function VisitsTab({ visits, mds, bengkels, kotas, distributors, regions, onOpen
       </div>
 
       {/* Filter bar */}
-      <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-3 mb-4 grid grid-cols-2 md:grid-cols-6 gap-2">
+      <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 mb-4 grid grid-cols-2 md:grid-cols-6 gap-2">
         <div className="col-span-2 md:col-span-2 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
           <input value={filters.search} onChange={e => setFilters({ ...filters, search: e.target.value })}
             placeholder="Cari kode/nama bengkel, MD, PIC…"
-            className="w-full bg-zinc-950 border border-zinc-800 rounded-lg pl-9 pr-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-red-600/50" />
+            className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-600/50" />
         </div>
         <Select value={filters.month} onChange={e => setFilters({ ...filters, month: e.target.value })}>
           <option value="all">Semua Bulan</option>
@@ -3497,7 +3497,7 @@ function VisitsTab({ visits, mds, bengkels, kotas, distributors, regions, onOpen
 
       {/* List */}
       {filtered.length === 0 ? (
-        <div className="text-center py-12 text-zinc-500 text-sm bg-zinc-900/30 border border-zinc-800 rounded-xl">
+        <div className="text-center py-12 text-slate-500 text-sm bg-slate-900/30 border border-slate-800 rounded-xl">
           Tidak ada visit yang sesuai filter.
         </div>
       ) : (
@@ -3510,19 +3510,19 @@ function VisitsTab({ visits, mds, bengkels, kotas, distributors, regions, onOpen
             const photoCount = PHOTO_KEYS.filter(key => v[key]).length;
             return (
               <button key={v.id} onClick={() => onOpenVisit(v.id)}
-                className="w-full text-left bg-zinc-950 hover:bg-zinc-900 border border-zinc-800 hover:border-zinc-700 rounded-lg px-3 py-2 transition group flex items-center gap-3">
+                className="w-full text-left bg-slate-950 hover:bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-lg px-3 py-2 transition group flex items-center gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-mono shrink-0">{b?.code || '—'}</span>
-                    <span className="text-sm font-semibold text-zinc-100 truncate">{b?.name || v.bengkel_name || '—'}</span>
+                    <span className="text-[10px] uppercase tracking-wider text-slate-500 font-mono shrink-0">{b?.code || '—'}</span>
+                    <span className="text-sm font-semibold text-slate-100 truncate">{b?.name || v.bengkel_name || '—'}</span>
                   </div>
-                  <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 mt-0.5 truncate">
+                  <div className="flex items-center gap-1.5 text-[11px] text-slate-500 mt-0.5 truncate">
                     <Calendar className="w-3 h-3 shrink-0" /><span>{v.visit_date}{v.created_at ? ` · ${fmtAbsenTime(v.created_at)}` : ''}</span>
-                    <span className="text-zinc-700">·</span>
+                    <span className="text-slate-700">·</span>
                     <User className="w-3 h-3 shrink-0" /><span className="truncate">{md?.full_name || v.md_name || '—'}</span>
-                    <span className="text-zinc-700 hidden sm:inline">·</span>
+                    <span className="text-slate-700 hidden sm:inline">·</span>
                     <MapPin className="w-3 h-3 shrink-0 hidden sm:inline" /><span className="truncate hidden sm:inline">{k?.name || '—'}</span>
-                    <span className="text-zinc-700">·</span>
+                    <span className="text-slate-700">·</span>
                     <Camera className="w-3 h-3 shrink-0" /><span className="shrink-0">{photoCount}/{PHOTO_KEYS.length}</span>
                   </div>
                 </div>
@@ -3530,13 +3530,13 @@ function VisitsTab({ visits, mds, bengkels, kotas, distributors, regions, onOpen
                   <StatusBadge status={v.status} />
                   <OnSiteBadge bengkel={b} visit={v} />
                 </div>
-                <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-red-300 transition shrink-0" />
+                <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-blue-300 transition shrink-0" />
               </button>
             );
           })}
           {filtered.length > visibleCount && (
             <button onClick={() => setVisibleCount(c => c + 100)}
-              className="w-full mt-2 py-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-sm text-zinc-300 transition">
+              className="w-full mt-2 py-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-sm text-slate-300 transition">
               Tampilkan lebih banyak · {filtered.length - visibleCount} lagi (dari {filtered.length})
             </button>
           )}
@@ -3651,8 +3651,8 @@ function DashboardTab({ visits, mds, bengkels, kotas, regions, distributors, onO
     <div>
       <div className="flex items-center justify-between mb-5 gap-3 flex-wrap">
         <div>
-          <h2 className="text-2xl font-bold text-zinc-100 tracking-tight font-display">Dashboard</h2>
-          <p className="text-sm text-zinc-500 mt-1">Performa tracking POSM · {filteredVisits.length} visit ter-filter</p>
+          <h2 className="text-2xl font-bold text-slate-100 tracking-tight font-display">Dashboard</h2>
+          <p className="text-sm text-slate-500 mt-1">Performa tracking POSM · {filteredVisits.length} visit ter-filter</p>
         </div>
         <Button variant="secondary" onClick={handleExport} disabled={filteredVisits.length === 0}>
           <Download className="w-4 h-4" />Export Excel ({filteredVisits.length})
@@ -3660,7 +3660,7 @@ function DashboardTab({ visits, mds, bengkels, kotas, regions, distributors, onO
       </div>
 
       {/* Filter bar */}
-      <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-3 mb-5 grid grid-cols-2 md:grid-cols-4 gap-2">
+      <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 mb-5 grid grid-cols-2 md:grid-cols-4 gap-2">
         <Select value={filters.month} onChange={e => setFilters({ ...filters, month: e.target.value })}>
           <option value="all">Semua Bulan</option>
           {availableMonths.map(m => <option key={m} value={m}>{monthLabel(m)}</option>)}
@@ -3692,13 +3692,13 @@ function DashboardTab({ visits, mds, bengkels, kotas, regions, distributors, onO
           { label: 'Tidak Terpasang', value: revisit, sub: 'hasil lainnya', icon: Navigation, color: 'blue' },
           { label: 'MD Aktif', value: activeMdCount, sub: `dari ${relevantMDs.length} MD · ada visit`, icon: Users, color: 'amber' },
         ].map((k, i) => (
-          <div key={i} className="bg-zinc-950 border border-zinc-800 rounded-xl p-4">
+          <div key={i} className="bg-slate-950 border border-slate-800 rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs text-zinc-500 uppercase tracking-wider font-medium">{k.label}</span>
-              <k.icon className={`w-4 h-4 ${KPI_ICON_COLOR[k.color] || 'text-zinc-400'}`} />
+              <span className="text-xs text-slate-500 uppercase tracking-wider font-medium">{k.label}</span>
+              <k.icon className={`w-4 h-4 ${KPI_ICON_COLOR[k.color] || 'text-slate-400'}`} />
             </div>
-            <div className="text-2xl font-bold text-zinc-100 mb-0.5">{k.value}</div>
-            <div className="text-xs text-zinc-500">{k.sub}</div>
+            <div className="text-2xl font-bold text-slate-100 mb-0.5">{k.value}</div>
+            <div className="text-xs text-slate-500">{k.sub}</div>
           </div>
         ))}
       </div>
@@ -3715,7 +3715,7 @@ function DashboardTab({ visits, mds, bengkels, kotas, regions, distributors, onO
                 {chartData.map((d, i) => <Cell key={i} fill={colorForRegion(d.region)} />)}
                 <LabelList dataKey="Actual" position="top" fill="#ffffff" fontSize={10} fontWeight={600} />
               </Bar>
-              <Line dataKey="Target" stroke="#dc2626" strokeWidth={2} strokeDasharray="6 4" dot={false} />
+              <Line dataKey="Target" stroke="#2563eb" strokeWidth={2} strokeDasharray="6 4" dot={false} />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
@@ -3723,28 +3723,28 @@ function DashboardTab({ visits, mds, bengkels, kotas, regions, distributors, onO
         {/* Legenda warna per area */}
         <div className="flex flex-wrap justify-center items-center gap-x-3 gap-y-1.5 mt-2 text-[11px]">
           {regionNames.map(n => (
-            <span key={n} className="flex items-center gap-1.5 text-zinc-400">
+            <span key={n} className="flex items-center gap-1.5 text-slate-400">
               <span className="w-2.5 h-2.5 rounded-sm" style={{ background: colorForRegion(n) }} />{n}
             </span>
           ))}
-          <span className="flex items-center gap-1.5 text-zinc-400"><span className="inline-block w-3.5 border-t-2 border-dashed border-red-600" />Target</span>
+          <span className="flex items-center gap-1.5 text-slate-400"><span className="inline-block w-3.5 border-t-2 border-dashed border-blue-600" />Target</span>
         </div>
 
         <div className="mt-5 space-y-2">
           {chartData.map((md, i) => (
-            <div key={md.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-zinc-950 border border-zinc-800">
-              <div className="w-6 h-6 rounded-full bg-zinc-800/50 flex items-center justify-center text-[10px] font-mono text-zinc-400">{i + 1}</div>
+            <div key={md.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-slate-950 border border-slate-800">
+              <div className="w-6 h-6 rounded-full bg-slate-800/50 flex items-center justify-center text-[10px] font-mono text-slate-400">{i + 1}</div>
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-zinc-200 truncate">{md.fullName || md.name}
-                  {md.region && <span className="ml-2 text-[10px] font-normal text-zinc-500">· {md.region}</span>}
+                <div className="text-sm font-medium text-slate-200 truncate">{md.fullName || md.name}
+                  {md.region && <span className="ml-2 text-[10px] font-normal text-slate-500">· {md.region}</span>}
                 </div>
-                <div className="h-1 bg-zinc-800/50 rounded-full mt-1 overflow-hidden">
+                <div className="h-1 bg-slate-800/50 rounded-full mt-1 overflow-hidden">
                   <div className={`h-full rounded-full ${md.achievement >= 80 ? 'bg-emerald-600/100' : md.achievement >= 50 ? 'bg-amber-600/100' : 'bg-rose-600/100'}`} style={{ width: `${Math.min(md.achievement, 100)}%` }} />
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-sm font-semibold text-zinc-100">{md.Actual}<span className="text-zinc-500">/{md.Target}</span></div>
-                <div className="text-[10px] text-zinc-500">{md.achievement}%</div>
+                <div className="text-sm font-semibold text-slate-100">{md.Actual}<span className="text-slate-500">/{md.Target}</span></div>
+                <div className="text-[10px] text-slate-500">{md.achievement}%</div>
               </div>
             </div>
           ))}
@@ -3761,14 +3761,14 @@ function DashboardTab({ visits, mds, bengkels, kotas, regions, distributors, onO
               const photoCount = PHOTO_KEYS.filter(key => v[key]).length;
               return (
                 <button key={v.id} onClick={() => onOpenVisit?.(v.id)}
-                  className="w-full text-left flex items-center gap-3 p-3 rounded-lg bg-zinc-950 border border-zinc-800 hover:border-zinc-700 transition group">
+                  className="w-full text-left flex items-center gap-3 p-3 rounded-lg bg-slate-950 border border-slate-800 hover:border-slate-700 transition group">
                   <div className="min-w-0 flex-1">
-                    <div className="text-[10px] uppercase tracking-wider text-zinc-500 font-mono">{b?.code || '—'} · {v.visit_date}</div>
-                    <div className="text-sm font-semibold text-zinc-100 truncate">{b?.name || v.bengkel_name || '—'}</div>
-                    <div className="text-xs text-zinc-500 truncate">{md?.full_name || v.md_name || '—'} · {photoCount}/{PHOTO_KEYS.length} foto</div>
+                    <div className="text-[10px] uppercase tracking-wider text-slate-500 font-mono">{b?.code || '—'} · {v.visit_date}</div>
+                    <div className="text-sm font-semibold text-slate-100 truncate">{b?.name || v.bengkel_name || '—'}</div>
+                    <div className="text-xs text-slate-500 truncate">{md?.full_name || v.md_name || '—'} · {photoCount}/{PHOTO_KEYS.length} foto</div>
                   </div>
                   <StatusBadge status={v.status} />
-                  <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-red-300 transition" />
+                  <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-blue-300 transition" />
                 </button>
               );
             })}
@@ -3868,21 +3868,21 @@ function CoverageTab({ visits, mds, bengkels, kotas, regions, distributors, onOp
     <div>
       <div className="flex items-center justify-between mb-5 gap-3 flex-wrap">
         <div>
-          <h2 className="text-2xl font-bold text-zinc-100 tracking-tight font-display">Coverage Map</h2>
-          <p className="text-sm text-zinc-500 mt-1">
+          <h2 className="text-2xl font-bold text-slate-100 tracking-tight font-display">Coverage Map</h2>
+          <p className="text-sm text-slate-500 mt-1">
             {filtered.length} titik visit di {grouped.length} lokasi unik
             {showBengkels && <> · <span className="text-sky-400">{bengkelMarkers.length} lokasi bengkel</span>{bengkelMarkers.length > BENGKEL_CAP && ` (tampil ${BENGKEL_CAP}, filter Region untuk lihat semua)`}</>}
           </p>
         </div>
         <button type="button" onClick={() => setShowBengkels(v => !v)}
-          className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg border transition ${showBengkels ? 'border-sky-500/50 bg-sky-500/10 text-sky-300' : 'border-zinc-800 hover:border-zinc-700 text-zinc-300'}`}>
+          className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg border transition ${showBengkels ? 'border-sky-500/50 bg-sky-500/10 text-sky-300' : 'border-slate-800 hover:border-slate-700 text-slate-300'}`}>
           <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: showBengkels ? '#0a0a0a' : 'transparent', border: '1.5px solid #f4f4f5' }} />
           {showBengkels ? 'Sembunyikan lokasi bengkel' : 'Tampilkan lokasi bengkel'}
         </button>
       </div>
 
       {/* Filter bar */}
-      <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-3 mb-4 grid grid-cols-2 md:grid-cols-4 gap-2">
+      <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 mb-4 grid grid-cols-2 md:grid-cols-4 gap-2">
         <Select value={filters.month} onChange={e => setFilters({ ...filters, month: e.target.value })}>
           <option value="all">Semua Bulan</option>
           {availableMonths.map(m => <option key={m} value={m}>{monthLabel(m)}</option>)}
@@ -3906,10 +3906,10 @@ function CoverageTab({ visits, mds, bengkels, kotas, regions, distributors, onOp
         onDari={v => setFilters({ ...filters, dari: v })} onSampai={v => setFilters({ ...filters, sampai: v })}
         onReset={() => setFilters({ ...filters, dari: '', sampai: '' })} />
 
-      <div className="bg-zinc-950 border border-zinc-800 rounded-2xl overflow-hidden">
+      <div className="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden">
         <div className="relative">
           {filtered.length === 0 ? (
-            <div className="h-72 flex flex-col items-center justify-center text-zinc-500 gap-2 text-sm">
+            <div className="h-72 flex flex-col items-center justify-center text-slate-500 gap-2 text-sm">
               <MapPin className="w-6 h-6" />
               Tidak ada visit dengan koordinat sesuai filter
             </div>
@@ -3931,7 +3931,7 @@ function CoverageTab({ visits, mds, bengkels, kotas, regions, distributors, onOp
                 const isStacked = vs.length > 1;
                 // Pick color dari first visit di stack
                 const mdIdx = mds.findIndex(m => m.id === vs[0].md_id);
-                const color = MD_COLORS[mdIdx % MD_COLORS.length] || '#dc2626';
+                const color = MD_COLORS[mdIdx % MD_COLORS.length] || '#2563eb';
 
                 const icon = isStacked
                   ? L.divIcon({
@@ -3951,16 +3951,16 @@ function CoverageTab({ visits, mds, bengkels, kotas, regions, distributors, onOp
                   <Marker key={gi} position={[lat, lng]} icon={icon}>
                     <Popup maxWidth={280}>
                       <div className="text-xs space-y-1 max-h-48 overflow-y-auto">
-                        <div className="font-semibold text-zinc-100 text-sm mb-2">{vs.length} visit di titik ini</div>
+                        <div className="font-semibold text-slate-100 text-sm mb-2">{vs.length} visit di titik ini</div>
                         {vs.slice(0, 5).map(v => (
                           <button key={v.id} onClick={() => onOpenVisit?.(v.id)}
-                            className="block w-full text-left p-2 rounded bg-zinc-800/50 hover:bg-zinc-700 transition">
-                            <div className="font-mono text-[9px] text-zinc-500">{v._bengkel?.code} · {v.visit_date}</div>
-                            <div className="text-xs text-zinc-100 truncate">{v._bengkel?.name}</div>
-                            <div className="text-[10px] text-zinc-400">{v.md_name || mds.find(m => m.id === v.md_id)?.full_name} · {v.status}</div>
+                            className="block w-full text-left p-2 rounded bg-slate-800/50 hover:bg-slate-700 transition">
+                            <div className="font-mono text-[9px] text-slate-500">{v._bengkel?.code} · {v.visit_date}</div>
+                            <div className="text-xs text-slate-100 truncate">{v._bengkel?.name}</div>
+                            <div className="text-[10px] text-slate-400">{v.md_name || mds.find(m => m.id === v.md_id)?.full_name} · {v.status}</div>
                           </button>
                         ))}
-                        {vs.length > 5 && <div className="text-[10px] text-zinc-500 text-center pt-1">+{vs.length - 5} lagi</div>}
+                        {vs.length > 5 && <div className="text-[10px] text-slate-500 text-center pt-1">+{vs.length - 5} lagi</div>}
                       </div>
                     </Popup>
                   </Marker>
@@ -3970,8 +3970,8 @@ function CoverageTab({ visits, mds, bengkels, kotas, regions, distributors, onOp
                 <Marker key={'bengkel-' + b.id} position={[b.lat, b.lng]} icon={BENGKEL_ICON}>
                   <Popup maxWidth={240}>
                     <div className="text-xs space-y-0.5">
-                      <div className="font-mono text-[9px] text-zinc-500">{b.code}</div>
-                      <div className="text-xs text-zinc-100">{b.name}</div>
+                      <div className="font-mono text-[9px] text-slate-500">{b.code}</div>
+                      <div className="text-xs text-slate-100">{b.name}</div>
                       <div className="text-[10px] text-sky-500 mt-1">Lokasi bengkel · {b.lat.toFixed(5)}, {b.lng.toFixed(5)}</div>
                     </div>
                   </Popup>
@@ -3983,18 +3983,18 @@ function CoverageTab({ visits, mds, bengkels, kotas, regions, distributors, onOp
         </div>
 
         {/* Legend MD */}
-        <div className="border-t border-zinc-800 p-4 flex flex-wrap gap-3">
+        <div className="border-t border-slate-800 p-4 flex flex-wrap gap-3">
           {mds.map((md, i) => {
             const count = filtered.filter(v => v.md_id === md.id).length;
             return (
               <button key={md.id}
                 onClick={() => setFilters(f => ({ ...f, mdId: f.mdId === md.id ? 'all' : md.id }))}
                 className={`flex items-center gap-2 text-xs px-2.5 py-1.5 rounded-lg transition border ${
-                  filters.mdId === md.id ? 'border-red-600/40 bg-red-600/10' : 'border-zinc-800 hover:border-zinc-700'
+                  filters.mdId === md.id ? 'border-blue-600/40 bg-blue-600/10' : 'border-slate-800 hover:border-slate-700'
                 }`}>
                 <span className="w-2.5 h-2.5 rounded-full" style={{ background: MD_COLORS[i % MD_COLORS.length] }} />
-                <span className="text-zinc-300">{md.full_name}</span>
-                <span className="text-zinc-500 font-mono">{count}</span>
+                <span className="text-slate-300">{md.full_name}</span>
+                <span className="text-slate-500 font-mono">{count}</span>
               </button>
             );
           })}
@@ -4066,8 +4066,8 @@ function BengkelForm({ kotas, regions, bengkels = [], onSave, initial, onCancel 
   };
 
   return (
-    <div className={`mb-5 p-4 bg-zinc-950 border rounded-xl ${isEdit ? 'border-amber-600/40' : 'border-zinc-800'}`}>
-      <div className="text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-3 flex items-center justify-between gap-2">
+    <div className={`mb-5 p-4 bg-slate-950 border rounded-xl ${isEdit ? 'border-amber-600/40' : 'border-slate-800'}`}>
+      <div className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-3 flex items-center justify-between gap-2">
         <span className="flex items-center gap-2">
           {isEdit ? <>
             <Activity className="w-3.5 h-3.5 text-amber-400" />
@@ -4077,7 +4077,7 @@ function BengkelForm({ kotas, regions, bengkels = [], onSave, initial, onCancel 
           </>}
         </span>
         {onCancel && (
-          <button onClick={onCancel} className="text-xs font-medium flex items-center gap-1 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-rose-600 text-zinc-100 border border-zinc-700 hover:border-rose-600 transition shrink-0">
+          <button onClick={onCancel} className="text-xs font-medium flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-rose-600 text-slate-100 border border-slate-700 hover:border-rose-600 transition shrink-0">
             <X className="w-3 h-3" />Batal
           </button>
         )}
@@ -4093,7 +4093,7 @@ function BengkelForm({ kotas, regions, bengkels = [], onSave, initial, onCancel 
           {!isEdit && form.name.trim() && (
             kotaNameSel
               ? <p className="text-[11px] text-emerald-400/90 mt-1">Tersimpan: <span className="font-medium">{composedName}</span></p>
-              : <p className="text-[11px] text-zinc-500 mt-1">Pilih kota → otomatis jadi "{form.name.trim()} - Kota"</p>
+              : <p className="text-[11px] text-slate-500 mt-1">Pilih kota → otomatis jadi "{form.name.trim()} - Kota"</p>
           )}
         </Field>
       </div>
@@ -4186,15 +4186,15 @@ function MDForm({ regions, onSave, initial, onCancel }) {
   };
 
   return (
-    <div className={`mb-5 p-4 bg-zinc-950 border rounded-xl ${isEdit ? 'border-amber-600/40' : 'border-zinc-800'}`}>
-      <div className="text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-3 flex items-center justify-between gap-2">
+    <div className={`mb-5 p-4 bg-slate-950 border rounded-xl ${isEdit ? 'border-amber-600/40' : 'border-slate-800'}`}>
+      <div className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-3 flex items-center justify-between gap-2">
         <span className="flex items-center gap-2">
           {isEdit
             ? <><Activity className="w-3.5 h-3.5 text-amber-400" /><span className="text-amber-300">Edit Akun · {initial.full_name}</span></>
             : <><Plus className="w-3.5 h-3.5" />Buat Akun MD Baru</>}
         </span>
         {onCancel && (
-          <button onClick={onCancel} className="text-xs font-medium flex items-center gap-1 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-rose-600 text-zinc-100 border border-zinc-700 hover:border-rose-600 transition shrink-0">
+          <button onClick={onCancel} className="text-xs font-medium flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-rose-600 text-slate-100 border border-slate-700 hover:border-rose-600 transition shrink-0">
             <X className="w-3 h-3" />Batal
           </button>
         )}
@@ -4217,22 +4217,22 @@ function MDForm({ regions, onSave, initial, onCancel }) {
         <Field label={form.role === 'tl' ? 'Region yang dicover (boleh >1)' : 'Region (wilayah kerja)'}>
           {form.role === 'tl' ? (
             <>
-              <div className="max-h-32 overflow-y-auto rounded-lg border border-zinc-800 bg-zinc-950 p-2 space-y-1">
+              <div className="max-h-32 overflow-y-auto rounded-lg border border-slate-800 bg-slate-950 p-2 space-y-1">
                 {(regions || []).map(r => {
                   const on = form.region_ids.includes(r.id);
                   return (
-                    <label key={r.id} className="flex items-center gap-2 text-sm text-zinc-200 cursor-pointer hover:text-white">
-                      <input type="checkbox" checked={on} className="accent-red-600"
+                    <label key={r.id} className="flex items-center gap-2 text-sm text-slate-200 cursor-pointer hover:text-white">
+                      <input type="checkbox" checked={on} className="accent-blue-600"
                         onChange={() => setForm(f => ({ ...f, region_ids: on ? f.region_ids.filter(x => x !== r.id) : [...f.region_ids, r.id] }))} />
                       {r.name}
                     </label>
                   );
                 })}
-                {(regions || []).length === 0 && <div className="text-xs text-zinc-500">Belum ada region.</div>}
+                {(regions || []).length === 0 && <div className="text-xs text-slate-500">Belum ada region.</div>}
               </div>
               {form.region_ids.length === 0
                 ? <p className="text-[11px] text-amber-400 mt-1.5 flex items-center gap-1.5"><AlertCircle className="w-3 h-3" />TL wajib minimal 1 region — tanpa ini, TL tak melihat data apa pun.</p>
-                : <p className="text-[11px] text-zinc-500 mt-1.5">{form.region_ids.length} region dipilih.</p>}
+                : <p className="text-[11px] text-slate-500 mt-1.5">{form.region_ids.length} region dipilih.</p>}
             </>
           ) : (
             <Select value={form.region_id} onChange={e => setForm({ ...form, region_id: e.target.value })}>
@@ -4248,14 +4248,14 @@ function MDForm({ regions, onSave, initial, onCancel }) {
           <div className="relative">
             <Input type={showPw ? 'text' : 'password'} placeholder={isEdit ? 'Kosong = tidak diubah' : 'Kosong = auto-generate'} value={form.password}
               onChange={e => setForm({ ...form, password: e.target.value })} className="pr-9" />
-            <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300">
+            <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
               {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
         </Field>
       </div>
       {emailInvalid && <p className="text-[11px] text-rose-400 mb-2">Format email tidak valid</p>}
-      {!isEdit && <p className="text-[11px] text-zinc-500 mb-3">💡 Password kosong → digenerate otomatis, MD set sendiri via "Lupa password" di login.</p>}
+      {!isEdit && <p className="text-[11px] text-slate-500 mb-3">💡 Password kosong → digenerate otomatis, MD set sendiri via "Lupa password" di login.</p>}
       {isEdit && !MOCK_MODE && <p className="text-[11px] text-amber-400 mb-3">⚠ Reset password di mode produksi perlu Edge Function. Untuk sekarang ubah via Supabase atau "Lupa password".</p>}
       <div className="flex gap-2">
         <Button variant="primary" onClick={handleSave} disabled={!canSave} className="flex-1">
@@ -4458,14 +4458,14 @@ function BengkelImportModal({ kotas, regions, bengkels, onClose, onImported }) {
   const invalidCount = validated.length - validCount;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-zinc-950/80 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="w-full max-w-4xl my-8 bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-        <div className="px-5 py-4 border-b border-zinc-800 flex items-center justify-between sticky top-0 bg-zinc-900 z-10">
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-950/80 backdrop-blur-sm p-4 overflow-y-auto">
+      <div className="w-full max-w-4xl my-8 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between sticky top-0 bg-slate-900 z-10">
           <div className="flex items-center gap-3">
             <FileSpreadsheet className="w-5 h-5 text-emerald-400" />
-            <h2 className="font-display font-bold text-lg text-zinc-100">Import Bengkel dari Excel</h2>
+            <h2 className="font-display font-bold text-lg text-slate-100">Import Bengkel dari Excel</h2>
           </div>
-          <button onClick={onClose} className="w-9 h-9 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 flex items-center justify-center">
+          <button onClick={onClose} className="w-9 h-9 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-100 flex items-center justify-center">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -4474,17 +4474,17 @@ function BengkelImportModal({ kotas, regions, bengkels, onClose, onImported }) {
           {/* STEP: UPLOAD */}
           {step === 'upload' && (
             <div className="space-y-4">
-              <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 text-xs text-zinc-400 space-y-2">
-                <p className="font-semibold text-zinc-200 text-sm">📋 Petunjuk file Excel / CSV</p>
+              <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs text-slate-400 space-y-2">
+                <p className="font-semibold text-slate-200 text-sm">📋 Petunjuk file Excel / CSV</p>
                 <p>Header kolom yang dikenali (case-insensitive, urutan bebas):</p>
                 <ul className="ml-4 space-y-0.5 list-disc">
-                  <li><span className="font-mono text-zinc-300">code</span> / kode <span className="text-red-400">*</span></li>
-                  <li><span className="font-mono text-zinc-300">name</span> / nama / bengkel <span className="text-red-400">*</span></li>
-                  <li><span className="font-mono text-zinc-300">kota</span> / city <span className="text-red-400">*</span> — harus match nama kota di master</li>
-                  <li><span className="font-mono text-zinc-300">region</span> / wilayah — opsional, tapi <span className="text-amber-400">wajib kalau ada kota bernama sama di &gt;1 region</span></li>
-                  <li><span className="font-mono text-zinc-300">lat</span> / latitude — opsional, range -90 .. 90</li>
-                  <li><span className="font-mono text-zinc-300">lng</span> / longitude — opsional, range -180 .. 180</li>
-                  <li><span className="font-mono text-zinc-300">address</span> / alamat — opsional</li>
+                  <li><span className="font-mono text-slate-300">code</span> / kode <span className="text-blue-400">*</span></li>
+                  <li><span className="font-mono text-slate-300">name</span> / nama / bengkel <span className="text-blue-400">*</span></li>
+                  <li><span className="font-mono text-slate-300">kota</span> / city <span className="text-blue-400">*</span> — harus match nama kota di master</li>
+                  <li><span className="font-mono text-slate-300">region</span> / wilayah — opsional, tapi <span className="text-amber-400">wajib kalau ada kota bernama sama di &gt;1 region</span></li>
+                  <li><span className="font-mono text-slate-300">lat</span> / latitude — opsional, range -90 .. 90</li>
+                  <li><span className="font-mono text-slate-300">lng</span> / longitude — opsional, range -180 .. 180</li>
+                  <li><span className="font-mono text-slate-300">address</span> / alamat — opsional</li>
                 </ul>
                 <p className="text-amber-400">⚠ Kota & region di-lookup by name. Pastikan sudah ada di Master Data sebelum import. (Distributor dicatat saat visit, bukan di bengkel.)</p>
                 <button
@@ -4495,11 +4495,11 @@ function BengkelImportModal({ kotas, regions, bengkels, onClose, onImported }) {
               </div>
 
               <button onClick={() => inputRef.current?.click()}
-                className="w-full border-2 border-dashed border-zinc-700 hover:border-red-600/40 hover:bg-red-600/5 rounded-xl py-12 flex flex-col items-center gap-3 transition cursor-pointer">
-                <Upload className="w-10 h-10 text-zinc-500" />
+                className="w-full border-2 border-dashed border-slate-700 hover:border-blue-600/40 hover:bg-blue-600/5 rounded-xl py-12 flex flex-col items-center gap-3 transition cursor-pointer">
+                <Upload className="w-10 h-10 text-slate-500" />
                 <div className="text-center">
-                  <p className="text-sm font-medium text-zinc-200">Klik untuk pilih file</p>
-                  <p className="text-xs text-zinc-500 mt-0.5">Mendukung .xlsx, .xls, .csv</p>
+                  <p className="text-sm font-medium text-slate-200">Klik untuk pilih file</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Mendukung .xlsx, .xls, .csv</p>
                 </div>
               </button>
               <input ref={inputRef} type="file" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
@@ -4510,12 +4510,12 @@ function BengkelImportModal({ kotas, regions, bengkels, onClose, onImported }) {
           {/* STEP: PREVIEW */}
           {step === 'preview' && (
             <div className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3 bg-zinc-950 border border-zinc-800 rounded-xl p-3">
+              <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-950 border border-slate-800 rounded-xl p-3">
                 <div className="flex items-center gap-3 text-sm">
-                  <FileSpreadsheet className="w-4 h-4 text-zinc-400" />
-                  <span className="text-zinc-300 font-medium">{filename}</span>
-                  <span className="text-zinc-500">·</span>
-                  <span className="text-zinc-500">{validated.length} baris</span>
+                  <FileSpreadsheet className="w-4 h-4 text-slate-400" />
+                  <span className="text-slate-300 font-medium">{filename}</span>
+                  <span className="text-slate-500">·</span>
+                  <span className="text-slate-500">{validated.length} baris</span>
                 </div>
                 <div className="flex items-center gap-3 text-xs">
                   <span className="flex items-center gap-1.5 text-emerald-400">
@@ -4529,10 +4529,10 @@ function BengkelImportModal({ kotas, regions, bengkels, onClose, onImported }) {
                 </div>
               </div>
 
-              <div className="max-h-96 overflow-auto bg-zinc-950 border border-zinc-800 rounded-xl">
+              <div className="max-h-96 overflow-auto bg-slate-950 border border-slate-800 rounded-xl">
                 <table className="w-full text-xs">
-                  <thead className="sticky top-0 bg-zinc-900 border-b border-zinc-800">
-                    <tr className="text-left text-zinc-500 uppercase tracking-wider">
+                  <thead className="sticky top-0 bg-slate-900 border-b border-slate-800">
+                    <tr className="text-left text-slate-500 uppercase tracking-wider">
                       <th className="px-2 py-2 w-8">#</th>
                       <th className="px-2 py-2 w-6"></th>
                       <th className="px-2 py-2">Code</th>
@@ -4545,18 +4545,18 @@ function BengkelImportModal({ kotas, regions, bengkels, onClose, onImported }) {
                   </thead>
                   <tbody>
                     {validated.map((v, i) => (
-                      <tr key={i} className={`border-b border-zinc-800/50 ${v.ok ? '' : 'bg-rose-600/5'}`}>
-                        <td className="px-2 py-1.5 text-zinc-500 font-mono">{i + 1}</td>
+                      <tr key={i} className={`border-b border-slate-800/50 ${v.ok ? '' : 'bg-rose-600/5'}`}>
+                        <td className="px-2 py-1.5 text-slate-500 font-mono">{i + 1}</td>
                         <td className="px-2 py-1.5">
                           {v.ok
                             ? <Check className="w-3.5 h-3.5 text-emerald-400" />
                             : <AlertCircle className="w-3.5 h-3.5 text-rose-400" />}
                         </td>
-                        <td className="px-2 py-1.5 font-mono text-zinc-300">{v.raw.code || '—'}</td>
-                        <td className="px-2 py-1.5 text-zinc-200 max-w-[180px] truncate">{v.raw.name || '—'}</td>
-                        <td className="px-2 py-1.5 text-zinc-400 max-w-[120px] truncate">{v.raw.kota || '—'}</td>
-                        <td className="px-2 py-1.5 text-zinc-400 max-w-[120px] truncate">{v.raw.region || '—'}</td>
-                        <td className="px-2 py-1.5 font-mono text-zinc-500">
+                        <td className="px-2 py-1.5 font-mono text-slate-300">{v.raw.code || '—'}</td>
+                        <td className="px-2 py-1.5 text-slate-200 max-w-[180px] truncate">{v.raw.name || '—'}</td>
+                        <td className="px-2 py-1.5 text-slate-400 max-w-[120px] truncate">{v.raw.kota || '—'}</td>
+                        <td className="px-2 py-1.5 text-slate-400 max-w-[120px] truncate">{v.raw.region || '—'}</td>
+                        <td className="px-2 py-1.5 font-mono text-slate-500">
                           {v.raw.lat && v.raw.lng ? `${Number(v.raw.lat).toFixed(3)},${Number(v.raw.lng).toFixed(3)}` : '—'}
                         </td>
                         <td className="px-2 py-1.5 text-rose-400 text-[11px]">
@@ -4582,13 +4582,13 @@ function BengkelImportModal({ kotas, regions, bengkels, onClose, onImported }) {
           {/* STEP: IMPORTING */}
           {step === 'importing' && (
             <div className="py-12 flex flex-col items-center gap-4">
-              <Loader2 className="w-10 h-10 text-red-500 animate-spin" />
+              <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
               <div className="text-center">
-                <p className="text-sm font-semibold text-zinc-100">Mengimport bengkel…</p>
-                <p className="text-xs text-zinc-500 mt-1">{progress.done} / {progress.total} baris</p>
+                <p className="text-sm font-semibold text-slate-100">Mengimport bengkel…</p>
+                <p className="text-xs text-slate-500 mt-1">{progress.done} / {progress.total} baris</p>
               </div>
-              <div className="w-full max-w-xs h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                <div className="h-full bg-red-500 transition-all" style={{ width: `${progress.total > 0 ? (progress.done / progress.total * 100) : 0}%` }} />
+              <div className="w-full max-w-xs h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                <div className="h-full bg-blue-500 transition-all" style={{ width: `${progress.total > 0 ? (progress.done / progress.total * 100) : 0}%` }} />
               </div>
             </div>
           )}
@@ -4597,17 +4597,17 @@ function BengkelImportModal({ kotas, regions, bengkels, onClose, onImported }) {
           {step === 'done' && result && (
             <div className="py-8 flex flex-col items-center gap-4">
               <div className="w-14 h-14 rounded-full bg-emerald-500 flex items-center justify-center">
-                <Check className="w-7 h-7 text-zinc-900" strokeWidth={3} />
+                <Check className="w-7 h-7 text-slate-900" strokeWidth={3} />
               </div>
               <div className="text-center">
-                <h3 className="font-display font-bold text-lg text-zinc-100">Import selesai</h3>
+                <h3 className="font-display font-bold text-lg text-slate-100">Import selesai</h3>
                 <p className="text-sm text-emerald-400 mt-1">{result.inserted} bengkel berhasil di-tambah</p>
                 {result.errors.length > 0 && (
                   <p className="text-xs text-rose-400 mt-1">{result.errors.length} gagal (lihat error log di console)</p>
                 )}
               </div>
               {result.errors.length > 0 && (
-                <div className="w-full max-h-48 overflow-y-auto bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-[11px] text-rose-400 space-y-1">
+                <div className="w-full max-h-48 overflow-y-auto bg-slate-950 border border-slate-800 rounded-lg p-3 text-[11px] text-rose-400 space-y-1">
                   {result.errors.map((e, i) => (
                     <div key={i}>Row {e.row}: {e.message}</div>
                   ))}
@@ -4847,14 +4847,14 @@ function MasterImportModal({ section, ctx, onClose, onImported }) {
   const invalidCount = validated.length - validCount;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-zinc-950/80 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="w-full max-w-3xl my-8 bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-        <div className="px-5 py-4 border-b border-zinc-800 flex items-center justify-between sticky top-0 bg-zinc-900 z-10">
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-950/80 backdrop-blur-sm p-4 overflow-y-auto">
+      <div className="w-full max-w-3xl my-8 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between sticky top-0 bg-slate-900 z-10">
           <div className="flex items-center gap-3">
             <FileSpreadsheet className="w-5 h-5 text-emerald-400" />
-            <h2 className="font-display font-bold text-lg text-zinc-100">Import {cfg.label} dari Excel</h2>
+            <h2 className="font-display font-bold text-lg text-slate-100">Import {cfg.label} dari Excel</h2>
           </div>
-          <button onClick={onClose} className="w-9 h-9 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 flex items-center justify-center">
+          <button onClick={onClose} className="w-9 h-9 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-100 flex items-center justify-center">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -4862,9 +4862,9 @@ function MasterImportModal({ section, ctx, onClose, onImported }) {
         <div className="p-5">
           {step === 'upload' && (
             <div className="space-y-4">
-              <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 text-xs text-zinc-400 space-y-2">
-                <p className="font-semibold text-zinc-200 text-sm">📋 Kolom yang dikenali</p>
-                <p className="font-mono text-zinc-300">{cfg.template[0].join(', ')}</p>
+              <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs text-slate-400 space-y-2">
+                <p className="font-semibold text-slate-200 text-sm">📋 Kolom yang dikenali</p>
+                <p className="font-mono text-slate-300">{cfg.template[0].join(', ')}</p>
                 {(section === 'kotas' || section === 'distributors') && <p className="text-amber-400">⚠ Region di-lookup by nama. Pastikan region sudah ada di Master Data.</p>}
                 {section === 'mds' && (
                   <>
@@ -4879,11 +4879,11 @@ function MasterImportModal({ section, ctx, onClose, onImported }) {
                 </button>
               </div>
               <button onClick={() => inputRef.current?.click()}
-                className="w-full border-2 border-dashed border-zinc-700 hover:border-red-600/40 hover:bg-red-600/5 rounded-xl py-12 flex flex-col items-center gap-3 transition">
-                <Upload className="w-10 h-10 text-zinc-500" />
+                className="w-full border-2 border-dashed border-slate-700 hover:border-blue-600/40 hover:bg-blue-600/5 rounded-xl py-12 flex flex-col items-center gap-3 transition">
+                <Upload className="w-10 h-10 text-slate-500" />
                 <div className="text-center">
-                  <p className="text-sm font-medium text-zinc-200">Klik untuk pilih file</p>
-                  <p className="text-xs text-zinc-500 mt-0.5">.xlsx, .xls, .csv</p>
+                  <p className="text-sm font-medium text-slate-200">Klik untuk pilih file</p>
+                  <p className="text-xs text-slate-500 mt-0.5">.xlsx, .xls, .csv</p>
                 </div>
               </button>
               <input ref={inputRef} type="file" accept=".xlsx,.xls,.csv" onChange={e => handleFile(e.target.files?.[0])} className="hidden" />
@@ -4892,21 +4892,21 @@ function MasterImportModal({ section, ctx, onClose, onImported }) {
 
           {step === 'preview' && (
             <div className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3 bg-zinc-950 border border-zinc-800 rounded-xl p-3">
+              <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-950 border border-slate-800 rounded-xl p-3">
                 <div className="flex items-center gap-3 text-sm">
-                  <FileSpreadsheet className="w-4 h-4 text-zinc-400" />
-                  <span className="text-zinc-300 font-medium">{filename}</span>
-                  <span className="text-zinc-500">· {validated.length} baris</span>
+                  <FileSpreadsheet className="w-4 h-4 text-slate-400" />
+                  <span className="text-slate-300 font-medium">{filename}</span>
+                  <span className="text-slate-500">· {validated.length} baris</span>
                 </div>
                 <div className="flex items-center gap-3 text-xs">
                   <span className="flex items-center gap-1.5 text-emerald-400"><Check className="w-3.5 h-3.5" />{validCount} valid</span>
                   {invalidCount > 0 && <span className="flex items-center gap-1.5 text-rose-400"><AlertCircle className="w-3.5 h-3.5" />{invalidCount} error</span>}
                 </div>
               </div>
-              <div className="max-h-96 overflow-auto bg-zinc-950 border border-zinc-800 rounded-xl">
+              <div className="max-h-96 overflow-auto bg-slate-950 border border-slate-800 rounded-xl">
                 <table className="w-full text-xs">
-                  <thead className="sticky top-0 bg-zinc-900 border-b border-zinc-800">
-                    <tr className="text-left text-zinc-500 uppercase tracking-wider">
+                  <thead className="sticky top-0 bg-slate-900 border-b border-slate-800">
+                    <tr className="text-left text-slate-500 uppercase tracking-wider">
                       <th className="px-2 py-2 w-8">#</th>
                       <th className="px-2 py-2 w-6"></th>
                       {cfg.preview.map(c => <th key={c.key} className="px-2 py-2">{c.label}</th>)}
@@ -4915,11 +4915,11 @@ function MasterImportModal({ section, ctx, onClose, onImported }) {
                   </thead>
                   <tbody>
                     {validated.map((v, i) => (
-                      <tr key={i} className={`border-b border-zinc-800/50 ${v.ok ? '' : 'bg-rose-600/5'}`}>
-                        <td className="px-2 py-1.5 text-zinc-500 font-mono">{i + 1}</td>
+                      <tr key={i} className={`border-b border-slate-800/50 ${v.ok ? '' : 'bg-rose-600/5'}`}>
+                        <td className="px-2 py-1.5 text-slate-500 font-mono">{i + 1}</td>
                         <td className="px-2 py-1.5">{v.ok ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <AlertCircle className="w-3.5 h-3.5 text-rose-400" />}</td>
                         {cfg.preview.map(c => (
-                          <td key={c.key} className="px-2 py-1.5 text-zinc-200 max-w-[160px] truncate">{String(v.parsed[c.key] ?? '') || '—'}</td>
+                          <td key={c.key} className="px-2 py-1.5 text-slate-200 max-w-[160px] truncate">{String(v.parsed[c.key] ?? '') || '—'}</td>
                         ))}
                         <td className="px-2 py-1.5 text-rose-400 text-[11px]">{v.errors.join(', ')}</td>
                       </tr>
@@ -4940,11 +4940,11 @@ function MasterImportModal({ section, ctx, onClose, onImported }) {
 
           {step === 'importing' && (
             <div className="py-12 flex flex-col items-center gap-4">
-              <Loader2 className="w-10 h-10 text-red-500 animate-spin" />
-              <p className="text-sm font-semibold text-zinc-100">Mengimport {cfg.label}…</p>
-              <p className="text-xs text-zinc-500">{progress.done} / {progress.total}</p>
-              <div className="w-full max-w-xs h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                <div className="h-full bg-red-500 transition-all" style={{ width: `${progress.total > 0 ? (progress.done / progress.total * 100) : 0}%` }} />
+              <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
+              <p className="text-sm font-semibold text-slate-100">Mengimport {cfg.label}…</p>
+              <p className="text-xs text-slate-500">{progress.done} / {progress.total}</p>
+              <div className="w-full max-w-xs h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                <div className="h-full bg-blue-500 transition-all" style={{ width: `${progress.total > 0 ? (progress.done / progress.total * 100) : 0}%` }} />
               </div>
             </div>
           )}
@@ -4952,15 +4952,15 @@ function MasterImportModal({ section, ctx, onClose, onImported }) {
           {step === 'done' && result && (
             <div className="py-8 flex flex-col items-center gap-4">
               <div className="w-14 h-14 rounded-full bg-emerald-500 flex items-center justify-center">
-                <Check className="w-7 h-7 text-zinc-900" strokeWidth={3} />
+                <Check className="w-7 h-7 text-slate-900" strokeWidth={3} />
               </div>
               <div className="text-center">
-                <h3 className="font-display font-bold text-lg text-zinc-100">Import selesai</h3>
+                <h3 className="font-display font-bold text-lg text-slate-100">Import selesai</h3>
                 <p className="text-sm text-emerald-400 mt-1">{result.inserted} {cfg.label} berhasil di-tambah</p>
                 {result.errors?.length > 0 && <p className="text-xs text-rose-400 mt-1">{result.errors.length} gagal</p>}
               </div>
               {result.errors?.length > 0 && (
-                <div className="w-full max-h-48 overflow-y-auto bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-[11px] text-rose-400 space-y-1">
+                <div className="w-full max-h-48 overflow-y-auto bg-slate-950 border border-slate-800 rounded-lg p-3 text-[11px] text-rose-400 space-y-1">
                   {result.errors.map((e, i) => <div key={i}>Row {e.row}: {e.message}</div>)}
                 </div>
               )}
@@ -4979,17 +4979,17 @@ function MasterImportModal({ section, ctx, onClose, onImported }) {
 function MdCredential({ email, password }) {
   const [show, setShow] = useState(false);
   return (
-    <div className="flex items-center gap-2.5 text-[11px] text-zinc-500 mt-0.5 min-w-0">
+    <div className="flex items-center gap-2.5 text-[11px] text-slate-500 mt-0.5 min-w-0">
       <span className="flex items-center gap-1 min-w-0 truncate"><Mail className="w-3 h-3 shrink-0" />{email}</span>
       {password ? (
         <span className="flex items-center gap-1 shrink-0">
           <Lock className="w-3 h-3" />
-          <span className="font-mono text-zinc-400">{show ? password : '••••••••'}</span>
-          <button type="button" onClick={(e) => { e.stopPropagation(); setShow(s => !s); }} className="text-zinc-500 hover:text-zinc-200" title={show ? 'Sembunyikan' : 'Lihat password'}>
+          <span className="font-mono text-slate-400">{show ? password : '••••••••'}</span>
+          <button type="button" onClick={(e) => { e.stopPropagation(); setShow(s => !s); }} className="text-slate-500 hover:text-slate-200" title={show ? 'Sembunyikan' : 'Lihat password'}>
             {show ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
           </button>
         </span>
-      ) : <span className="text-zinc-600 italic shrink-0">— password tak tersimpan</span>}
+      ) : <span className="text-slate-600 italic shrink-0">— password tak tersimpan</span>}
     </div>
   );
 }
@@ -5016,28 +5016,28 @@ function MdDetailModal({ md, regionName, onClose }) {
     ['Dibuat', md.created_at ? new Date(md.created_at).toLocaleString('id-ID') : '—'],
   ];
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/80 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="w-full max-w-md bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden animate-pop-in" onClick={(e) => e.stopPropagation()}>
-        <div className="px-5 py-4 border-b border-zinc-800 flex items-center justify-between gap-3">
-          <h2 className="font-display font-bold text-lg text-zinc-100">Detail Akun MD</h2>
-          <button onClick={onClose} className="w-9 h-9 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 flex items-center justify-center"><X className="w-4 h-4" /></button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-fade-in">
+      <div className="w-full max-w-md bg-slate-950 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden animate-pop-in" onClick={(e) => e.stopPropagation()}>
+        <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between gap-3">
+          <h2 className="font-display font-bold text-lg text-slate-100">Detail Akun MD</h2>
+          <button onClick={onClose} className="w-9 h-9 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-100 flex items-center justify-center"><X className="w-4 h-4" /></button>
         </div>
         <div className="p-5 space-y-2.5">
           {rows.map(([k, v]) => (
             <div key={k} className="flex items-start justify-between gap-3 text-sm">
-              <span className="text-zinc-500 shrink-0">{k}</span>
-              <span className="text-zinc-100 font-medium text-right break-all">{v}</span>
+              <span className="text-slate-500 shrink-0">{k}</span>
+              <span className="text-slate-100 font-medium text-right break-all">{v}</span>
             </div>
           ))}
-          <div className="flex items-center justify-between gap-3 text-sm pt-2.5 border-t border-zinc-800">
-            <span className="text-zinc-500 shrink-0">Password</span>
+          <div className="flex items-center justify-between gap-3 text-sm pt-2.5 border-t border-slate-800">
+            <span className="text-slate-500 shrink-0">Password</span>
             <span className="flex items-center gap-2">
               {md.login_password ? (
                 <>
-                  <span className="font-mono text-zinc-100">{showPw ? md.login_password : '••••••••'}</span>
-                  <button onClick={() => setShowPw(s => !s)} className="text-zinc-500 hover:text-zinc-200">{showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>
+                  <span className="font-mono text-slate-100">{showPw ? md.login_password : '••••••••'}</span>
+                  <button onClick={() => setShowPw(s => !s)} className="text-slate-500 hover:text-slate-200">{showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>
                 </>
-              ) : <span className="text-zinc-600 italic">tak tersimpan</span>}
+              ) : <span className="text-slate-600 italic">tak tersimpan</span>}
             </span>
           </div>
         </div>
@@ -5251,22 +5251,22 @@ function MasterTab({ regions, kotas, distributors, bengkels, mds, accounts = [],
   return (
     <div>
       <div className="mb-5">
-        <h2 className="text-2xl font-bold text-zinc-100 tracking-tight font-display">Master Data</h2>
-        <p className="text-sm text-zinc-500 mt-1">Kelola distributor, region, kota, bengkel & akun</p>
+        <h2 className="text-2xl font-bold text-slate-100 tracking-tight font-display">Master Data</h2>
+        <p className="text-sm text-slate-500 mt-1">Kelola distributor, region, kota, bengkel & akun</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-4">
-        <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-2 h-fit">
+        <div className="bg-slate-950 border border-slate-800 rounded-xl p-2 h-fit">
           {sections.map(s => (
             <button key={s.id} onClick={() => setSection(s.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${section === s.id ? 'bg-red-600/10 text-red-400 border border-red-600/20' : 'text-zinc-400 hover:bg-zinc-950 hover:text-zinc-100 border border-transparent'}`}>
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${section === s.id ? 'bg-blue-600/10 text-blue-400 border border-blue-600/20' : 'text-slate-400 hover:bg-slate-950 hover:text-slate-100 border border-transparent'}`}>
               <s.icon className="w-4 h-4" />{s.label}
-              <span className="ml-auto text-[10px] font-mono text-zinc-600">{s.items.length}</span>
+              <span className="ml-auto text-[10px] font-mono text-slate-600">{s.items.length}</span>
             </button>
           ))}
         </div>
 
-        <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-5">
+        <div className="bg-slate-950 border border-slate-800 rounded-xl p-5">
           {/* Form: 3 mode — simple input / bengkel form (add or edit) / MD info */}
           {section === 'bengkels' && canManageMaster && (
             <>
@@ -5376,18 +5376,18 @@ function MasterTab({ regions, kotas, distributors, bengkels, mds, accounts = [],
 
           {current.items.length > 0 && (
             <div className="relative mb-3">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
               <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
                 placeholder={`Cari ${current.label.toLowerCase()}… (banyak: pisahkan dengan koma)`}
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg pl-9 pr-16 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-red-600/50" />
-              {search && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-zinc-500">{filteredItems.length}/{current.items.length}</span>}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-16 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-600/50" />
+              {search && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-slate-500">{filteredItems.length}/{current.items.length}</span>}
             </div>
           )}
 
           {bulkEnabled && filteredItems.length > 0 && (
             <div className="flex items-center justify-between gap-2 mb-2 px-1">
-              <label className="flex items-center gap-2 text-xs text-zinc-400 cursor-pointer">
-                <input type="checkbox" checked={allFilteredSelected} onChange={toggleSelectAll} className="accent-red-600" />
+              <label className="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
+                <input type="checkbox" checked={allFilteredSelected} onChange={toggleSelectAll} className="accent-blue-600" />
                 Pilih semua ({filteredItems.length})
               </label>
               {selectedIds.size > 0 && (
@@ -5401,11 +5401,11 @@ function MasterTab({ regions, kotas, distributors, bengkels, mds, accounts = [],
           )}
 
           {filteredItems.length > 0 && (
-            <div className="flex items-center justify-between gap-2 mb-2 text-xs text-zinc-500">
+            <div className="flex items-center justify-between gap-2 mb-2 text-xs text-slate-500">
               <div className="flex items-center gap-2">
                 <span>Tampilkan</span>
                 <select value={pageSize} onChange={e => { setPageSize(e.target.value === 'all' ? 'all' : Number(e.target.value)); setPage(1); }}
-                  className="bg-zinc-950 border border-zinc-800 rounded-md px-2 py-1 text-zinc-200 focus:outline-none focus:border-red-600/50">
+                  className="bg-slate-950 border border-slate-800 rounded-md px-2 py-1 text-slate-200 focus:outline-none focus:border-blue-600/50">
                   {[10, 25, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
                   <option value="all">Semua</option>
                 </select>
@@ -5414,10 +5414,10 @@ function MasterTab({ regions, kotas, distributors, bengkels, mds, accounts = [],
               {totalPages > 1 && (
                 <div className="flex items-center gap-1">
                   <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage <= 1}
-                    className="px-2 py-1 rounded-md border border-zinc-800 hover:border-zinc-600 disabled:opacity-40">‹</button>
+                    className="px-2 py-1 rounded-md border border-slate-800 hover:border-slate-600 disabled:opacity-40">‹</button>
                   <span className="px-1">Hal {safePage}/{totalPages}</span>
                   <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages}
-                    className="px-2 py-1 rounded-md border border-zinc-800 hover:border-zinc-600 disabled:opacity-40">›</button>
+                    className="px-2 py-1 rounded-md border border-slate-800 hover:border-slate-600 disabled:opacity-40">›</button>
                 </div>
               )}
             </div>
@@ -5425,42 +5425,42 @@ function MasterTab({ regions, kotas, distributors, bengkels, mds, accounts = [],
 
           <div className="space-y-1.5">
             {current.items.length === 0 ? (
-              <div className="text-center py-8 text-sm text-zinc-500">Belum ada data.</div>
+              <div className="text-center py-8 text-sm text-slate-500">Belum ada data.</div>
             ) : filteredItems.length === 0 ? (
-              <div className="text-center py-8 text-sm text-zinc-500">Tidak ada hasil untuk "{search}".</div>
+              <div className="text-center py-8 text-sm text-slate-500">Tidak ada hasil untuk "{search}".</div>
             ) : pagedItems.map((item, i) => (
               <div key={item.id}
                 onClick={section === 'mds' ? () => setDetailMDId(item.id) : undefined}
-                className={`flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg bg-zinc-950 border transition group ${section === 'mds' ? 'cursor-pointer' : ''} ${
-                  (editingBengkelId === item.id || editingMDId === item.id) ? 'border-amber-600/40 ring-1 ring-amber-600/20' : 'border-zinc-800 hover:border-zinc-700'
+                className={`flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg bg-slate-950 border transition group ${section === 'mds' ? 'cursor-pointer' : ''} ${
+                  (editingBengkelId === item.id || editingMDId === item.id) ? 'border-amber-600/40 ring-1 ring-amber-600/20' : 'border-slate-800 hover:border-slate-700'
                 }`}>
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                   {bulkEnabled && (
                     <input type="checkbox" checked={selectedIds.has(item.id)} onChange={() => toggleSelect(item.id)}
-                      className="accent-red-600 shrink-0" />
+                      className="accent-blue-600 shrink-0" />
                   )}
-                  <span className="text-[10px] font-mono text-zinc-600 w-7">{String(startIndex + i + 1).padStart(2, '0')}</span>
+                  <span className="text-[10px] font-mono text-slate-600 w-7">{String(startIndex + i + 1).padStart(2, '0')}</span>
                   {section === 'mds' ? (
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className={`text-sm truncate ${item.active === false ? 'text-zinc-500 line-through' : 'text-zinc-200'}`}>{current.getName(item)}</span>
+                        <span className={`text-sm truncate ${item.active === false ? 'text-slate-500 line-through' : 'text-slate-200'}`}>{current.getName(item)}</span>
                         <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase font-medium shrink-0 ${item.role === 'super_admin' ? 'bg-fuchsia-600/10 text-fuchsia-400' : item.role === 'admin' ? 'bg-rose-600/10 text-rose-400' : item.role === 'tl' ? 'bg-teal-600/10 text-teal-400' : item.role === 'bp' ? 'bg-amber-600/10 text-amber-400' : 'bg-sky-600/10 text-sky-400'}`}>
                           {item.role}{item.region_id ? ` · ${regionName(item.region_id) || ''}` : ''}
                         </span>
-                        {item.active === false && <span className="text-[10px] px-1.5 py-0.5 rounded uppercase font-medium shrink-0 bg-zinc-700/40 text-zinc-400">Nonaktif</span>}
+                        {item.active === false && <span className="text-[10px] px-1.5 py-0.5 rounded uppercase font-medium shrink-0 bg-slate-700/40 text-slate-400">Nonaktif</span>}
                       </div>
                       <MdCredential email={item.email} password={item.login_password} />
                     </div>
                   ) : (
                     <>
-                      <span className="text-sm text-zinc-200 truncate">{current.getName(item)}</span>
+                      <span className="text-sm text-slate-200 truncate">{current.getName(item)}</span>
                       {section === 'bengkels' && (
-                        <span className={`ml-auto text-[10px] font-mono px-1.5 py-0.5 rounded ${item.lat != null && item.lng != null ? 'bg-emerald-600/10 text-emerald-400' : 'bg-zinc-800/50 text-zinc-500'}`}>
+                        <span className={`ml-auto text-[10px] font-mono px-1.5 py-0.5 rounded ${item.lat != null && item.lng != null ? 'bg-emerald-600/10 text-emerald-400' : 'bg-slate-800/50 text-slate-500'}`}>
                           {item.lat != null && item.lng != null ? `${item.lat.toFixed(3)}, ${item.lng.toFixed(3)}` : 'no-gps'}
                         </span>
                       )}
                       {(section === 'distributors' || section === 'kotas') && (
-                        <span className={`ml-auto text-[10px] px-1.5 py-0.5 rounded ${item.region_id ? 'bg-sky-600/10 text-sky-400' : 'bg-zinc-800/50 text-zinc-500'}`}>
+                        <span className={`ml-auto text-[10px] px-1.5 py-0.5 rounded ${item.region_id ? 'bg-sky-600/10 text-sky-400' : 'bg-slate-800/50 text-slate-500'}`}>
                           {item.region?.name || regionName(item.region_id) || 'no-region'}
                         </span>
                       )}
@@ -5471,24 +5471,24 @@ function MasterTab({ regions, kotas, distributors, bengkels, mds, accounts = [],
                   {section === 'mds' && (
                     <>
                       <button onClick={() => setDetailMDId(item.id)} title="Detail akun"
-                        className="w-7 h-7 rounded-md hover:bg-sky-600/10 hover:text-sky-400 text-zinc-500 flex items-center justify-center">
+                        className="w-7 h-7 rounded-md hover:bg-sky-600/10 hover:text-sky-400 text-slate-500 flex items-center justify-center">
                         <FileText className="w-3.5 h-3.5" />
                       </button>
                       {isSuperAdmin && (item.role === 'md' || item.role === 'tl') && (
                         <button onClick={() => handleToggleActive(item)} title={item.active === false ? 'Aktifkan akun' : 'Nonaktifkan akun'}
-                          className={`w-7 h-7 rounded-md flex items-center justify-center ${item.active === false ? 'text-zinc-500 hover:bg-emerald-600/10 hover:text-emerald-400' : 'text-emerald-400 hover:bg-rose-600/10 hover:text-rose-400'}`}>
+                          className={`w-7 h-7 rounded-md flex items-center justify-center ${item.active === false ? 'text-slate-500 hover:bg-emerald-600/10 hover:text-emerald-400' : 'text-emerald-400 hover:bg-rose-600/10 hover:text-rose-400'}`}>
                           <Power className="w-3.5 h-3.5" />
                         </button>
                       )}
                       {isSuperAdmin && (
                         <button onClick={() => setEditingMDId(item.id)} title="Edit akun"
-                          className="w-7 h-7 rounded-md hover:bg-amber-600/10 hover:text-amber-400 text-zinc-500 flex items-center justify-center">
+                          className="w-7 h-7 rounded-md hover:bg-amber-600/10 hover:text-amber-400 text-slate-500 flex items-center justify-center">
                           <Activity className="w-3.5 h-3.5" />
                         </button>
                       )}
                       {isSuperAdmin && (
                         <button onClick={() => handleDeleteMD(item.id, current.getName(item))} title="Hapus akun"
-                          className="w-7 h-7 rounded-md hover:bg-rose-600/10 hover:text-rose-400 text-zinc-500 flex items-center justify-center">
+                          className="w-7 h-7 rounded-md hover:bg-rose-600/10 hover:text-rose-400 text-slate-500 flex items-center justify-center">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       )}
@@ -5496,14 +5496,14 @@ function MasterTab({ regions, kotas, distributors, bengkels, mds, accounts = [],
                   )}
                   {section === 'bengkels' && canManageMaster && (
                     <button onClick={() => setEditingBengkelId(item.id)}
-                      className="opacity-0 group-hover:opacity-100 transition w-7 h-7 rounded-md hover:bg-amber-600/10 hover:text-amber-400 text-zinc-500 flex items-center justify-center"
+                      className="opacity-0 group-hover:opacity-100 transition w-7 h-7 rounded-md hover:bg-amber-600/10 hover:text-amber-400 text-slate-500 flex items-center justify-center"
                       title="Edit bengkel">
                       <Activity className="w-3.5 h-3.5" />
                     </button>
                   )}
                   {section !== 'mds' && canManageMaster && (
                     <button onClick={() => handleDelete(item.id)}
-                      className="opacity-0 group-hover:opacity-100 transition w-7 h-7 rounded-md hover:bg-rose-600/10 hover:text-rose-400 text-zinc-500 flex items-center justify-center"
+                      className="opacity-0 group-hover:opacity-100 transition w-7 h-7 rounded-md hover:bg-rose-600/10 hover:text-rose-400 text-slate-500 flex items-center justify-center"
                       title="Hapus">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -5552,7 +5552,7 @@ function MasterTab({ regions, kotas, distributors, bengkels, mds, accounts = [],
 function Loading() {
   return (
     <div className="flex items-center justify-center py-20">
-      <Loader2 className="w-6 h-6 text-zinc-500 animate-spin" />
+      <Loader2 className="w-6 h-6 text-slate-500 animate-spin" />
     </div>
   );
 }
@@ -5586,7 +5586,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100" style={{ fontFamily: "'Manrope', system-ui, sans-serif" }}>
+    <div className="min-h-screen bg-slate-950 text-slate-100" style={{ fontFamily: "'Manrope', system-ui, sans-serif" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Archivo:wght@500;600;700;800;900&display=swap');
         h1, h2, h3, .font-display { font-family: 'Archivo', sans-serif; letter-spacing: -0.02em; }
@@ -5595,29 +5595,29 @@ export default function App() {
       {bootstrapping ? <Loading /> :
        !profile ? <LoginScreen onLogin={handleLogin} /> :
        <>
-        <header className="sticky top-0 z-40 backdrop-blur-xl bg-zinc-950/80 border-b border-zinc-800">
+        <header className="sticky top-0 z-40 backdrop-blur-xl bg-slate-950/80 border-b border-slate-800">
           <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <img src="/federal-logo.png" alt="2W Federal" className="h-9 w-auto shrink-0" />
               <div className="min-w-0">
-                <div className="font-display font-bold text-sm text-zinc-100 leading-tight">2W Federal POSM</div>
-                <div className="text-[10px] text-zinc-500 uppercase tracking-wider">{profile.role === 'md' ? 'MD Field Operations' : 'Admin Console'}</div>
+                <div className="font-display font-bold text-sm text-slate-100 leading-tight">2W Federal POSM</div>
+                <div className="text-[10px] text-slate-500 uppercase tracking-wider">{profile.role === 'md' ? 'MD Field Operations' : 'Admin Console'}</div>
               </div>
             </div>
             <div className="flex items-center gap-2 text-xs">
-              <div className="hidden sm:flex items-center gap-2 text-zinc-400">
-                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-red-600 to-red-800 flex items-center justify-center text-[10px] font-bold text-white">
+              <div className="hidden sm:flex items-center gap-2 text-slate-400">
+                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center text-[10px] font-bold text-white">
                   {profile.full_name.charAt(0)}
                 </div>
                 <span>{profile.full_name}</span>
               </div>
               {PASSKEY_ENABLED && !MOCK_MODE && (
                 <button onClick={() => setPasskeyOpen(true)} title="Kelola passkey"
-                  className="text-zinc-500 hover:text-zinc-200 transition flex items-center gap-1 px-2 py-1">
+                  className="text-slate-500 hover:text-slate-200 transition flex items-center gap-1 px-2 py-1">
                   <Fingerprint className="w-3.5 h-3.5" /><span className="hidden sm:inline">Passkey</span>
                 </button>
               )}
-              <button onClick={handleLogout} className="text-zinc-500 hover:text-rose-400 transition flex items-center gap-1 px-2 py-1">
+              <button onClick={handleLogout} className="text-slate-500 hover:text-rose-400 transition flex items-center gap-1 px-2 py-1">
                 <LogOut className="w-3.5 h-3.5" /><span className="hidden sm:inline">Logout</span>
               </button>
             </div>
@@ -5637,8 +5637,8 @@ export default function App() {
             : <AdminView profile={profile} />}
         </main>
 
-        <footer className="border-t border-zinc-800 py-6 mt-8">
-          <div className="max-w-6xl mx-auto px-4 text-center text-xs text-zinc-600">
+        <footer className="border-t border-slate-800 py-6 mt-8">
+          <div className="max-w-6xl mx-auto px-4 text-center text-xs text-slate-600">
             2W Federal POSM · v1.0
           </div>
         </footer>
