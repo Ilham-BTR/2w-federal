@@ -733,6 +733,16 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
             <InfoCell icon={MapPin} label="Kota" value={kota?.name || visit.kota_name || '—'} />
           </div>
 
+          {bengkel?.address && (
+            <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 flex items-start gap-2.5">
+              <MapPin className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Alamat Bengkel</div>
+                <p className="text-sm text-slate-300 leading-snug break-words">{bengkel.address}</p>
+              </div>
+            </div>
+          )}
+
           </>)}
 
           {/* Map */}
