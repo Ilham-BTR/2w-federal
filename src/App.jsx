@@ -1312,9 +1312,12 @@ function LoginScreen({ onLogin }) {
         <div className="flex flex-col items-center mb-8">
           <div className="relative mb-4">
             <div className="absolute inset-0 bg-blue-600 rounded-2xl blur-2xl opacity-30" />
-            <img src="/federal-logo.png" alt="2W Federal" className="relative h-16 w-auto drop-shadow-2xl" />
+            <img src="/aa-logo.png" alt="AA" className="relative h-24 w-auto drop-shadow-2xl" />
           </div>
-          <h1 className="font-display font-bold text-2xl text-slate-100 tracking-tight">2W Federal POSM</h1>
+          <div className="flex items-center gap-2">
+            <img src="/federal-logo.png" alt="2W Federal" className="h-6 w-auto" />
+            <h1 className="font-display font-bold text-2xl text-slate-100 tracking-tight">2W Federal POSM</h1>
+          </div>
           <p className="text-xs text-slate-500 uppercase tracking-[0.2em] mt-1">MD Field Operations</p>
         </div>
 
@@ -5609,7 +5612,8 @@ export default function App() {
         <header className="sticky top-0 z-40 backdrop-blur-xl bg-slate-950/80 border-b border-slate-800">
           <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
-              <img src="/federal-logo.png" alt="2W Federal" className="h-9 w-auto shrink-0" />
+              <img src="/aa-logo.png" alt="AA" className="h-9 w-auto shrink-0" />
+              <img src="/federal-logo.png" alt="2W Federal" className="h-6 w-auto shrink-0" />
               <div className="min-w-0">
                 <div className="font-display font-bold text-sm text-slate-100 leading-tight">2W Federal POSM</div>
                 <div className="text-[10px] text-slate-500 uppercase tracking-wider">{profile.role === 'md' ? 'MD Field Operations' : 'Admin Console'}</div>
