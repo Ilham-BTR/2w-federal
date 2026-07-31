@@ -807,11 +807,11 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
             {availablePhotos.length === 0 ? (
               <div className="text-center text-sm text-slate-500 py-8 bg-slate-950 border border-slate-800 rounded-xl">Tidak ada foto</div>
             ) : (
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {availablePhotos.map((p, i) => (
                   <div key={p.key}
-                    className="relative aspect-square rounded-lg overflow-hidden border border-slate-800 hover:border-blue-600/50 transition group bg-slate-950">
-                    <button onClick={() => setLightboxIdx(i)} className="absolute inset-0 w-full h-full">
+                    className="relative rounded-xl overflow-hidden border border-slate-800 hover:border-blue-600/50 transition group bg-slate-950">
+                    <button onClick={() => setLightboxIdx(i)} className="relative block w-full aspect-[4/3]">
                       {isMockPhoto(p.url) ? (
                         <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-600">
                           <Camera className="w-5 h-5 mb-1" />
@@ -821,8 +821,8 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
                         <StoredImage src={p.url} alt={p.label} className="absolute inset-0 w-full h-full object-cover" />
                       )}
                     </button>
-                    <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent px-2 py-1.5 pointer-events-none">
-                      <div className="text-[10px] font-medium text-slate-100 truncate">{p.label}</div>
+                    <div className="bg-slate-950 border-t border-slate-800 px-2.5 py-2 pointer-events-none">
+                      <div className="text-[11px] font-medium text-slate-200 leading-snug">{p.label}</div>
                     </div>
                     {canEdit && (
                       <button onClick={() => pickReplace(p.key)} disabled={replacingCol === p.key}
