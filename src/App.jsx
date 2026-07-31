@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import imageCompression from 'browser-image-compression';
 import { VISIT_PHOTO_MAP } from './lib/storage';
 import {
@@ -887,8 +888,9 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
         </div>
       </div>
 
-      {/* Lightbox */}
-      {lightboxIdx != null && availablePhotos[lightboxIdx] && (
+      {/* Lightbox — via portal ke body: ancestor modal punya backdrop-blur yang
+          membuat position:fixed menempel ke modal (ikut scroll), bukan ke layar. */}
+      {lightboxIdx != null && availablePhotos[lightboxIdx] && createPortal(
         <div className="fixed inset-0 z-[2000] bg-black flex items-center justify-center"
              onClick={() => setLightboxIdx(null)}>
           <button onClick={(e) => { e.stopPropagation(); setLightboxIdx((lightboxIdx - 1 + availablePhotos.length) % availablePhotos.length); }}
@@ -919,7 +921,8 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
             <span className="text-slate-500">·</span>
             <span className="text-slate-400 font-mono">{lightboxIdx + 1} / {availablePhotos.length}</span>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
