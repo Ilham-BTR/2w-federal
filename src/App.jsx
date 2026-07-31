@@ -3336,7 +3336,6 @@ function AdminView({ profile }) {
       <div className="grid grid-cols-3 gap-1 p-1 bg-slate-950 border border-slate-800 rounded-xl mb-5 sm:flex">
         {[
           { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-          { id: 'ranking', label: 'Ranking', icon: Trophy },
           { id: 'visits', label: 'Visits', icon: ClipboardList },
           { id: 'coverage', label: 'Coverage Map', icon: MapIcon },
           { id: 'master', label: 'Master Data', icon: Database },
@@ -3349,7 +3348,6 @@ function AdminView({ profile }) {
       </div>
 
       {tab === 'dashboard' && <DashboardTab visits={sVisits} mds={activeMds} onOpenVisit={openDetail} bengkels={bengkels} kotas={kotas} distributors={distributors} regions={regions} />}
-      {tab === 'ranking' && <LeaderboardTab visits={sVisits} mds={activeMds} regions={regions} />}
       {tab === 'visits' && <VisitsTab visits={sVisits} mds={activeMds} bengkels={bengkels} kotas={kotas} distributors={distributors} regions={regions} onOpenVisit={openDetail} />}
       {tab === 'coverage' &&<CoverageTab visits={sVisits} mds={activeMds} bengkels={bengkels} kotas={kotas} regions={regions} distributors={distributors} onOpenVisit={openDetail} />}
       {tab === 'master' && <MasterTab regions={regions} kotas={kotas} distributors={distributors} bengkels={bengkels} mds={sMds} accounts={sAccounts} onChange={() => loadAll(true)} isSuperAdmin={isSuperAdmin} canManageMaster={canManageMaster} />}
