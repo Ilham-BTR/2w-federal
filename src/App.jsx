@@ -2917,18 +2917,17 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
             <div className="text-sm text-slate-100 font-medium truncate">{regions.find(r => r.id === form.regionId)?.name || '—'}</div>
           </div>
         </div>
-        <Field label="Region" required>
-          <SearchableSelect
-            value={form.regionId}
-            onChange={(val) => setForm({ ...form, regionId: val, kotaId: '', bengkelId: '' })}
-            options={regions.map(r => ({ value: r.id, label: r.name }))}
-            placeholder="Pilih region…"
-            disabled={regionLocked}
-          />
-          {regionLocked
-            ? <p className="text-[11px] text-slate-500 mt-1 flex items-center gap-1"><Lock className="w-3 h-3" />Terkunci ke region kamu — hubungi admin kalau perlu diubah.</p>
-            : <p className="text-[11px] text-amber-400 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />Region kamu belum diset admin. Pilih manual dulu.</p>}
-        </Field>
+        {!regionLocked && (
+          <Field label="Region" required>
+            <SearchableSelect
+              value={form.regionId}
+              onChange={(val) => setForm({ ...form, regionId: val, kotaId: '', bengkelId: '' })}
+              options={regions.map(r => ({ value: r.id, label: r.name }))}
+              placeholder="Pilih region…"
+            />
+            <p className="text-[11px] text-amber-400 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />Region kamu belum diset admin. Pilih manual dulu.</p>
+          </Field>
+        )}
         <Field label="Kota" required>
           <SearchableSelect
             value={form.kotaId}
