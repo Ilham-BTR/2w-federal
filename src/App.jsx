@@ -2426,7 +2426,7 @@ function AdminAbsenTab({ mds, allowedMdIds, isSuperAdmin, regions = [] }) {
 // Tombol mengambang Chat Admin → WhatsApp (untuk MD)
 function WhatsAppCS({ name }) {
   const [open, setOpen] = useState(false);
-  const phone = '6281553006168'; // 0815-5300-6168 (Indonesia)
+  const phone = '6289508933544'; // 0895-0893-3544 (Indonesia)
   const msg = encodeURIComponent(`Halo Admin 2W Federal POSM, saya ${name || 'MD'}. Saya mau tanya / ada kendala:`);
   const waUrl = `https://wa.me/${phone}?text=${msg}`;
   return (
