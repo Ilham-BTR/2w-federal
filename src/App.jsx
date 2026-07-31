@@ -3004,13 +3004,6 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
         </Field>
       </Section>
 
-      <Section title="Dokumentasi Foto" subtitle={`${photoCount} / ${requiredPhotos.length} foto wajib`} icon={Camera}>
-        <div className="grid grid-cols-3 gap-3">
-          <PhotoTile label="Selfie Depan Bengkel" required hint="Selfie dengan latar bengkel terlihat" photo={form.photos.selfie} onChange={v => setPhoto('selfie', v)} />
-          <PhotoTile label="Tampak Depan Full (Before)" required hint="Bengkel tampak depan penuh, sebelum pemasangan" photo={form.photos.before} onChange={v => setPhoto('before', v)} />
-        </div>
-      </Section>
-
       <Section title="Hasil Visit" icon={Check}>
         <Field label="Hasil Visit" required>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -3028,20 +3021,40 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
           )}
         </Field>
 
-        {terpasang && (
-          <Field label="Foto Setelah Pemasangan" required>
-            <div className="grid grid-cols-3 gap-3">
-              <PhotoTile label="Tampak Depan (After)" required hint="Bengkel tampak depan setelah pemasangan" photo={form.photos.after} onChange={v => setPhoto('after', v)} />
-              <PhotoTile label="Spanduk Jarak Jauh" required photo={form.photos.spandukJauh} onChange={v => setPhoto('spandukJauh', v)} />
-              <PhotoTile label="Spanduk Jarak Sedang" required photo={form.photos.spandukSedang} onChange={v => setPhoto('spandukSedang', v)} />
-              <PhotoTile label="Foto Poster" required photo={form.photos.poster} onChange={v => setPhoto('poster', v)} />
-            </div>
-          </Field>
-        )}
         {form.status && !terpasang && (
-          <p className="text-[11px] text-slate-500 -mt-1 mb-2">Hasil visit bukan "Spanduk Terpasang" — foto lanjutan tidak diperlukan, cukup isi notes jika ada.</p>
+          <p className="text-[11px] text-slate-500 -mt-1 mb-2">Hasil visit bukan "Spanduk Terpasang" — cukup foto selfie & tampak depan (before), lalu isi notes jika ada.</p>
         )}
+      </Section>
 
+      <Section title="Dokumentasi Foto" subtitle={`${photoCount} / ${requiredPhotos.length} foto wajib`} icon={Camera}>
+        <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Selfie</div>
+        <div className="grid grid-cols-3 gap-3">
+          <PhotoTile label="Selfie Depan Bengkel" required hint="Selfie dengan latar bengkel terlihat" photo={form.photos.selfie} onChange={v => setPhoto('selfie', v)} />
+        </div>
+
+        <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mt-5 mb-2 pt-4 border-t border-slate-800">Tampak Depan Bengkel</div>
+        <div className="grid grid-cols-3 gap-3">
+          <PhotoTile label="Tampak Depan Full (Before)" required hint="Sebelum pemasangan" photo={form.photos.before} onChange={v => setPhoto('before', v)} />
+          {terpasang && (
+            <PhotoTile label="Tampak Depan (After)" required hint="Setelah pemasangan" photo={form.photos.after} onChange={v => setPhoto('after', v)} />
+          )}
+        </div>
+
+        {terpasang && (<>
+          <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mt-5 mb-2 pt-4 border-t border-slate-800">Spanduk</div>
+          <div className="grid grid-cols-3 gap-3">
+            <PhotoTile label="Spanduk Jarak Jauh" required photo={form.photos.spandukJauh} onChange={v => setPhoto('spandukJauh', v)} />
+            <PhotoTile label="Spanduk Jarak Sedang" required photo={form.photos.spandukSedang} onChange={v => setPhoto('spandukSedang', v)} />
+          </div>
+
+          <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mt-5 mb-2 pt-4 border-t border-slate-800">Poster</div>
+          <div className="grid grid-cols-3 gap-3">
+            <PhotoTile label="Foto Poster" required photo={form.photos.poster} onChange={v => setPhoto('poster', v)} />
+          </div>
+        </>)}
+      </Section>
+
+      <Section title="Notes" icon={FileText}>
         <Field label="Notes (tulis jika ada)">
           <Textarea rows={3} placeholder="Catatan tambahan…" value={form.remarks} onChange={e => setForm({ ...form, remarks: e.target.value })} />
         </Field>

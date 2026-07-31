@@ -15,7 +15,7 @@ import { startRegistration, startAuthentication } from '@simplewebauthn/browser'
 // MOCK DATA (untuk dev tanpa Supabase) — di-persist ke localStorage
 // ============================================================
 // Bump versi ini tiap kali seed data berubah → localStorage lama diabaikan, seed baru ke-load.
-const MOCK_STORAGE_KEY = 'federal2w_mock_data_v1';
+const MOCK_STORAGE_KEY = 'federal2w_mock_data_v2'; // v2: master bengkel dari db 2 W.xlsx
 
 // State default kalau localStorage belum ada isinya — di-seed dari CSV (lihat scripts/generate-seed.mjs)
 const DEFAULT_MOCK = {

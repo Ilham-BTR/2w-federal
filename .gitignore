@@ -31,3 +31,8 @@ ops/backup/backup.log
 
 # Playwright MCP artifacts
 .playwright-mcp/
+
+# Kredensial lokal - JANGAN ke repo
+.supabase-db-password.txt
+.admin-credentials.txt
+supabase/.temp/
