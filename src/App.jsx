@@ -175,6 +175,13 @@ const visitToCSVRow = (v, ctx) => {
     bengkel_alamat: b?.address || '',
     hasil_visit: v.status,
     notes: v.remarks || '',
+    status_cek: v.check_status || 'Belum Dicek',
+    remarks_admin: v.check_remarks || '',
+    foto_tidak_sesuai: v.photo_checks
+      ? Object.entries(v.photo_checks).filter(([, s]) => s === 'bad').map(([col]) => PHOTO_LABELS[col] || col).join(', ')
+      : '',
+    dicek_oleh: (ctx.accounts || ctx.mds || []).find(a => a.id === v.checked_by)?.full_name || '',
+    tanggal_cek: v.checked_at ? excelDateTimeSerial(v.checked_at) : '',
     bengkel_lat: b?.lat ?? '',
     bengkel_lng: b?.lng ?? '',
     visit_lat: v.visit_lat ?? '',
@@ -541,8 +548,14 @@ const KPI_ICON_COLOR = {
   blue: 'text-blue-500', amber: 'text-amber-500', rose: 'text-rose-500',
 };
 
-function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDeleted, canEdit = false, onUpdated, bengkels = [], distributors = [] }) {
+function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDeleted, canEdit = false, onUpdated, bengkels = [], distributors = [], canCheck = false, checkerId = null }) {
   const [lightboxIdx, setLightboxIdx] = useState(null);
+  // Pengecekan admin/AA: tiap foto dinilai Sesuai/Tidak, 1 remarks untuk seluruh visit.
+  const [checks, setChecks] = useState(() => visit.photo_checks || {});
+  const [checkRemarks, setCheckRemarks] = useState(visit.check_remarks || '');
+  const [savingCheck, setSavingCheck] = useState(false);
+  const [checkSaved, setCheckSaved] = useState(false);
+  const setCheck = (col, val) => { setChecks(c => ({ ...c, [col]: c[col] === val ? undefined : val })); setCheckSaved(false); };
   useBackDismiss(true, onClose);                                  // back -> tutup modal detail
   useBackDismiss(lightboxIdx != null, () => setLightboxIdx(null)); // back -> tutup foto fullscreen dulu
 
@@ -832,8 +845,24 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
                         <StoredImage src={p.url} alt={p.label} className="absolute inset-0 w-full h-full object-cover" />
                       )}
                     </button>
-                    <div className="bg-slate-950 border-t border-slate-800 px-2.5 py-2 pointer-events-none">
+                    <div className="bg-slate-950 border-t border-slate-800 px-2.5 py-2">
                       <div className="text-[11px] font-medium text-slate-200 leading-snug">{p.label}</div>
+                      {canCheck ? (
+                        <div className="grid grid-cols-2 gap-1.5 mt-2">
+                          <button onClick={() => setCheck(p.key, 'ok')}
+                            className={`py-1.5 rounded-md text-[11px] font-semibold border transition flex items-center justify-center gap-1 ${
+                              checks[p.key] === 'ok' ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-emerald-400'
+                            }`}><Check className="w-3 h-3" />Sesuai</button>
+                          <button onClick={() => setCheck(p.key, 'bad')}
+                            className={`py-1.5 rounded-md text-[11px] font-semibold border transition flex items-center justify-center gap-1 ${
+                              checks[p.key] === 'bad' ? 'bg-rose-600 border-rose-600 text-white' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-rose-400'
+                            }`}><X className="w-3 h-3" />Tidak</button>
+                        </div>
+                      ) : visit.photo_checks?.[p.key] && (
+                        <div className={`mt-1.5 text-[10px] font-semibold flex items-center gap-1 ${visit.photo_checks[p.key] === 'ok' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {visit.photo_checks[p.key] === 'ok' ? <><Check className="w-3 h-3" />Sesuai</> : <><X className="w-3 h-3" />Tidak Sesuai</>}
+                        </div>
+                      )}
                     </div>
                     {canEdit && (
                       <button onClick={() => pickReplace(p.key)} disabled={replacingCol === p.key}
@@ -848,11 +877,81 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
             )}
           </div>
 
+          {/* Panel pengecekan admin/AA */}
+          {canCheck && availablePhotos.length > 0 && (() => {
+            const vals = availablePhotos.map(p => checks[p.key]);
+            const belum = vals.filter(v => !v).length;
+            const adaTidak = vals.some(v => v === 'bad');
+            const statusPreview = belum > 0 ? null : (adaTidak ? 'Tidak Sesuai' : 'Sesuai');
+            const simpan = async () => {
+              setSavingCheck(true);
+              try {
+                const clean = {};
+                availablePhotos.forEach(p => { if (checks[p.key]) clean[p.key] = checks[p.key]; });
+                await api.saveVisitCheck(visit.id, { photoChecks: clean, remarks: checkRemarks, checkedBy: checkerId });
+                setCheckSaved(true);
+                onUpdated?.();
+              } catch (e) { alert('Gagal simpan pengecekan: ' + (e?.message || e)); }
+              finally { setSavingCheck(false); }
+            };
+            return (
+              <div className="bg-blue-950/20 border border-blue-700/40 rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div className="text-[11px] uppercase tracking-wider text-blue-400 font-semibold flex items-center gap-2">
+                    <Shield className="w-3.5 h-3.5" />Pengecekan Admin
+                  </div>
+                  <button onClick={() => { const all = {}; availablePhotos.forEach(p => { all[p.key] = 'ok'; }); setChecks(all); setCheckSaved(false); }}
+                    className="text-[11px] px-2.5 py-1 rounded-lg bg-emerald-600/15 border border-emerald-600/30 text-emerald-300 hover:bg-emerald-600/25 transition flex items-center gap-1">
+                    <Check className="w-3 h-3" />Tandai semua Sesuai
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-slate-400">Status:</span>
+                  {statusPreview
+                    ? <span className={`px-2 py-0.5 rounded-full font-semibold ${statusPreview === 'Sesuai' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/10 text-rose-400 border border-rose-500/30'}`}>{statusPreview}</span>
+                    : <span className="text-amber-400 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{belum} foto belum dinilai</span>}
+                </div>
+
+                <div>
+                  <div className="text-[11px] text-slate-400 mb-1">Remarks pengecekan (1 catatan untuk bengkel ini)</div>
+                  <Textarea rows={3} placeholder="Mis. foto spanduk terlalu jauh, minta MD ambil ulang dari ±3 meter…"
+                    value={checkRemarks} onChange={e => { setCheckRemarks(e.target.value); setCheckSaved(false); }} />
+                </div>
+
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div className="text-[11px] text-slate-500">
+                    {visit.checked_at ? `Terakhir dicek: ${new Date(visit.checked_at).toLocaleString('id-ID')}` : 'Belum pernah dicek'}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {checkSaved && <span className="text-[11px] text-emerald-400 flex items-center gap-1"><Check className="w-3 h-3" />Tersimpan</span>}
+                    <button onClick={simpan} disabled={savingCheck || belum > 0}
+                      className="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition disabled:opacity-50 flex items-center gap-1.5">
+                      {savingCheck ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />Menyimpan…</> : <><Check className="w-3.5 h-3.5" />Simpan Pengecekan</>}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Hasil pengecekan (tampilan read-only — MD & admin lain) */}
+          {!canCheck && visit.check_status && (
+            <div className={`rounded-xl p-4 border ${visit.check_status === 'Sesuai' ? 'bg-emerald-950/20 border-emerald-700/40' : 'bg-rose-950/20 border-rose-700/40'}`}>
+              <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2 flex items-center gap-1.5">
+                <Shield className="w-3 h-3" />Hasil Pengecekan Admin
+              </div>
+              <div className={`text-sm font-semibold ${visit.check_status === 'Sesuai' ? 'text-emerald-400' : 'text-rose-400'}`}>{visit.check_status}</div>
+              {visit.check_remarks && <p className="text-sm text-slate-300 whitespace-pre-wrap mt-1.5">{visit.check_remarks}</p>}
+              {visit.checked_at && <div className="text-[11px] text-slate-500 mt-2">Dicek {new Date(visit.checked_at).toLocaleString('id-ID')}</div>}
+            </div>
+          )}
+
           {/* Remarks */}
           {!editMode && visit.remarks && (
             <div className="bg-slate-950 border border-slate-800 rounded-xl p-4">
               <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2 flex items-center gap-1.5">
-                <FileText className="w-3 h-3" />Remarks
+                <FileText className="w-3 h-3" />Notes dari MD
               </div>
               <p className="text-sm text-slate-300 whitespace-pre-wrap">{visit.remarks}</p>
             </div>
@@ -3163,12 +3262,20 @@ function VisitHistory({ visits, bengkels, kotas, distributors, currentMD }) {
               </div>
               <h4 className="text-sm font-semibold text-slate-100 break-words leading-snug">{b?.name || v.bengkel_name || '—'}</h4>
               <div className="text-xs text-slate-500 mt-0.5">{k?.name || v.kota_name || '—'}</div>
-              <div className="mt-2"><StatusBadge status={v.status} /></div>
+              <div className="mt-2 flex items-center gap-2 flex-wrap">
+                <StatusBadge status={v.status} />
+                <CheckBadge visit={v} />
+              </div>
             </div>
             <div className="flex items-center gap-3 text-xs text-slate-500 pt-2 border-t border-slate-800 mt-2">
               <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{v.visit_date}{v.created_at ? ` · ${fmtAbsenTime(v.created_at)}` : ''}</span>
               <span className="flex items-center gap-1"><Camera className="w-3 h-3" />{photoCount} foto</span>
             </div>
+            {v.check_status === 'Tidak Sesuai' && v.check_remarks && (
+              <p className="text-[11px] text-rose-300 mt-2 pt-2 border-t border-slate-800">
+                <span className="font-semibold">Catatan admin:</span> {v.check_remarks}
+              </p>
+            )}
           </div>
         );
       })}
@@ -3301,6 +3408,228 @@ function LeaderboardTab({ visits, mds, regions }) {
 // ADMIN VIEW
 // ============================================================
 
+// ============================================================
+// LAPORAN COVERAGE — rekap Region → Provinsi/Kota vs jumlah bengkel (target),
+// dipecah per kategori hasil visit. Format mengikuti laporan Excel AA.
+// ============================================================
+function LaporanTab({ visits, bengkels, kotas, regions, accounts = [] }) {
+  const [level, setLevel] = useState('provinsi');   // provinsi | kota
+  const [month, setMonth] = useState('all');
+  const [dari, setDari] = useState('');
+  const [sampai, setSampai] = useState('');
+
+  const availableMonths = useMemo(
+    () => [...new Set(visits.map(v => v.visit_date.slice(0, 7)))].sort().reverse(), [visits]);
+
+  const kotaById = useMemo(() => new Map(kotas.map(k => [k.id, k])), [kotas]);
+  const regionById = useMemo(() => new Map(regions.map(r => [r.id, r])), [regions]);
+  const bengkelById = useMemo(() => new Map(bengkels.map(b => [b.id, b])), [bengkels]);
+
+  const fVisits = useMemo(() => visits.filter(v => {
+    if (dari || sampai) {
+      if (dari && v.visit_date < dari) return false;
+      if (sampai && v.visit_date > sampai) return false;
+    } else if (month !== 'all' && !v.visit_date.startsWith(month)) return false;
+    return true;
+  }), [visits, month, dari, sampai]);
+
+  // Kolom kategori (selain Visited & Terpasang yang tampil khusus)
+  const CATS = STATUS_OPTIONS.filter(s => s !== HASIL_TERPASANG);
+  // Label pendek agar tabel muat tanpa scroll samping
+  const SHORT = {
+    'Alamat bengkel tidak ditemukan': 'Alamat Tdk Ketemu',
+    'Ditolak': 'Ditolak',
+    'Bukan bengkel': 'Bukan Bengkel',
+    'Owner/PIC tidak di tempat': 'Owner Tdk Ada',
+    'Tidak jual oli Federal': 'Tdk Jual Federal',
+  };
+
+  // Agregasi: kunci = provinsi(region_id) atau kota(kota_id)
+  const { groups, grand } = useMemo(() => {
+    const blank = () => ({ target: 0, visited: 0, terpasang: 0, cats: Object.fromEntries(CATS.map(c => [c, 0])) });
+    const rows = new Map();   // key -> {name, groupName, ...counts}
+
+    const keyOf = (kota) => level === 'kota' ? kota?.id : kota?.region_id;
+    const nameOf = (kota) => {
+      if (level === 'kota') return kota?.name || '—';
+      return regionById.get(kota?.region_id)?.name || '—';
+    };
+    const ensure = (kota) => {
+      const key = keyOf(kota);
+      if (!key) return null;
+      if (!rows.has(key)) {
+        rows.set(key, { key, name: nameOf(kota), group: groupOfRegion(regionById.get(kota?.region_id)), ...blank() });
+      }
+      return rows.get(key);
+    };
+
+    // Target = jumlah bengkel terdata
+    bengkels.forEach(b => {
+      const row = ensure(kotaById.get(b.kota_id));
+      if (row) row.target++;
+    });
+    // Realisasi
+    fVisits.forEach(v => {
+      const b = bengkelById.get(v.bengkel_id);
+      const row = ensure(kotaById.get(b?.kota_id));
+      if (!row) return;
+      row.visited++;
+      if (v.status === HASIL_TERPASANG) row.terpasang++;
+      else if (row.cats[v.status] != null) row.cats[v.status]++;
+    });
+
+    // Kelompokkan per region + subtotal
+    const byGroup = {};
+    [...rows.values()].forEach(r => { (byGroup[r.group] ||= []).push(r); });
+    const groups = Object.entries(byGroup)
+      .map(([group, items]) => {
+        items.sort((a, b) => a.name.localeCompare(b.name));
+        const sub = { ...blank(), cats: Object.fromEntries(CATS.map(c => [c, 0])) };
+        items.forEach(r => {
+          sub.target += r.target; sub.visited += r.visited; sub.terpasang += r.terpasang;
+          CATS.forEach(c => { sub.cats[c] += r.cats[c]; });
+        });
+        return { group, items, sub };
+      })
+      .sort((a, b) => a.group.localeCompare(b.group));
+
+    const grand = { ...blank(), cats: Object.fromEntries(CATS.map(c => [c, 0])) };
+    groups.forEach(g => {
+      grand.target += g.sub.target; grand.visited += g.sub.visited; grand.terpasang += g.sub.terpasang;
+      CATS.forEach(c => { grand.cats[c] += g.sub.cats[c]; });
+    });
+    return { groups, grand };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fVisits, bengkels, kotaById, regionById, bengkelById, level]);
+
+  const pct = (n, t) => (t > 0 ? Math.round((n / t) * 100) : 0);
+  const cell = (n, t) => `${n} (${pct(n, t)}%)`;
+
+  const exportLaporan = async () => {
+    const XLSX = await import('xlsx');
+    const data = [];
+    groups.forEach(g => {
+      g.items.forEach(r => data.push({
+        Region: g.group,
+        [level === 'kota' ? 'Kota' : 'Provinsi']: r.name,
+        'Jumlah Bengkel': r.target,
+        Visited: cell(r.visited, r.target),
+        'Spanduk Terpasang': cell(r.terpasang, r.target),
+        ...Object.fromEntries(CATS.map(c => [c, cell(r.cats[c], r.target)])),
+      }));
+      data.push({
+        Region: `${g.group} TOTAL`, [level === 'kota' ? 'Kota' : 'Provinsi']: '',
+        'Jumlah Bengkel': g.sub.target,
+        Visited: cell(g.sub.visited, g.sub.target),
+        'Spanduk Terpasang': cell(g.sub.terpasang, g.sub.target),
+        ...Object.fromEntries(CATS.map(c => [c, cell(g.sub.cats[c], g.sub.target)])),
+      });
+    });
+    data.push({
+      Region: 'GRAND TOTAL', [level === 'kota' ? 'Kota' : 'Provinsi']: '',
+      'Jumlah Bengkel': grand.target,
+      Visited: cell(grand.visited, grand.target),
+      'Spanduk Terpasang': cell(grand.terpasang, grand.target),
+      ...Object.fromEntries(CATS.map(c => [c, cell(grand.cats[c], grand.target)])),
+    });
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Laporan Coverage');
+    XLSX.writeFile(wb, `laporan_coverage_${month === 'all' ? 'semua' : month}.xlsx`);
+  };
+
+  const Th = ({ children, className = '' }) => (
+    <th className={`px-2.5 py-2 text-[10px] uppercase tracking-wider font-semibold text-slate-300 whitespace-nowrap ${className}`}>{children}</th>
+  );
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-5 gap-3 flex-wrap">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-100 tracking-tight font-display">Laporan Coverage</h2>
+          <p className="text-sm text-slate-500 mt-1">Realisasi vs jumlah bengkel terdata · {grand.visited} visit</p>
+        </div>
+        <Button variant="secondary" onClick={exportLaporan} disabled={grand.target === 0}>
+          <Download className="w-4 h-4" />Export Excel
+        </Button>
+      </div>
+
+      <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 mb-4 grid grid-cols-2 md:grid-cols-3 gap-2">
+        <Select value={level} onChange={e => setLevel(e.target.value)}>
+          <option value="provinsi">Rincian per Provinsi</option>
+          <option value="kota">Rincian per Kota</option>
+        </Select>
+        <Select value={month} onChange={e => setMonth(e.target.value)}>
+          <option value="all">Semua Bulan</option>
+          {availableMonths.map(m => <option key={m} value={m}>{monthLabel(m)}</option>)}
+        </Select>
+      </div>
+      <DateRangeRow className="mb-4 -mt-1" dari={dari} sampai={sampai} onDari={setDari} onSampai={setSampai}
+        onReset={() => { setDari(''); setSampai(''); }} />
+
+      <div className="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border-collapse">
+            <thead className="bg-blue-950/40 border-b border-slate-800">
+              <tr>
+                <Th className="text-left">Region</Th>
+                <Th className="text-left">{level === 'kota' ? 'Kota' : 'Provinsi'}</Th>
+                <Th className="text-right"># Bengkel</Th>
+                <Th className="text-right">Visited</Th>
+                <Th className="text-right">Terpasang</Th>
+                {CATS.map(c => <Th key={c} className="text-right" title={c}>{SHORT[c] || c}</Th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {groups.map(g => (
+                <React.Fragment key={g.group}>
+                  {g.items.map((r, i) => (
+                    <tr key={r.key} className="border-b border-slate-800/60 hover:bg-slate-900/40">
+                      <td className="px-2.5 py-1.5 text-[11px] font-semibold text-slate-400 whitespace-nowrap">
+                        {i === 0 ? g.group : ''}
+                      </td>
+                      <td className="px-2.5 py-1.5 text-xs text-slate-200 whitespace-nowrap">{r.name}</td>
+                      <td className="px-2.5 py-1.5 text-xs text-right font-mono text-slate-300">{r.target}</td>
+                      <td className="px-2.5 py-1.5 text-xs text-right font-mono text-sky-300 whitespace-nowrap">{cell(r.visited, r.target)}</td>
+                      <td className="px-2.5 py-1.5 text-xs text-right font-mono text-emerald-400 whitespace-nowrap">{cell(r.terpasang, r.target)}</td>
+                      {CATS.map(c => (
+                        <td key={c} className={`px-2.5 py-1.5 text-xs text-right font-mono whitespace-nowrap ${r.cats[c] > 0 ? 'text-amber-300' : 'text-slate-600'}`}>
+                          {cell(r.cats[c], r.target)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                  <tr className="bg-blue-900/25 border-b-2 border-slate-800 font-semibold">
+                    <td className="px-2.5 py-1.5 text-[11px] text-blue-200 whitespace-nowrap">{g.group} TOTAL</td>
+                    <td />
+                    <td className="px-2.5 py-1.5 text-xs text-right font-mono text-slate-100">{g.sub.target}</td>
+                    <td className="px-2.5 py-1.5 text-xs text-right font-mono text-sky-200 whitespace-nowrap">{cell(g.sub.visited, g.sub.target)}</td>
+                    <td className="px-2.5 py-1.5 text-xs text-right font-mono text-emerald-300 whitespace-nowrap">{cell(g.sub.terpasang, g.sub.target)}</td>
+                    {CATS.map(c => (
+                      <td key={c} className="px-2.5 py-1.5 text-xs text-right font-mono text-amber-200 whitespace-nowrap">{cell(g.sub.cats[c], g.sub.target)}</td>
+                    ))}
+                  </tr>
+                </React.Fragment>
+              ))}
+              <tr className="bg-slate-800/60 font-bold">
+                <td className="px-2.5 py-2 text-[11px] text-slate-100 whitespace-nowrap">GRAND TOTAL</td>
+                <td />
+                <td className="px-2.5 py-2 text-xs text-right font-mono text-slate-100">{grand.target}</td>
+                <td className="px-2.5 py-2 text-xs text-right font-mono text-sky-200 whitespace-nowrap">{cell(grand.visited, grand.target)}</td>
+                <td className="px-2.5 py-2 text-xs text-right font-mono text-emerald-300 whitespace-nowrap">{cell(grand.terpasang, grand.target)}</td>
+                {CATS.map(c => (
+                  <td key={c} className="px-2.5 py-2 text-xs text-right font-mono text-amber-200 whitespace-nowrap">{cell(grand.cats[c], grand.target)}</td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <p className="text-[11px] text-slate-500 mt-2">Persentase dihitung terhadap jumlah bengkel terdata (# Bengkel) di baris tersebut.</p>
+    </div>
+  );
+}
+
 function AdminView({ profile }) {
   const isSuperAdmin = profile?.role === 'super_admin';
   const [tab, setTab] = useState('dashboard');
@@ -3361,10 +3690,11 @@ function AdminView({ profile }) {
   const detailMD = detailVisit ? sMds.find(m => m.id === detailVisit.md_id) : null;
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="max-w-[1800px] mx-auto">
       <div className="grid grid-cols-3 gap-1 p-1 bg-slate-950 border border-slate-800 rounded-xl mb-5 sm:flex">
         {[
           { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+          { id: 'laporan', label: 'Laporan', icon: Target },
           { id: 'visits', label: 'Visits', icon: ClipboardList },
           { id: 'absen', label: 'Absen', icon: CalendarDays },
           { id: 'coverage', label: 'Coverage Map', icon: MapIcon },
@@ -3377,8 +3707,9 @@ function AdminView({ profile }) {
         ))}
       </div>
 
-      {tab === 'dashboard' && <DashboardTab visits={sVisits} mds={activeMds} onOpenVisit={openDetail} bengkels={bengkels} kotas={kotas} distributors={distributors} regions={regions} />}
-      {tab === 'visits' && <VisitsTab visits={sVisits} mds={activeMds} bengkels={bengkels} kotas={kotas} distributors={distributors} regions={regions} onOpenVisit={openDetail} />}
+      {tab === 'dashboard' && <DashboardTab visits={sVisits} mds={activeMds} onOpenVisit={openDetail} bengkels={bengkels} kotas={kotas} distributors={distributors} regions={regions} accounts={accounts} />}
+      {tab === 'laporan' && <LaporanTab visits={sVisits} bengkels={bengkels} kotas={kotas} regions={regions} accounts={accounts} />}
+      {tab === 'visits' && <VisitsTab visits={sVisits} mds={activeMds} bengkels={bengkels} kotas={kotas} distributors={distributors} regions={regions} onOpenVisit={openDetail} accounts={accounts} />}
       {tab === 'absen' && <AdminAbsenTab mds={activeMds} allowedMdIds={allowedMdIds} isSuperAdmin={isSuperAdmin} regions={regions} />}
       {tab === 'coverage' &&<CoverageTab visits={sVisits} mds={activeMds} bengkels={bengkels} kotas={kotas} regions={regions} distributors={distributors} onOpenVisit={openDetail} />}
       {tab === 'master' && showMaster && <MasterTab regions={regions} kotas={kotas} distributors={distributors} bengkels={bengkels} mds={sMds} accounts={sAccounts} onChange={() => loadAll(true)} isSuperAdmin={isSuperAdmin} canManageMaster={canManageMaster} />}
@@ -3393,7 +3724,9 @@ function AdminView({ profile }) {
           onClose={() => setDetailVisitId(null)}
           onDeleted={isSuperAdmin ? () => { setDetailVisitId(null); loadAll(); } : undefined}
           canEdit={isSuperAdmin}
-          onUpdated={() => loadAll()}
+          canCheck={!isTL}
+          checkerId={profile?.id}
+          onUpdated={() => loadAll(true)}
           bengkels={bengkels}
           distributors={distributors}
         />
@@ -3415,13 +3748,27 @@ function OnSiteBadge({ bengkel, visit }) {
   return null; // 100–500m: netral, tidak ditampilkan agar tidak ramai
 }
 
-function VisitsTab({ visits, mds, bengkels, kotas, distributors, regions, onOpenVisit }) {
+// Badge status pengecekan admin — dipakai di daftar visit (admin) & history MD.
+function CheckBadge({ visit }) {
+  if (!visit.check_status) {
+    return <span className="text-[10px] text-slate-500 flex items-center gap-0.5" title="Belum dicek admin"><Shield className="w-2.5 h-2.5" />belum dicek</span>;
+  }
+  const ok = visit.check_status === 'Sesuai';
+  return (
+    <span className={`text-[10px] flex items-center gap-0.5 ${ok ? 'text-emerald-400' : 'text-rose-400'}`} title={visit.check_remarks || visit.check_status}>
+      {ok ? <Check className="w-2.5 h-2.5" /> : <X className="w-2.5 h-2.5" />}{visit.check_status.toLowerCase()}
+    </span>
+  );
+}
+
+function VisitsTab({ visits, mds, bengkels, kotas, distributors, regions, onOpenVisit, accounts = [] }) {
   const [filters, setFilters] = useState({
     search: '',
     mdId: 'all',
     regionId: 'all',
     distributorId: 'all',
     status: 'all',
+    check: 'all',
     month: 'all',
     dari: '',
     sampai: '',
@@ -3452,6 +3799,8 @@ function VisitsTab({ visits, mds, bengkels, kotas, distributors, regions, onOpen
       if (filters.regionId !== 'all' && k?.region_id !== filters.regionId) return false;
       if (filters.distributorId !== 'all' && v.distributor_id !== filters.distributorId) return false;
       if (filters.status !== 'all' && v.status !== filters.status) return false;
+      if (filters.check === 'belum' && v.check_status) return false;
+      if (filters.check !== 'all' && filters.check !== 'belum' && v.check_status !== filters.check) return false;
       if (filters.month !== 'all' && !v.visit_date.startsWith(filters.month)) return false;
       if (filters.dari && v.visit_date < filters.dari) return false;
       if (filters.sampai && v.visit_date > filters.sampai) return false;
@@ -3471,7 +3820,7 @@ function VisitsTab({ visits, mds, bengkels, kotas, distributors, regions, onOpen
   }, [visits]);
 
   const handleExport = async () => {
-    const ctx = { bengkels, kotas, regions, distributors, mds };
+    const ctx = { bengkels, kotas, regions, distributors, mds, accounts };
     await exportVisitsXlsx(filtered, ctx, `visits_${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
@@ -3515,6 +3864,12 @@ function VisitsTab({ visits, mds, bengkels, kotas, distributors, regions, onOpen
           <option value="all">Semua Status</option>
           {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
         </Select>
+        <Select value={filters.check} onChange={e => setFilters({ ...filters, check: e.target.value })}>
+          <option value="all">Semua Pengecekan</option>
+          <option value="belum">Belum Dicek</option>
+          <option value="Sesuai">Sudah Dicek · Sesuai</option>
+          <option value="Tidak Sesuai">Sudah Dicek · Tidak Sesuai</option>
+        </Select>
       </div>
 
       {/* Filter rentang tanggal custom */}
@@ -3557,7 +3912,10 @@ function VisitsTab({ visits, mds, bengkels, kotas, distributors, regions, onOpen
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
                   <StatusBadge status={v.status} />
-                  <OnSiteBadge bengkel={b} visit={v} />
+                  <div className="flex items-center gap-1">
+                    <CheckBadge visit={v} />
+                    <OnSiteBadge bengkel={b} visit={v} />
+                  </div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-blue-300 transition shrink-0" />
               </button>
@@ -3575,7 +3933,7 @@ function VisitsTab({ visits, mds, bengkels, kotas, distributors, regions, onOpen
   );
 }
 
-function DashboardTab({ visits, mds, bengkels, kotas, regions, distributors, onOpenVisit }) {
+function DashboardTab({ visits, mds, bengkels, kotas, regions, distributors, onOpenVisit, accounts = [] }) {
   const [filters, setFilters] = useState({ month: 'all', mdId: 'all', regionId: 'all', distributorId: 'all', dari: '', sampai: '' });
 
   const availableMonths = useMemo(() => {
@@ -3681,7 +4039,7 @@ function DashboardTab({ visits, mds, bengkels, kotas, regions, distributors, onO
   const colorForRegion = (r) => regionColor[r] || '#71717a';
 
   const handleExport = async () => {
-    const ctx = { bengkels, kotas, regions, distributors, mds };
+    const ctx = { bengkels, kotas, regions, distributors, mds, accounts };
     const fname = `visits_${filters.month}_${new Date().toISOString().slice(0, 10)}.xlsx`;
     await exportVisitsXlsx(filteredVisits, ctx, fname);
   };
@@ -5636,7 +5994,7 @@ export default function App() {
        !profile ? <LoginScreen onLogin={handleLogin} /> :
        <>
         <header className="sticky top-0 z-40 backdrop-blur-xl bg-slate-950/80 border-b border-slate-800">
-          <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+          <div className="max-w-[1800px] mx-auto px-4 py-3 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <img src="/aa-logo.png" alt="AA" className="h-9 w-auto shrink-0" />
               <img src="/federal-logo.png" alt="2W Federal" className="h-6 w-auto shrink-0" />

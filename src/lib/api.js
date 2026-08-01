@@ -333,6 +333,32 @@ export async function fetchAccounts() {
  * Dipakai super admin saat edit akun TL. Create memakai edge function.
  */
 /**
+ * Simpan hasil pengecekan visit oleh admin/AA.
+ * @param {string} visitId
+ * @param {Object} args - { photoChecks: {selfie:'ok'|'bad',...}, remarks, checkedBy }
+ */
+export async function saveVisitCheck(visitId, { photoChecks, remarks, checkedBy }) {
+  const values = Object.values(photoChecks || {});
+  const status = values.length === 0 ? null : (values.some(v => v === 'bad') ? 'Tidak Sesuai' : 'Sesuai');
+  const patch = {
+    photo_checks: photoChecks || null,
+    check_status: status,
+    check_remarks: remarks?.trim() || null,
+    checked_by: checkedBy || null,
+    checked_at: new Date().toISOString(),
+  };
+  if (MOCK_MODE) {
+    const v = MOCK_DATA.visits.find(x => x.id === visitId);
+    if (v) Object.assign(v, patch);
+    persistMock();
+    return patch;
+  }
+  const { error } = await supabase.from('visits').update(patch).eq('id', visitId);
+  if (error) throw error;
+  return patch;
+}
+
+/**
  * Daftar region milik user yang sedang login (MD/TL multi-area).
  * Baca tl_regions milik sendiri — RLS mengizinkan (tl_id = auth.uid()).
  */
