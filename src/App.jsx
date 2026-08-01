@@ -3682,23 +3682,33 @@ function DashboardTab({ visits, mds, bengkels, kotas, regions, distributors, onO
       o.Actual++;
       if (v.status === HASIL_TERPASANG) o.terpasang++;
     });
+    // Target = jumlah bengkel terdata (database) per provinsi
+    const dbCount = {};
+    bengkels.forEach(b => {
+      const rid = kotaRegion[b.kota_id];
+      if (rid) dbCount[rid] = (dbCount[rid] || 0) + 1;
+    });
     return regions
-      .map(r => ({ id: r.id, name: r.name, region: r.name, group: groupOfRegion(r), Actual: byRegion[r.id]?.Actual || 0, terpasang: byRegion[r.id]?.terpasang || 0 }))
+      .map(r => ({
+        id: r.id, name: r.name, region: r.name, group: groupOfRegion(r),
+        Actual: byRegion[r.id]?.Actual || 0, terpasang: byRegion[r.id]?.terpasang || 0,
+        Target: dbCount[r.id] || 0,
+      }))
       .sort((a, b) => (b.Actual - a.Actual) || a.name.localeCompare(b.name));
-  }, [filteredVisits, regions, bengkelRegion]);
+  }, [filteredVisits, regions, bengkels, kotaRegion, bengkelRegion]);
   // Agregasi level REGION (7 grup besar) untuk grafik
   const groupChartData = useMemo(() => {
     const byGroup = {};
     chartData.forEach(p => {
-      const o = (byGroup[p.group] ||= { name: p.group, region: p.group, Actual: 0, terpasang: 0 });
-      o.Actual += p.Actual; o.terpasang += p.terpasang;
+      const o = (byGroup[p.group] ||= { name: p.group, region: p.group, Actual: 0, terpasang: 0, Target: 0 });
+      o.Actual += p.Actual; o.terpasang += p.terpasang; o.Target += p.Target;
     });
     return Object.values(byGroup).sort((a, b) => (b.Actual - a.Actual) || a.name.localeCompare(b.name));
   }, [chartData]);
 
   const totalVisits = filteredVisits.length;
-  const pemasangan = filteredVisits.filter(v => v.status === HASIL_TERPASANG).length;
-  const revisit = filteredVisits.filter(v => v.status !== HASIL_TERPASANG).length;
+  // Hitung per kategori hasil visit
+  const countStatus = (s) => filteredVisits.filter(v => v.status === s).length;
   // MD yang benar-benar ada visit di filter ini (bukan sekadar jumlah MD terdaftar)
   const activeMdCount = new Set(filteredVisits.map(v => v.md_id)).size;
 
@@ -3766,8 +3776,12 @@ function DashboardTab({ visits, mds, bengkels, kotas, regions, distributors, onO
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         {[
           { label: 'Total Visit', value: totalVisits, sub: 'kunjungan tercatat', icon: Activity, color: 'red' },
-          { label: 'Terpasang', value: pemasangan, sub: 'spanduk terpasang', icon: Check, color: 'sky' },
-          { label: 'Tidak Terpasang', value: revisit, sub: 'hasil lainnya', icon: Navigation, color: 'blue' },
+          { label: 'Spanduk Terpasang', value: countStatus(HASIL_TERPASANG), sub: 'berhasil terpasang', icon: Check, color: 'emerald' },
+          { label: 'Alamat Tidak Ditemukan', value: countStatus('Alamat bengkel tidak ditemukan'), sub: 'bengkel tak ketemu', icon: MapPin, color: 'amber' },
+          { label: 'Ditolak', value: countStatus('Ditolak'), sub: 'pemasangan ditolak', icon: X, color: 'rose' },
+          { label: 'Bukan Bengkel', value: countStatus('Bukan bengkel'), sub: 'data tidak sesuai', icon: Building2, color: 'blue' },
+          { label: 'Owner/PIC Tidak di Tempat', value: countStatus('Owner/PIC tidak di tempat'), sub: 'belum diizinkan', icon: User, color: 'sky' },
+          { label: 'Tidak Jual Oli Federal', value: countStatus('Tidak jual oli Federal'), sub: 'bukan penjual Federal', icon: AlertCircle, color: 'red' },
           { label: 'MD Aktif', value: activeMdCount, sub: `dari ${relevantMDs.length} MD · ada visit`, icon: Users, color: 'amber' },
         ].map((k, i) => (
           <div key={i} className="bg-slate-950 border border-slate-800 rounded-xl p-4">
@@ -3789,33 +3803,40 @@ function DashboardTab({ visits, mds, bengkels, kotas, regions, distributors, onO
               <XAxis dataKey="name" stroke="#71717a" interval={0} height={80} tick={renderMdTick} />
               <YAxis stroke="#71717a" tick={{ fontSize: 11 }} />
               <Tooltip contentStyle={{ background: '#09090b', border: '1px solid #27272a', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: '#e4e4e7' }} itemStyle={{ color: '#e4e4e7' }} cursor={{ fill: 'rgba(239,68,68,0.05)' }} />
-              <Bar dataKey="Actual" radius={[4, 4, 0, 0]}>
+              <Bar dataKey="Actual" name="Visit" radius={[4, 4, 0, 0]}>
                 {groupChartData.map((d, i) => <Cell key={i} fill={colorForRegion(d.region)} />)}
                 <LabelList dataKey="Actual" position="top" fill="#ffffff" fontSize={10} fontWeight={600} />
               </Bar>
+              <Line dataKey="Target" name="Target (jumlah bengkel)" stroke="#2563eb" strokeWidth={2} strokeDasharray="6 4" dot={{ r: 3 }} />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
+        <div className="flex flex-wrap justify-center items-center gap-x-3 gap-y-1.5 mt-2 text-[11px]">
+          <span className="flex items-center gap-1.5 text-slate-400"><span className="inline-block w-3.5 border-t-2 border-dashed border-blue-600" />Target = jumlah bengkel terdata per region</span>
+        </div>
 
         <div className="mt-5 space-y-2">
-          <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Rincian per Provinsi</div>
-          {chartData.filter(r => r.Actual > 0).map((r, i) => (
-            <div key={r.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-slate-950 border border-slate-800">
-              <div className="w-6 h-6 rounded-full bg-slate-800/50 flex items-center justify-center text-[10px] font-mono text-slate-400">{i + 1}</div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-slate-200 truncate">{r.name}
-                  <span className="ml-2 text-[10px] font-normal text-slate-500">· {r.group}</span>
+          <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Rincian per Provinsi (visit / target database)</div>
+          {chartData.map((r, i) => {
+            const pct = r.Target > 0 ? Math.round((r.Actual / r.Target) * 100) : 0;
+            return (
+              <div key={r.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-slate-950 border border-slate-800">
+                <div className="w-6 h-6 rounded-full bg-slate-800/50 flex items-center justify-center text-[10px] font-mono text-slate-400">{i + 1}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-slate-200 truncate">{r.name}
+                    <span className="ml-2 text-[10px] font-normal text-slate-500">· {r.group}</span>
+                  </div>
+                  <div className="h-1 bg-slate-800/50 rounded-full mt-1 overflow-hidden">
+                    <div className="h-full rounded-full bg-blue-600" style={{ width: `${Math.min(pct, 100)}%` }} />
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-semibold text-slate-100">{r.Actual}<span className="text-slate-500">/{r.Target}</span></div>
+                  <div className="text-[10px] text-slate-500">{pct}% · <span className="text-emerald-400">{r.terpasang} terpasang</span></div>
                 </div>
               </div>
-              <div className="text-right">
-                <div className="text-sm font-semibold text-slate-100">{r.Actual}<span className="text-slate-500"> visit</span></div>
-                <div className="text-[10px] text-emerald-400">{r.terpasang} terpasang</div>
-              </div>
-            </div>
-          ))}
-          {chartData.every(r => r.Actual === 0) && (
-            <div className="text-center py-6 text-slate-500 text-sm">Belum ada visit di filter ini.</div>
-          )}
+            );
+          })}
         </div>
       </Section>
 
