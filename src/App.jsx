@@ -4117,18 +4117,22 @@ function DashboardTab({ visits, mds, bengkels, kotas, regions, distributors, onO
               <YAxis yAxisId="visit" stroke="#71717a" tick={{ fontSize: 11 }} />
               <YAxis yAxisId="target" orientation="right" stroke="#2563eb" tick={{ fontSize: 10 }} />
               <Tooltip contentStyle={{ background: '#09090b', border: '1px solid #27272a', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: '#e4e4e7' }} itemStyle={{ color: '#e4e4e7' }} cursor={{ fill: 'rgba(239,68,68,0.05)' }} />
+              {/* Batang Target (kiri, biru) berdampingan dengan batang Visit (kanan, hijau) */}
+              <Bar yAxisId="target" dataKey="Target" name="Target" fill="#2563eb" radius={[4, 4, 0, 0]}>
+                <LabelList dataKey="Target" position="top" fill="#93c5fd" fontSize={10} fontWeight={600} />
+              </Bar>
               <Bar yAxisId="visit" dataKey="Actual" name="Visit" radius={[4, 4, 0, 0]}>
                 {groupChartData.map((d, i) => <Cell key={i} fill={colorForRegion(d.region)} />)}
                 <LabelList dataKey="Actual" position="top" fill="#ffffff" fontSize={10} fontWeight={600} />
               </Bar>
               {/* Seri tak terlihat — hanya supaya angka Terpasang ikut muncul di tooltip */}
               <Line yAxisId="visit" dataKey="terpasang" name="Berhasil Terpasang" stroke="#10b981" strokeOpacity={0} dot={false} activeDot={false} legendType="none" />
-              <Line yAxisId="target" dataKey="Target" name="Target" stroke="#2563eb" strokeWidth={2} strokeDasharray="6 4" dot={{ r: 3 }} />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
         <div className="flex flex-wrap justify-center items-center gap-x-3 gap-y-1.5 mt-2 text-[11px]">
-          <span className="flex items-center gap-1.5 text-slate-400"><span className="inline-block w-3.5 border-t-2 border-dashed border-blue-600" />Target = jumlah bengkel terdata per region</span>
+          <span className="flex items-center gap-1.5 text-slate-400"><span className="w-2.5 h-2.5 rounded-sm bg-blue-600" />Target (jumlah bengkel terdata)</span>
+          <span className="flex items-center gap-1.5 text-slate-400"><span className="w-2.5 h-2.5 rounded-sm bg-emerald-500" />Visit tercatat</span>
         </div>
 
         <div className="mt-5 space-y-2">
