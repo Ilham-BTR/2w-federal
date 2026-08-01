@@ -332,6 +332,20 @@ export async function fetchAccounts() {
  * Set daftar region yang dicover seorang TL (replace semua baris tl_regions).
  * Dipakai super admin saat edit akun TL. Create memakai edge function.
  */
+/**
+ * Daftar region milik user yang sedang login (MD/TL multi-area).
+ * Baca tl_regions milik sendiri — RLS mengizinkan (tl_id = auth.uid()).
+ */
+export async function fetchMyRegions(userId) {
+  if (MOCK_MODE) {
+    const p = MOCK_DATA.profiles.find(x => x.id === userId);
+    return p?.region_ids?.filter(Boolean) || [];
+  }
+  const { data, error } = await supabase.from('tl_regions').select('region_id').eq('tl_id', userId);
+  if (error) { console.warn('fetchMyRegions gagal:', error.message); return []; }
+  return (data || []).map(r => r.region_id);
+}
+
 export async function setTlRegions(tlId, regionIds) {
   const ids = (regionIds || []).filter(Boolean);
   if (MOCK_MODE) {
@@ -480,7 +494,7 @@ export async function bulkCreateMDs(rows, onProgress) {
           full_name: r.full_name,
           role: r.role || 'md',
           region_id: r.region_id || null,
-          region_ids: (r.role === 'tl' && Array.isArray(r.region_ids)) ? r.region_ids.filter(Boolean) : undefined,
+          region_ids: (['tl', 'md'].includes(r.role) && Array.isArray(r.region_ids)) ? r.region_ids.filter(Boolean) : undefined,
           monthly_target: r.monthly_target || 30,
           login_password: r.password || 'federal',  // mock: simpan password biar bisa login & terlihat admin
         });

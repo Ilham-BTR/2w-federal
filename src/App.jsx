@@ -2772,8 +2772,18 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
 
   const filteredKotas = kotas.filter(k => k.region_id === form.regionId);
   const filteredBengkels = bengkels.filter(b => !form.kotaId || b.kota_id === form.kotaId);
-  // Region dikunci ke region MD (kalau sudah diset admin) — MD hanya boleh visit di regionnya.
-  const regionLocked = !!currentMD.region_id;
+  // Area MD bisa >1 (tabel tl_regions dipakai juga untuk MD). Fallback: region_id tunggal.
+  const [myRegionIds, setMyRegionIds] = useState(null);
+  useEffect(() => {
+    api.fetchMyRegions(currentMD.id)
+      .then(ids => setMyRegionIds(ids?.length ? ids : (currentMD.region_id ? [currentMD.region_id] : [])))
+      .catch(() => setMyRegionIds(currentMD.region_id ? [currentMD.region_id] : []));
+  }, [currentMD.id]);
+  const allowedRegionIds = myRegionIds || (currentMD.region_id ? [currentMD.region_id] : []);
+  const multiArea = allowedRegionIds.length > 1;
+  const areaNames = allowedRegionIds.map(id => regions.find(r => r.id === id)?.name).filter(Boolean);
+  // Terkunci hanya kalau tepat 1 area; multi-area -> pilih dari daftar areanya sendiri.
+  const regionLocked = allowedRegionIds.length === 1;
   const selectedBengkel = bengkels.find(b => b.id === form.bengkelId);
 
   // Fetch GPS user
@@ -2950,18 +2960,22 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
           </div>
           <div className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5">
             <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Area</div>
-            <div className="text-sm text-slate-100 font-medium truncate">{regions.find(r => r.id === form.regionId)?.name || '—'}</div>
+            <div className="text-sm text-slate-100 font-medium truncate">
+              {areaNames.length ? areaNames.join(', ') : (regions.find(r => r.id === form.regionId)?.name || '—')}
+            </div>
           </div>
         </div>
         {!regionLocked && (
-          <Field label="Region" required>
+          <Field label="Area Kunjungan" required>
             <SearchableSelect
               value={form.regionId}
               onChange={(val) => setForm({ ...form, regionId: val, kotaId: '', bengkelId: '' })}
-              options={regions.map(r => ({ value: r.id, label: r.name }))}
-              placeholder="Pilih region…"
+              options={(multiArea ? regions.filter(r => allowedRegionIds.includes(r.id)) : regions).map(r => ({ value: r.id, label: r.name }))}
+              placeholder="Pilih area…"
             />
-            <p className="text-[11px] text-amber-400 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />Region kamu belum diset admin. Pilih manual dulu.</p>
+            {multiArea
+              ? <p className="text-[11px] text-slate-500 mt-1 flex items-center gap-1"><MapPin className="w-3 h-3" />Kamu meng-cover {allowedRegionIds.length} area — pilih area bengkel yang dikunjungi.</p>
+              : <p className="text-[11px] text-amber-400 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />Region kamu belum diset admin. Pilih manual dulu.</p>}
           </Field>
         )}
         <Field label="Kota" required>
@@ -4216,12 +4230,12 @@ function MDForm({ regions, onSave, initial, onCancel }) {
     if (!canSave) return;
     setSaving(true);
     try {
-      const isTLrole = form.role === 'tl';
-      const region_ids = isTLrole ? form.region_ids.filter(Boolean) : [];
+      const multiRegion = form.role === 'tl' || form.role === 'md';
+      const region_ids = multiRegion ? form.region_ids.filter(Boolean) : [];
       const base = {
         full_name: form.full_name.trim(),
         role: form.role || 'md',
-        region_id: isTLrole ? (region_ids[0] || null) : (form.region_id || null),
+        region_id: multiRegion ? (region_ids[0] || null) : (form.region_id || null),
         region_ids,
         monthly_target: form.monthly_target === '' ? 30 : Number(form.monthly_target),
       };
@@ -4268,8 +4282,8 @@ function MDForm({ regions, onSave, initial, onCancel }) {
             {ROLES.map(r => <option key={r} value={r}>{r === 'md' ? 'MD (Merchandiser)' : r === 'tl' ? 'TL (Team Leader)' : r === 'bp' ? 'BP (Supervisor)' : r === 'super_admin' ? 'Super Admin' : 'Admin'}</option>)}
           </Select>
         </Field>
-        <Field label={form.role === 'tl' ? 'Region yang dicover (boleh >1)' : 'Region (wilayah kerja)'}>
-          {form.role === 'tl' ? (
+        <Field label={(form.role === 'tl' || form.role === 'md') ? 'Area / Region (boleh >1)' : 'Region (wilayah kerja)'}>
+          {(form.role === 'tl' || form.role === 'md') ? (
             <>
               <div className="max-h-32 overflow-y-auto rounded-lg border border-slate-800 bg-slate-950 p-2 space-y-1">
                 {(regions || []).map(r => {
@@ -4285,8 +4299,8 @@ function MDForm({ regions, onSave, initial, onCancel }) {
                 {(regions || []).length === 0 && <div className="text-xs text-slate-500">Belum ada region.</div>}
               </div>
               {form.region_ids.length === 0
-                ? <p className="text-[11px] text-amber-400 mt-1.5 flex items-center gap-1.5"><AlertCircle className="w-3 h-3" />TL wajib minimal 1 region — tanpa ini, TL tak melihat data apa pun.</p>
-                : <p className="text-[11px] text-slate-500 mt-1.5">{form.region_ids.length} region dipilih.</p>}
+                ? <p className="text-[11px] text-amber-400 mt-1.5 flex items-center gap-1.5"><AlertCircle className="w-3 h-3" />{form.role === 'tl' ? 'TL wajib minimal 1 region — tanpa ini, TL tak melihat data apa pun.' : 'Pilih minimal 1 area supaya daftar bengkel MD terkunci ke wilayahnya.'}</p>
+                : <p className="text-[11px] text-slate-500 mt-1.5">{form.region_ids.length} area dipilih.</p>}
             </>
           ) : (
             <Select value={form.region_id} onChange={e => setForm({ ...form, region_id: e.target.value })}>
@@ -5062,8 +5076,8 @@ function MdDetailModal({ md, regionName, onClose }) {
     ['Nama Lengkap', md.full_name || '—'],
     ['Email', md.email || '—'],
     ['Role', md.role || '—'],
-    [(md.role === 'tl' && md.region_ids?.length > 1) ? 'Region (cover)' : 'Region',
-      (md.role === 'tl' && md.region_ids?.length)
+    [(['tl', 'md'].includes(md.role) && md.region_ids?.length > 1) ? 'Area (cover)' : 'Region',
+      (['tl', 'md'].includes(md.role) && md.region_ids?.length)
         ? md.region_ids.map(regionName).filter(Boolean).join(', ')
         : (regionName(md.region_id) || '—')],
     ['Target / bulan', md.monthly_target ?? '—'],
@@ -5207,8 +5221,8 @@ function MasterTab({ regions, kotas, distributors, bengkels, mds, accounts = [],
   const handleUpdateMD = async (patch) => {
     const { password, region_ids, ...rest } = patch;
     await api.updateMaster('profiles', editingMDId, rest);
-    // Sinkronkan region TL (dikosongkan kalau role bukan TL)
-    await api.setTlRegions(editingMDId, rest.role === 'tl' ? region_ids : []);
+    // Sinkronkan multi-region MD/TL (dikosongkan untuk role lain)
+    await api.setTlRegions(editingMDId, ['tl', 'md'].includes(rest.role) ? region_ids : []);
     if (password) await api.resetMdPassword(editingMDId, password);  // update auth + login_password
     await onChange();
     setEditingMDId(null);

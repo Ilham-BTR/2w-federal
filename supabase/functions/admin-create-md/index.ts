@@ -111,8 +111,8 @@ Deno.serve(async (req) => {
           .eq("id", created.user.id);
         if (pErr) { result.errors.push({ row: i + 1, message: pErr.message }); continue; }
 
-        // TL multi-region → simpan daftar region ke tl_regions
-        if (u.role === "tl" && Array.isArray(u.region_ids)) {
+        // TL & MD multi-region → simpan daftar region ke tl_regions
+        if (["tl", "md"].includes(u.role) && Array.isArray(u.region_ids)) {
           await admin.from("tl_regions").delete().eq("tl_id", created.user.id);
           const ids = u.region_ids.filter(Boolean);
           if (ids.length) {
