@@ -2717,38 +2717,11 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
     status: '', remarks: '',
     photos: { ...emptyPhotos },
   });
-  // Draft dianggap "ada isinya" hanya kalau user benar-benar mengisi sesuatu
-  // (bukan sekadar region/tanggal default yang terisi otomatis).
-  const draftHasContent = (d) => !!(d && (d.bengkelId || d.kotaId || d.remarks || d.status));
-  // Pulihkan draft (field teks saja — foto tak bisa disimpan di localStorage)
+  // Tanpa draft: form selalu mulai FRESH (draft lama di localStorage ikut dibersihkan).
   const [form, setForm] = useState(() => {
-    const base = makeDefaultForm();
-    try {
-      const raw = localStorage.getItem(DRAFT_KEY);
-      if (raw) {
-        const saved = JSON.parse(raw);
-        // Draft dari hari sebelumnya -> buang, mulai form FRESH (tanggal selalu hari ini)
-        if (saved.date && saved.date !== localDateStr()) {
-          localStorage.removeItem(DRAFT_KEY);
-        } else {
-          return { ...base, ...saved, date: localDateStr(), photos: { ...emptyPhotos } };
-        }
-      }
-    } catch { /* abaikan draft rusak */ }
-    return base;
+    try { localStorage.removeItem(DRAFT_KEY); } catch { /* noop */ }
+    return makeDefaultForm();
   });
-  const [draftRestored, setDraftRestored] = useState(false);
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(DRAFT_KEY);
-      if (!raw) return;
-      const saved = JSON.parse(raw);
-      if (saved.date && saved.date !== localDateStr()) { localStorage.removeItem(DRAFT_KEY); return; } // draft hari lain -> buang
-      if (draftHasContent(saved)) setDraftRestored(true);
-      else localStorage.removeItem(DRAFT_KEY);  // bersihkan draft kosong lama
-    } catch { /* noop */ }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [backfilled, setBackfilled] = useState(false);
@@ -2823,14 +2796,6 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
     }
   }, [form.bengkelId]);
 
-  // Autosave draft (field teks saja) tiap ada perubahan
-  useEffect(() => {
-    const { photos, ...rest } = form;
-    try {
-      if (draftHasContent(rest)) localStorage.setItem(DRAFT_KEY, JSON.stringify(rest));
-      else localStorage.removeItem(DRAFT_KEY);  // jangan simpan draft kosong/default
-    } catch { /* storage penuh / private mode */ }
-  }, [form.group, form.regionId, form.kotaId, form.bengkelId, form.date, form.status, form.remarks]);
 
   // Upload-saat-foto-diambil: begitu foto selesai dikompres → langsung upload
   // ke storage (latar belakang). Saat submit tinggal pakai URL-nya → instan.
@@ -2898,8 +2863,6 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
         backfillBengkelCoords: bengkelLacksCoords,
       });
 
-      try { localStorage.removeItem(DRAFT_KEY); } catch { /* noop */ }
-      setDraftRestored(false);
       setSubmitted(true);
       setBackfilled(bengkelBackfilled);
       setTimeout(() => { setSubmitted(false); setBackfilled(false); onSubmitted(); }, 2000);
@@ -2937,16 +2900,6 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
         <div className="mb-4 p-3 bg-rose-600/10 border border-rose-600/30 rounded-lg flex items-start gap-2.5">
           <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
           <p className="text-xs text-rose-400">{error}</p>
-        </div>
-      )}
-
-      {draftRestored && !submitted && (
-        <div className="mb-4 p-3 bg-sky-600/10 border border-sky-600/30 rounded-lg flex items-center gap-2.5">
-          <FileText className="w-4 h-4 text-sky-400 shrink-0" />
-          <p className="text-xs text-sky-300 flex-1">Draft sebelumnya dipulihkan. <span className="text-sky-400/80">Foto perlu diambil ulang.</span></p>
-          <button type="button"
-            onClick={() => { setForm(makeDefaultForm()); setDraftRestored(false); try { localStorage.removeItem(DRAFT_KEY); } catch { /* noop */ } }}
-            className="text-[11px] text-sky-400 hover:text-sky-300 font-medium shrink-0">Mulai baru</button>
         </div>
       )}
 
@@ -3397,6 +3350,8 @@ function AdminView({ profile }) {
   // Daftar akun: super_admin lihat semua; admin/bp hanya MD; TL hanya MD region-nya.
   const sAccounts = isSuperAdmin ? accounts : accounts.filter(a => a.role === 'md' && inTlScope(a.region_id));
   const canManageMaster = !isTL;
+  // Role bp = admin viewer: semua tab KECUALI Master Data
+  const showMaster = profile?.role !== 'bp';
 
   const openDetail = (id) => setDetailVisitId(id);
   const detailVisit = detailVisitId ? sVisits.find(v => v.id === detailVisitId) : null;
@@ -3414,7 +3369,7 @@ function AdminView({ profile }) {
           { id: 'absen', label: 'Absen', icon: CalendarDays },
           { id: 'coverage', label: 'Coverage Map', icon: MapIcon },
           { id: 'master', label: 'Master Data', icon: Database },
-        ].map(t => (
+        ].filter(t => t.id !== 'master' || showMaster).map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
             className={`flex-1 flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-lg text-[11px] font-medium transition sm:flex-row sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm whitespace-nowrap ${tab === t.id ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-100'}`}>
             <t.icon className="w-4 h-4 shrink-0" /><span>{t.label}</span>
@@ -3426,7 +3381,7 @@ function AdminView({ profile }) {
       {tab === 'visits' && <VisitsTab visits={sVisits} mds={activeMds} bengkels={bengkels} kotas={kotas} distributors={distributors} regions={regions} onOpenVisit={openDetail} />}
       {tab === 'absen' && <AdminAbsenTab mds={activeMds} allowedMdIds={allowedMdIds} isSuperAdmin={isSuperAdmin} regions={regions} />}
       {tab === 'coverage' &&<CoverageTab visits={sVisits} mds={activeMds} bengkels={bengkels} kotas={kotas} regions={regions} distributors={distributors} onOpenVisit={openDetail} />}
-      {tab === 'master' && <MasterTab regions={regions} kotas={kotas} distributors={distributors} bengkels={bengkels} mds={sMds} accounts={sAccounts} onChange={() => loadAll(true)} isSuperAdmin={isSuperAdmin} canManageMaster={canManageMaster} />}
+      {tab === 'master' && showMaster && <MasterTab regions={regions} kotas={kotas} distributors={distributors} bengkels={bengkels} mds={sMds} accounts={sAccounts} onChange={() => loadAll(true)} isSuperAdmin={isSuperAdmin} canManageMaster={canManageMaster} />}
 
       {detailVisit && (
         <VisitDetailModal
