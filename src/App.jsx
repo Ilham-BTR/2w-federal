@@ -3637,22 +3637,24 @@ function DashboardTab({ visits, mds, bengkels, kotas, regions, distributors, onO
 
   // Nama depan yang tak unik (mis. 2 "Muhammad") → tambah kata berikutnya
   // agar di chart/ranking tidak terlihat seperti duplikat.
-  const firstNameCount = relevantMDs.reduce((acc, m) => {
-    const f = (m.full_name || '').split(' ')[0];
-    acc[f] = (acc[f] || 0) + 1; return acc;
-  }, {});
   const regionName = (id) => regions.find(r => r.id === id)?.name || '';
-  const chartData = relevantMDs.map(md => {
-    const actual = filteredVisits.filter(v => v.md_id === md.id).length;
-    const terpasang = filteredVisits.filter(v => v.md_id === md.id && v.status === HASIL_TERPASANG).length;
-    const parts = (md.full_name || '—').split(' ');
-    const shortName = firstNameCount[parts[0]] > 1 ? parts.slice(0, 2).join(' ') : parts[0];
-    return { id: md.id, name: shortName, fullName: md.full_name, region: regionName(md.region_id), Actual: actual, terpasang };
-  });
-  // Urutkan berdasarkan region (lalu nama) — bukan abjad nama global. MD tanpa region di akhir.
-  chartData.sort((a, b) =>
-    (a.region || 'zzz').localeCompare(b.region || 'zzz') ||
-    (a.fullName || '').localeCompare(b.fullName || ''));
+  // Agregasi per REGION (bukan per MD — 99 MD tak terbaca di grafik).
+  // Region sebuah visit dilihat dari bengkel -> kota -> region.
+  const kotaRegion = useMemo(() => Object.fromEntries(kotas.map(k => [k.id, k.region_id])), [kotas]);
+  const bengkelRegion = useMemo(() => Object.fromEntries(bengkels.map(b => [b.id, kotaRegion[b.kota_id]])), [bengkels, kotaRegion]);
+  const chartData = useMemo(() => {
+    const byRegion = {};
+    filteredVisits.forEach(v => {
+      const rid = bengkelRegion[v.bengkel_id];
+      if (!rid) return;
+      const o = (byRegion[rid] ||= { Actual: 0, terpasang: 0 });
+      o.Actual++;
+      if (v.status === HASIL_TERPASANG) o.terpasang++;
+    });
+    return regions
+      .map(r => ({ id: r.id, name: r.name, region: r.name, Actual: byRegion[r.id]?.Actual || 0, terpasang: byRegion[r.id]?.terpasang || 0 }))
+      .sort((a, b) => (b.Actual - a.Actual) || a.name.localeCompare(b.name));
+  }, [filteredVisits, regions, bengkelRegion]);
 
   const totalVisits = filteredVisits.length;
   const pemasangan = filteredVisits.filter(v => v.status === HASIL_TERPASANG).length;
@@ -3660,16 +3662,12 @@ function DashboardTab({ visits, mds, bengkels, kotas, regions, distributors, onO
   // MD yang benar-benar ada visit di filter ini (bukan sekadar jumlah MD terdaftar)
   const activeMdCount = new Set(filteredVisits.map(v => v.md_id)).size;
 
-  // Label sumbu-X: baris 1 nama MD (putih), baris 2 area/region (abu)
-  const renderMdTick = ({ x, y, payload }) => {
-    const region = chartData[payload.index]?.region || '';
-    return (
-      <g transform={`translate(${x},${y}) rotate(-40)`}>
-        <text x={0} y={0} dy={4} textAnchor="end" fill="#ffffff" fontSize={10} fontWeight={600}>{payload.value}</text>
-        {region && <text x={0} y={0} dy={15} textAnchor="end" fill="#9ca3af" fontSize={8}>{region}</text>}
-      </g>
-    );
-  };
+  // Label sumbu-X: nama region (miring biar muat)
+  const renderMdTick = ({ x, y, payload }) => (
+    <g transform={`translate(${x},${y}) rotate(-40)`}>
+      <text x={0} y={0} dy={4} textAnchor="end" fill="#ffffff" fontSize={10} fontWeight={600}>{payload.value}</text>
+    </g>
+  );
 
   // Warna batang per area/region
   const REGION_COLORS = ['#60a5fa', '#34d399', '#fbbf24', '#f472b6', '#a78bfa', '#fb923c', '#22d3ee', '#f87171'];
@@ -3743,7 +3741,7 @@ function DashboardTab({ visits, mds, bengkels, kotas, regions, distributors, onO
         ))}
       </div>
 
-      <Section title="Visit per MD" subtitle={`Jumlah visit — ${filters.month === 'all' ? 'semua bulan' : monthLabel(filters.month)}`} icon={Activity}>
+      <Section title="Visit per Region" subtitle={`Jumlah visit — ${filters.month === 'all' ? 'semua bulan' : monthLabel(filters.month)}`} icon={Activity}>
         <div className="h-96">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={chartData} margin={{ top: 10, right: 10, bottom: 10, left: -20 }}>
@@ -3759,30 +3757,22 @@ function DashboardTab({ visits, mds, bengkels, kotas, regions, distributors, onO
           </ResponsiveContainer>
         </div>
 
-        {/* Legenda warna per area */}
-        <div className="flex flex-wrap justify-center items-center gap-x-3 gap-y-1.5 mt-2 text-[11px]">
-          {regionNames.map(n => (
-            <span key={n} className="flex items-center gap-1.5 text-slate-400">
-              <span className="w-2.5 h-2.5 rounded-sm" style={{ background: colorForRegion(n) }} />{n}
-            </span>
-          ))}
-        </div>
-
         <div className="mt-5 space-y-2">
-          {chartData.map((md, i) => (
-            <div key={md.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-slate-950 border border-slate-800">
+          {chartData.filter(r => r.Actual > 0).map((r, i) => (
+            <div key={r.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-slate-950 border border-slate-800">
               <div className="w-6 h-6 rounded-full bg-slate-800/50 flex items-center justify-center text-[10px] font-mono text-slate-400">{i + 1}</div>
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-slate-200 truncate">{md.fullName || md.name}
-                  {md.region && <span className="ml-2 text-[10px] font-normal text-slate-500">· {md.region}</span>}
-                </div>
+                <div className="text-sm font-medium text-slate-200 truncate">{r.name}</div>
               </div>
               <div className="text-right">
-                <div className="text-sm font-semibold text-slate-100">{md.Actual}<span className="text-slate-500"> visit</span></div>
-                <div className="text-[10px] text-emerald-400">{md.terpasang} terpasang</div>
+                <div className="text-sm font-semibold text-slate-100">{r.Actual}<span className="text-slate-500"> visit</span></div>
+                <div className="text-[10px] text-emerald-400">{r.terpasang} terpasang</div>
               </div>
             </div>
           ))}
+          {chartData.every(r => r.Actual === 0) && (
+            <div className="text-center py-6 text-slate-500 text-sm">Belum ada visit di filter ini.</div>
+          )}
         </div>
       </Section>
 
