@@ -2835,10 +2835,11 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
   const anyCompressing = Object.values(form.photos).some(p => p?.status === 'compressing');
   const anyUploading = Object.values(form.photos).some(p => p?.status === 'uploading');
 
-  // Foto wajib dasar: selfie + tampak depan before. Kalau hasil "Spanduk Terpasang" → 4 foto lanjutan wajib.
+  // Foto wajib dasar: selfie + tampak depan before. Kalau hasil "Spanduk Terpasang" →
+  // wajib tambah after + spanduk jauh/sedang. Poster OPSIONAL.
   const terpasang = form.status === HASIL_TERPASANG;
   const requiredPhotos = ['selfie', 'before'];
-  if (terpasang) requiredPhotos.push('after', 'spandukJauh', 'spandukSedang', 'poster');
+  if (terpasang) requiredPhotos.push('after', 'spandukJauh', 'spandukSedang');
   const hasAllRequiredPhotos = requiredPhotos.every(k => PRESENT.includes(form.photos[k]?.status));
   // Jarak GPS user ↔ bengkel (kalau dua-duanya ada). Bengkel tanpa koordinat →
   // null → tidak diblokir (mis. visit pertama yang justru mengisi koordinatnya).
@@ -3037,9 +3038,9 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
             <PhotoTile label="Spanduk Jarak Sedang" required photo={form.photos.spandukSedang} onChange={v => setPhoto('spandukSedang', v)} />
           </div>
 
-          <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mt-5 mb-2 pt-4 border-t border-slate-800">Poster</div>
+          <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mt-5 mb-2 pt-4 border-t border-slate-800">Poster (opsional)</div>
           <div className="grid grid-cols-3 gap-3">
-            <PhotoTile label="Foto Poster" required photo={form.photos.poster} onChange={v => setPhoto('poster', v)} />
+            <PhotoTile label="Foto Poster" hint="Opsional — isi jika ada poster" photo={form.photos.poster} onChange={v => setPhoto('poster', v)} />
           </div>
         </>)}
       </Section>
