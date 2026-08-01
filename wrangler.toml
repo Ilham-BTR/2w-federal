@@ -1,0 +1,9 @@
+# Konfigurasi Cloudflare Pages (dibaca `wrangler pages deploy`)
+# Binding R2 dipakai Pages Function /photos/* untuk serve foto lewat domain app
+# (domain r2.dev diblokir banyak ISP Indonesia).
+name = "2w-federal"
+pages_build_output_dir = "dist"
+
+[[r2_buckets]]
+binding = "PHOTOS"
+bucket_name = "federal-2w-posm-photos"
