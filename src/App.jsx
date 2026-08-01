@@ -167,11 +167,12 @@ const visitToCSVRow = (v, ctx) => {
     waktu_submit: excelDateTimeSerial(v.created_at),
     md_name: md?.full_name || v.md_name || '',
     md_email: md?.email || v.md_email || '',
+    region: groupOfRegion(r),
+    provinsi: r?.name || v.region_name || '',
+    kota: k?.name || v.kota_name || '',
     bengkel_code: b?.code || '',
     bengkel_name: b?.name || v.bengkel_name || '',
     bengkel_alamat: b?.address || '',
-    kota: k?.name || v.kota_name || '',
-    region: r?.name || v.region_name || '',
     hasil_visit: v.status,
     notes: v.remarks || '',
     bengkel_lat: b?.lat ?? '',
@@ -179,8 +180,7 @@ const visitToCSVRow = (v, ctx) => {
     visit_lat: v.visit_lat ?? '',
     visit_lng: v.visit_lng ?? '',
     photo_count: photoCount,
-    // Link tiap foto (URL Supabase Storage di produksi). Header = label rapi.
-    // Skip kolom legacy "after"; "before" di-rename jadi *_biru.
+    // Link tiap foto (URL R2/CDN di produksi): selfie, before, after, spanduk jauh/sedang, poster.
     ...Object.fromEntries(PHOTO_KEYS.filter(k => !EXPORT_PHOTO_SKIP.has(k)).map(k => [
       EXPORT_PHOTO_HEADER[k] || ('link_' + k.replace(/^photo_/, '')),   // mis. link_tampak_depan, link_spanduk_biru, ...
       typeof v[k] === 'string' && v[k].startsWith('http') ? v[k] : (v[k] ? '(foto lokal/idb)' : ''),
