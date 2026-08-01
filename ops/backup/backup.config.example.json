@@ -1,0 +1,9 @@
+{
+  "_comment": "Copy file ini jadi backup.config.json (tanpa .example) lalu isi. File asli SUDAH di-gitignore — JANGAN commit yang berisi service_role key.",
+  "_dari": "supabaseUrl & serviceRoleKey ada di Supabase Dashboard -> Project Settings -> API. PAKAI service_role key (rahasia, bukan anon) supaya bisa baca SEMUA data + akun auth.",
+  "supabaseUrl": "https://mybrstcvmobourhzkrlp.supabase.co",
+  "serviceRoleKey": "GANTI_SERVICE_ROLE_KEY",
+  "keepLast": 12,
+  "_backupDir": "(opsional) folder simpan backup. Kosongkan = ./dumps. Isi dengan folder Google Drive/OneDrive yang disinkron supaya ada salinan off-site otomatis.",
+  "backupDir": ""
+}
