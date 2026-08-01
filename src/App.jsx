@@ -1158,27 +1158,6 @@ const formatSize = (bytes) => {
 // PHOTO TILE
 // ============================================================
 
-// Backup foto ke HP: trigger download salinan foto ORIGINAL ke folder Download.
-// Web app tidak bisa menulis langsung ke galeri kamera — download adalah cara
-// paling andal; file tetap muncul di galeri (album Download).
-const backupPhotoToDevice = (file, label) => {
-  try {
-    const ts = new Date();
-    const p = (n) => String(n).padStart(2, '0');
-    const stamp = `${ts.getFullYear()}${p(ts.getMonth() + 1)}${p(ts.getDate())}-${p(ts.getHours())}${p(ts.getMinutes())}${p(ts.getSeconds())}`;
-    const slug = String(label || 'foto').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    const ext = (file.type === 'image/png') ? 'png' : 'jpg';
-    const url = URL.createObjectURL(file);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `2WFederal_${slug}_${stamp}.${ext}`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 10000);
-  } catch (e) { console.warn('Backup foto ke perangkat gagal:', e); }
-};
-
 const PhotoTile = ({ label, photo, onChange, required, example, hint }) => {
   const inputRef = useRef(null);
   const [showExample, setShowExample] = useState(false);
@@ -1187,9 +1166,6 @@ const PhotoTile = ({ label, photo, onChange, required, example, hint }) => {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = '';
-
-    // Backup otomatis ke HP (folder Download) — kualitas original
-    backupPhotoToDevice(file, label);
 
     // JANGAN decode foto original untuk preview — di HP RAM kecil, decode foto
     // kamera 12-48MP bisa makan ratusan MB -> app force close. Cukup tampilkan
@@ -2000,7 +1976,6 @@ function AbsenForm({ kind, currentMD, todayStr, onCancel, onDone }) {
 
   const handleSelfie = async (e) => {
     const file = e.target.files?.[0]; if (!file) return; e.target.value = '';
-    backupPhotoToDevice(file, `selfie-absen-${kind === 'in' ? 'masuk' : 'pulang'}`);
     // Jangan decode foto original (boros RAM di HP lama) — overlay saja saat kompres.
     setSelfie({ status: 'compressing', preview: null, file: null });
     try {
