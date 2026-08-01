@@ -3644,10 +3644,10 @@ function DashboardTab({ visits, mds, bengkels, kotas, regions, distributors, onO
   const regionName = (id) => regions.find(r => r.id === id)?.name || '';
   const chartData = relevantMDs.map(md => {
     const actual = filteredVisits.filter(v => v.md_id === md.id).length;
-    const target = md.monthly_target || 30;
+    const terpasang = filteredVisits.filter(v => v.md_id === md.id && v.status === HASIL_TERPASANG).length;
     const parts = (md.full_name || '—').split(' ');
     const shortName = firstNameCount[parts[0]] > 1 ? parts.slice(0, 2).join(' ') : parts[0];
-    return { id: md.id, name: shortName, fullName: md.full_name, region: regionName(md.region_id), Actual: actual, Target: target, achievement: Math.round((actual / target) * 100) };
+    return { id: md.id, name: shortName, fullName: md.full_name, region: regionName(md.region_id), Actual: actual, terpasang };
   });
   // Urutkan berdasarkan region (lalu nama) — bukan abjad nama global. MD tanpa region di akhir.
   chartData.sort((a, b) =>
@@ -3655,8 +3655,6 @@ function DashboardTab({ visits, mds, bengkels, kotas, regions, distributors, onO
     (a.fullName || '').localeCompare(b.fullName || ''));
 
   const totalVisits = filteredVisits.length;
-  const totalTarget = relevantMDs.reduce((s, m) => s + (m.monthly_target || 30), 0);
-  const completionRate = totalTarget > 0 ? Math.round((totalVisits / totalTarget) * 100) : 0;
   const pemasangan = filteredVisits.filter(v => v.status === HASIL_TERPASANG).length;
   const revisit = filteredVisits.filter(v => v.status !== HASIL_TERPASANG).length;
   // MD yang benar-benar ada visit di filter ini (bukan sekadar jumlah MD terdaftar)
@@ -3727,10 +3725,9 @@ function DashboardTab({ visits, mds, bengkels, kotas, regions, distributors, onO
         onDari={v => setFilters({ ...filters, dari: v })} onSampai={v => setFilters({ ...filters, sampai: v })}
         onReset={() => setFilters({ ...filters, dari: '', sampai: '' })} />
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-5">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         {[
-          { label: 'Total Visit', value: totalVisits, sub: `dari ${totalTarget} target`, icon: Activity, color: 'red' },
-          { label: 'Achievement', value: `${completionRate}%`, sub: 'completion rate', icon: Target, color: 'emerald' },
+          { label: 'Total Visit', value: totalVisits, sub: 'kunjungan tercatat', icon: Activity, color: 'red' },
           { label: 'Terpasang', value: pemasangan, sub: 'spanduk terpasang', icon: Check, color: 'sky' },
           { label: 'Tidak Terpasang', value: revisit, sub: 'hasil lainnya', icon: Navigation, color: 'blue' },
           { label: 'MD Aktif', value: activeMdCount, sub: `dari ${relevantMDs.length} MD · ada visit`, icon: Users, color: 'amber' },
@@ -3746,7 +3743,7 @@ function DashboardTab({ visits, mds, bengkels, kotas, regions, distributors, onO
         ))}
       </div>
 
-      <Section title="Visit per MD" subtitle={`Actual vs Target — ${filters.month === 'all' ? 'semua bulan' : monthLabel(filters.month)}`} icon={Activity}>
+      <Section title="Visit per MD" subtitle={`Jumlah visit — ${filters.month === 'all' ? 'semua bulan' : monthLabel(filters.month)}`} icon={Activity}>
         <div className="h-96">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={chartData} margin={{ top: 10, right: 10, bottom: 10, left: -20 }}>
@@ -3758,7 +3755,6 @@ function DashboardTab({ visits, mds, bengkels, kotas, regions, distributors, onO
                 {chartData.map((d, i) => <Cell key={i} fill={colorForRegion(d.region)} />)}
                 <LabelList dataKey="Actual" position="top" fill="#ffffff" fontSize={10} fontWeight={600} />
               </Bar>
-              <Line dataKey="Target" stroke="#2563eb" strokeWidth={2} strokeDasharray="6 4" dot={false} />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
@@ -3770,7 +3766,6 @@ function DashboardTab({ visits, mds, bengkels, kotas, regions, distributors, onO
               <span className="w-2.5 h-2.5 rounded-sm" style={{ background: colorForRegion(n) }} />{n}
             </span>
           ))}
-          <span className="flex items-center gap-1.5 text-slate-400"><span className="inline-block w-3.5 border-t-2 border-dashed border-blue-600" />Target</span>
         </div>
 
         <div className="mt-5 space-y-2">
@@ -3781,13 +3776,10 @@ function DashboardTab({ visits, mds, bengkels, kotas, regions, distributors, onO
                 <div className="text-sm font-medium text-slate-200 truncate">{md.fullName || md.name}
                   {md.region && <span className="ml-2 text-[10px] font-normal text-slate-500">· {md.region}</span>}
                 </div>
-                <div className="h-1 bg-slate-800/50 rounded-full mt-1 overflow-hidden">
-                  <div className={`h-full rounded-full ${md.achievement >= 80 ? 'bg-emerald-600/100' : md.achievement >= 50 ? 'bg-amber-600/100' : 'bg-rose-600/100'}`} style={{ width: `${Math.min(md.achievement, 100)}%` }} />
-                </div>
               </div>
               <div className="text-right">
-                <div className="text-sm font-semibold text-slate-100">{md.Actual}<span className="text-slate-500">/{md.Target}</span></div>
-                <div className="text-[10px] text-slate-500">{md.achievement}%</div>
+                <div className="text-sm font-semibold text-slate-100">{md.Actual}<span className="text-slate-500"> visit</span></div>
+                <div className="text-[10px] text-emerald-400">{md.terpasang} terpasang</div>
               </div>
             </div>
           ))}
@@ -4191,7 +4183,6 @@ function MDForm({ regions, onSave, initial, onCancel }) {
     role: initial?.role || 'md',
     region_id: initial?.region_id || '',
     region_ids: initial?.region_ids || (initial?.region_id ? [initial.region_id] : []),
-    monthly_target: String(initial?.monthly_target ?? 30),
     password: '',
   });
   const [saving, setSaving] = useState(false);
@@ -4212,14 +4203,13 @@ function MDForm({ regions, onSave, initial, onCancel }) {
         role: form.role || 'md',
         region_id: multiRegion ? (region_ids[0] || null) : (form.region_id || null),
         region_ids,
-        monthly_target: form.monthly_target === '' ? 30 : Number(form.monthly_target),
       };
       if (isEdit) {
         // patch — email tidak diubah (identitas auth). password hanya kalau diisi.
         await onSave(form.password.trim() ? { ...base, password: form.password.trim() } : base);
       } else {
         await onSave({ ...base, email: form.email.trim().toLowerCase(), password: form.password.trim() || undefined });
-        setForm({ email: '', full_name: '', role: 'md', region_id: '', region_ids: [], monthly_target: '30', password: '' });
+        setForm({ email: '', full_name: '', role: 'md', region_id: '', region_ids: [], password: '' });
       }
     } catch (err) {
       alert('Gagal: ' + err.message);
@@ -4283,9 +4273,6 @@ function MDForm({ regions, onSave, initial, onCancel }) {
               {(regions || []).map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
             </Select>
           )}
-        </Field>
-        <Field label="Target Visit / Bulan">
-          <Input type="number" min="0" placeholder="30" value={form.monthly_target} onChange={e => setForm({ ...form, monthly_target: e.target.value })} />
         </Field>
         <Field label={isEdit ? 'Reset Password (opsional)' : 'Password (opsional)'}>
           <div className="relative">
@@ -4764,23 +4751,21 @@ const MASTER_IMPORT_CFG = {
   mds: {
     label: 'Akun MD',
     template: [
-      ['email', 'full_name', 'role', 'region', 'monthly_target', 'password'],
-      ['dewi@federal.id', 'Dewi Anjani', 'md', 'Jabodetabek', '40', 'federal'],
-      ['eko@federal.id', 'Eko Prasetyo', 'md', 'Jawa Barat', '35', ''],
+      ['email', 'full_name', 'role', 'region', 'password'],
+      ['dewi@federal.id', 'Dewi Anjani', 'md', 'Jawa Barat', 'federal123'],
+      ['eko@federal.id', 'Eko Prasetyo', 'md', 'Jawa Barat', ''],
     ],
     preview: [
       { key: 'email', label: 'Email' },
       { key: 'full_name', label: 'Nama' },
       { key: 'role', label: 'Role' },
       { key: 'region', label: 'Region' },
-      { key: 'monthly_target', label: 'Target' },
     ],
     parseRow: (row) => ({
       email: String(pickCol(row, ['email', 'e-mail']) || '').trim(),
       full_name: String(pickCol(row, ['full_name', 'name', 'nama', 'nama lengkap']) || '').trim(),
       role: String(pickCol(row, ['role', 'peran']) || 'md').trim().toLowerCase(),
       region: String(pickCol(row, ['region', 'wilayah']) || '').trim(),
-      monthly_target: pickCol(row, ['monthly_target', 'target', 'target bulanan']),
       password: String(pickCol(row, ['password', 'pwd', 'sandi']) || '').trim(),
     }),
     validate: (p, ctx, seen, existing) => {
@@ -4794,11 +4779,6 @@ const MASTER_IMPORT_CFG = {
         if (!reg) errs.push(`Region "${p.region}" tidak ditemukan`);
         p._region_id = reg?.id;
       }
-      if (p.monthly_target !== undefined && p.monthly_target !== '' && p.monthly_target !== null) {
-        const n = Number(p.monthly_target);
-        if (Number.isNaN(n) || n < 0) errs.push('Target invalid');
-        else p._target = n;
-      }
       const key = p.email.toLowerCase();
       if (p.email && existing.has(key)) errs.push(`Email ${p.email} sudah terdaftar`);
       if (p.email && seen.has(key)) errs.push('Duplikat email di file ini');
@@ -4811,7 +4791,6 @@ const MASTER_IMPORT_CFG = {
       full_name: p.full_name,
       role: p.role || 'md',
       region_id: p._region_id || null,
-      monthly_target: p._target ?? 30,
       password: p.password || undefined,
     }),
     importer: (rows, onP) => api.bulkCreateMDs(rows, onP),
@@ -5055,7 +5034,6 @@ function MdDetailModal({ md, regionName, onClose }) {
       (['tl', 'md'].includes(md.role) && md.region_ids?.length)
         ? md.region_ids.map(regionName).filter(Boolean).join(', ')
         : (regionName(md.region_id) || '—')],
-    ['Target / bulan', md.monthly_target ?? '—'],
     ['Dibuat', md.created_at ? new Date(md.created_at).toLocaleString('id-ID') : '—'],
   ];
   return (
@@ -5257,7 +5235,7 @@ function MasterTab({ regions, kotas, distributors, bengkels, mds, accounts = [],
     } else if (section === 'regions') {
       rows = filteredItems.map(r => ({ Region: r.name }));
     } else if (section === 'mds') {
-      rows = filteredItems.map(m => ({ Nama: m.full_name, Email: m.email, Role: m.role, Region: regionName(m.region_id) || '', 'Target/Bulan': m.monthly_target ?? '', Aktif: m.active === false ? 'Tidak' : 'Ya' }));
+      rows = filteredItems.map(m => ({ Nama: m.full_name, Email: m.email, Role: m.role, Region: regionName(m.region_id) || '', Aktif: m.active === false ? 'Tidak' : 'Ya' }));
     } else {
       rows = filteredItems.map(it => ({ Nama: current.getName(it) }));
     }
