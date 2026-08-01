@@ -3896,8 +3896,9 @@ const BENGKEL_ICON = L.divIcon({
 const BENGKEL_CAP = 2000; // batas render biar peta tak freeze
 
 function CoverageTab({ visits, mds, bengkels, kotas, regions, distributors, onOpenVisit }) {
-  const [filters, setFilters] = useState({ mdId: 'all', regionId: 'all', distributorId: 'all', month: 'all', dari: '', sampai: '' });
+  const [filters, setFilters] = useState({ mdId: 'all', regionId: 'all', group: 'all', distributorId: 'all', month: 'all', dari: '', sampai: '' });
   const [showBengkels, setShowBengkels] = useState(false);
+  const regionById = useMemo(() => new Map(regions.map(r => [r.id, r])), [regions]);
 
   // Index Map (O(1)) — hindari .find per-visit (O(n*m)) yang bikin HP freeze.
   const bengkelById = useMemo(() => new Map(bengkels.map(b => [b.id, b])), [bengkels]);
@@ -3923,9 +3924,10 @@ function CoverageTab({ visits, mds, bengkels, kotas, regions, distributors, onOp
     } else if (filters.month !== 'all' && !v.visit_date.startsWith(filters.month)) return false;
     if (filters.mdId !== 'all' && v.md_id !== filters.mdId) return false;
     if (filters.regionId !== 'all' && v._kota?.region_id !== filters.regionId) return false;
+    if (filters.group !== 'all' && groupOfRegion(regionById.get(v._kota?.region_id)) !== filters.group) return false;
     if (filters.distributorId !== 'all' && v.distributor_id !== filters.distributorId) return false;
     return true;
-  }), [enriched, filters]);
+  }), [enriched, filters, regionById]);
 
   const availableMonths = useMemo(() => {
     const set = new Set(visits.map(v => v.visit_date.slice(0, 7)));
@@ -4072,22 +4074,27 @@ function CoverageTab({ visits, mds, bengkels, kotas, regions, distributors, onOp
           )}
         </div>
 
-        {/* Legend MD */}
+        {/* Legend per Region (7 grup) — klik untuk filter provinsi-provinsi di region itu */}
         <div className="border-t border-slate-800 p-4 flex flex-wrap gap-3">
-          {mds.map((md, i) => {
-            const count = filtered.filter(v => v.md_id === md.id).length;
-            return (
-              <button key={md.id}
-                onClick={() => setFilters(f => ({ ...f, mdId: f.mdId === md.id ? 'all' : md.id }))}
-                className={`flex items-center gap-2 text-xs px-2.5 py-1.5 rounded-lg transition border ${
-                  filters.mdId === md.id ? 'border-blue-600/40 bg-blue-600/10' : 'border-slate-800 hover:border-slate-700'
-                }`}>
-                <span className="w-2.5 h-2.5 rounded-full" style={{ background: MD_COLORS[i % MD_COLORS.length] }} />
-                <span className="text-slate-300">{md.full_name}</span>
-                <span className="text-slate-500 font-mono">{count}</span>
-              </button>
-            );
-          })}
+          {(() => {
+            const MD_COLORS_R = ['#60a5fa', '#34d399', '#fbbf24', '#f472b6', '#a78bfa', '#fb923c', '#22d3ee'];
+            const groups = [...new Set(regions.map(groupOfRegion))].sort();
+            return groups.map((g, i) => {
+              const count = enriched.filter(v => v.visit_lat && v.visit_lng && groupOfRegion(regionById.get(v._kota?.region_id)) === g).length;
+              const active = filters.group === g;
+              return (
+                <button key={g}
+                  onClick={() => setFilters(f => ({ ...f, group: active ? 'all' : g }))}
+                  className={`flex items-center gap-2 text-xs px-2.5 py-1.5 rounded-lg transition border ${
+                    active ? 'border-blue-600/40 bg-blue-600/10' : 'border-slate-800 hover:border-slate-700'
+                  }`}>
+                  <span className="w-2.5 h-2.5 rounded-full" style={{ background: MD_COLORS_R[i % MD_COLORS_R.length] }} />
+                  <span className="text-slate-300">{g}</span>
+                  <span className="text-slate-500 font-mono">{count}</span>
+                </button>
+              );
+            });
+          })()}
         </div>
       </div>
     </div>
