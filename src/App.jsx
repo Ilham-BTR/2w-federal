@@ -3047,6 +3047,27 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
         </Field>
       </Section>
 
+      <Section title="Hasil Visit" icon={Check}>
+        <Field label="Hasil Visit" required>
+          <Select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
+            <option value="">— Pilih hasil visit —</option>
+            {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+          </Select>
+          {!form.status && (
+            <p className="text-[11px] text-amber-400 mt-1.5 flex items-center gap-1.5">
+              <AlertCircle className="w-3 h-3" />Pilih hasil visit.
+            </p>
+          )}
+        </Field>
+
+        {terpasang && (
+          <p className="text-[11px] text-emerald-400 -mt-1 mb-2">Spanduk Terpasang — lengkapi foto After, Spanduk & Poster di bagian Dokumentasi Foto di bawah.</p>
+        )}
+        {form.status && !terpasang && (
+          <p className="text-[11px] text-slate-500 -mt-1 mb-2">Hasil visit bukan "Spanduk Terpasang" — cukup foto selfie & tampak depan (before), lalu isi notes jika ada.</p>
+        )}
+      </Section>
+
       <Section title="Dokumentasi Foto" subtitle={`${photoCount} / ${requiredPhotos.length} foto wajib`} icon={Camera}>
         <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Selfie</div>
         <div className="grid grid-cols-3 gap-3">
@@ -3073,27 +3094,6 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
             <PhotoTile label="Foto Poster" hint="Opsional — isi jika ada poster" photo={form.photos.poster} onChange={v => setPhoto('poster', v)} />
           </div>
         </>)}
-      </Section>
-
-      <Section title="Hasil Visit" icon={Check}>
-        <Field label="Hasil Visit" required>
-          <Select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
-            <option value="">— Pilih hasil visit —</option>
-            {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-          </Select>
-          {!form.status && (
-            <p className="text-[11px] text-amber-400 mt-1.5 flex items-center gap-1.5">
-              <AlertCircle className="w-3 h-3" />Pilih hasil visit.
-            </p>
-          )}
-        </Field>
-
-        {terpasang && (
-          <p className="text-[11px] text-emerald-400 -mt-1 mb-2">Spanduk Terpasang — lengkapi foto After, Spanduk & Poster di bagian Dokumentasi Foto di atas.</p>
-        )}
-        {form.status && !terpasang && (
-          <p className="text-[11px] text-slate-500 -mt-1 mb-2">Hasil visit bukan "Spanduk Terpasang" — cukup foto selfie & tampak depan (before), lalu isi notes jika ada.</p>
-        )}
       </Section>
 
       <Section title="Notes" icon={FileText}>
@@ -3801,13 +3801,14 @@ function DashboardTab({ visits, mds, bengkels, kotas, regions, distributors, onO
             <ComposedChart data={groupChartData} margin={{ top: 10, right: 10, bottom: 10, left: -20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
               <XAxis dataKey="name" stroke="#71717a" interval={0} height={80} tick={renderMdTick} />
-              <YAxis stroke="#71717a" tick={{ fontSize: 11 }} />
+              <YAxis yAxisId="visit" stroke="#71717a" tick={{ fontSize: 11 }} />
+              <YAxis yAxisId="target" orientation="right" stroke="#2563eb" tick={{ fontSize: 10 }} />
               <Tooltip contentStyle={{ background: '#09090b', border: '1px solid #27272a', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: '#e4e4e7' }} itemStyle={{ color: '#e4e4e7' }} cursor={{ fill: 'rgba(239,68,68,0.05)' }} />
-              <Bar dataKey="Actual" name="Visit" radius={[4, 4, 0, 0]}>
+              <Bar yAxisId="visit" dataKey="Actual" name="Visit" radius={[4, 4, 0, 0]}>
                 {groupChartData.map((d, i) => <Cell key={i} fill={colorForRegion(d.region)} />)}
                 <LabelList dataKey="Actual" position="top" fill="#ffffff" fontSize={10} fontWeight={600} />
               </Bar>
-              <Line dataKey="Target" name="Target (jumlah bengkel)" stroke="#2563eb" strokeWidth={2} strokeDasharray="6 4" dot={{ r: 3 }} />
+              <Line yAxisId="target" dataKey="Target" name="Target (jumlah bengkel)" stroke="#2563eb" strokeWidth={2} strokeDasharray="6 4" dot={{ r: 3 }} />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
