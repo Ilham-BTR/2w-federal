@@ -3763,6 +3763,8 @@ function DashboardTab({ visits, mds, bengkels, kotas, regions, distributors, onO
                 {groupChartData.map((d, i) => <Cell key={i} fill={colorForRegion(d.region)} />)}
                 <LabelList dataKey="Actual" position="top" fill="#ffffff" fontSize={10} fontWeight={600} />
               </Bar>
+              {/* Seri tak terlihat — hanya supaya angka Terpasang ikut muncul di tooltip */}
+              <Line yAxisId="visit" dataKey="terpasang" name="Berhasil Terpasang" stroke="#10b981" strokeOpacity={0} dot={false} activeDot={false} legendType="none" />
               <Line yAxisId="target" dataKey="Target" name="Target (jumlah bengkel)" stroke="#2563eb" strokeWidth={2} strokeDasharray="6 4" dot={{ r: 3 }} />
             </ComposedChart>
           </ResponsiveContainer>
