@@ -941,6 +941,21 @@ const InfoCell = ({ icon: Icon, label, value }) => (
 // UI PRIMITIVES
 // ============================================================
 
+// Hierarki wilayah: REGION (7 grup besar) -> Provinsi (tabel regions) -> Kota -> Bengkel.
+// Mapping statis dari master db 2 W.xlsx (kolom Region per provinsi).
+const REGION_GROUP_OF = {
+  'Aceh': 'Sumbagut', 'Bali': 'Bali-Nusra', 'Banten': 'Jabodetabek-Banten',
+  'Bengkulu': 'Sumbagsel', 'Di Yogyakarta': 'Jateng-DIY', 'Dki Jakarta': 'Jabodetabek-Banten',
+  'Jambi': 'Sumbagsel', 'Jawa Barat': 'Jabodetabek-Banten', 'Jawa Tengah': 'Jateng-DIY',
+  'Jawa Timur': 'Jawa Timur', 'Kalimantan Barat': 'Kalimantan', 'Kalimantan Selatan': 'Kalimantan',
+  'Kalimantan Tengah': 'Kalimantan', 'Kalimantan Timur': 'Kalimantan',
+  'Kepulauan Bangka Belitung': 'Sumbagsel', 'Kepulauan Riau': 'Sumbagut', 'Lampung': 'Sumbagsel',
+  'Nusa Tenggara Barat': 'Bali-Nusra', 'Riau': 'Sumbagut', 'Sulawesi Selatan': 'Bali-Nusra',
+  'Sulawesi Tengah': 'Bali-Nusra', 'Sulawesi Tenggara': 'Bali-Nusra',
+  'Sumatera Selatan': 'Sumbagsel', 'Sumatera Utara': 'Sumbagut',
+};
+const groupOfRegion = (r) => REGION_GROUP_OF[r?.name] || 'Lainnya';
+
 // Hasil visit 2W Federal — 1 tingkat. "Spanduk Terpasang" membuka foto lanjutan (after/spanduk/poster).
 const HASIL_TERPASANG = 'Spanduk Terpasang';
 const STATUS_OPTIONS = [
@@ -2694,6 +2709,7 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
   const DRAFT_KEY = `visitDraft:${currentMD.id}`;
   const emptyPhotos = { selfie: null, before: null, after: null, spandukJauh: null, spandukSedang: null, poster: null };
   const makeDefaultForm = () => ({
+    group: '',
     regionId: currentMD.region_id || '',
     kotaId: '',
     bengkelId: '',
@@ -2759,6 +2775,12 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
   const areaNames = allowedRegionIds.map(id => regions.find(r => r.id === id)?.name).filter(Boolean);
   // Terkunci hanya kalau tepat 1 area; multi-area -> pilih dari daftar areanya sendiri.
   const regionLocked = allowedRegionIds.length === 1;
+  // Cascade Region (7 grup) -> Provinsi: opsi provinsi dibatasi area MD (kalau ada).
+  const selectableProvinsi = allowedRegionIds.length ? regions.filter(r => allowedRegionIds.includes(r.id)) : regions;
+  const groupOptions = [...new Set(selectableProvinsi.map(groupOfRegion))].sort();
+  const selectedProvinsi = regions.find(r => r.id === form.regionId);
+  const groupSel = selectedProvinsi ? groupOfRegion(selectedProvinsi) : form.group;
+  const provinsiOptions = selectableProvinsi.filter(r => !groupSel || groupOfRegion(r) === groupSel);
   const selectedBengkel = bengkels.find(b => b.id === form.bengkelId);
 
   // Fetch GPS user
@@ -2808,7 +2830,7 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
       if (draftHasContent(rest)) localStorage.setItem(DRAFT_KEY, JSON.stringify(rest));
       else localStorage.removeItem(DRAFT_KEY);  // jangan simpan draft kosong/default
     } catch { /* storage penuh / private mode */ }
-  }, [form.regionId, form.kotaId, form.bengkelId, form.date, form.status, form.remarks]);
+  }, [form.group, form.regionId, form.kotaId, form.bengkelId, form.date, form.status, form.remarks]);
 
   // Upload-saat-foto-diambil: begitu foto selesai dikompres → langsung upload
   // ke storage (latar belakang). Saat submit tinggal pakai URL-nya → instan.
@@ -2941,19 +2963,27 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
             </div>
           </div>
         </div>
-        {!regionLocked && (
-          <Field label="Area Kunjungan" required>
-            <SearchableSelect
-              value={form.regionId}
-              onChange={(val) => setForm({ ...form, regionId: val, kotaId: '', bengkelId: '' })}
-              options={(multiArea ? regions.filter(r => allowedRegionIds.includes(r.id)) : regions).map(r => ({ value: r.id, label: r.name }))}
-              placeholder="Pilih area…"
-            />
-            {multiArea
-              ? <p className="text-[11px] text-slate-500 mt-1 flex items-center gap-1"><MapPin className="w-3 h-3" />Kamu meng-cover {allowedRegionIds.length} area — pilih area bengkel yang dikunjungi.</p>
-              : <p className="text-[11px] text-amber-400 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />Region kamu belum diset admin. Pilih manual dulu.</p>}
-          </Field>
-        )}
+        <Field label="Region" required>
+          <SearchableSelect
+            value={groupSel}
+            onChange={(val) => setForm({ ...form, group: val, regionId: '', kotaId: '', bengkelId: '' })}
+            options={groupOptions.map(g => ({ value: g, label: g }))}
+            placeholder="Pilih region…"
+            disabled={regionLocked}
+          />
+        </Field>
+        <Field label="Provinsi" required>
+          <SearchableSelect
+            value={form.regionId}
+            onChange={(val) => setForm({ ...form, regionId: val, kotaId: '', bengkelId: '' })}
+            options={provinsiOptions.map(r => ({ value: r.id, label: r.name }))}
+            placeholder="Pilih provinsi…"
+            disabled={regionLocked || !groupSel}
+            emptyText="Tidak ada provinsi di region ini"
+          />
+          {multiArea && <p className="text-[11px] text-slate-500 mt-1 flex items-center gap-1"><MapPin className="w-3 h-3" />Kamu meng-cover {allowedRegionIds.length} provinsi — pilih provinsi bengkel yang dikunjungi.</p>}
+          {!regionLocked && !multiArea && <p className="text-[11px] text-amber-400 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />Area kamu belum diset admin. Pilih manual dulu.</p>}
+        </Field>
         <Field label="Kota" required>
           <SearchableSelect
             value={form.kotaId}
@@ -2961,7 +2991,7 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
             options={filteredKotas.map(k => ({ value: k.id, label: k.name }))}
             placeholder="Pilih kota…"
             disabled={!form.regionId}
-            emptyText="Tidak ada kota di region ini"
+            emptyText="Tidak ada kota di provinsi ini"
           />
         </Field>
         <Field label="Kode - Nama Bengkel" required>
@@ -3519,7 +3549,7 @@ function VisitsTab({ visits, mds, bengkels, kotas, distributors, regions, onOpen
           {mds.map(m => <option key={m.id} value={m.id}>{m.full_name}</option>)}
         </Select>
         <Select value={filters.regionId} onChange={e => setFilters({ ...filters, regionId: e.target.value })}>
-          <option value="all">Semua Region</option>
+          <option value="all">Semua Provinsi</option>
           {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
         </Select>
         <Select value={filters.distributorId} onChange={e => setFilters({ ...filters, distributorId: e.target.value })}>
@@ -3653,9 +3683,18 @@ function DashboardTab({ visits, mds, bengkels, kotas, regions, distributors, onO
       if (v.status === HASIL_TERPASANG) o.terpasang++;
     });
     return regions
-      .map(r => ({ id: r.id, name: r.name, region: r.name, Actual: byRegion[r.id]?.Actual || 0, terpasang: byRegion[r.id]?.terpasang || 0 }))
+      .map(r => ({ id: r.id, name: r.name, region: r.name, group: groupOfRegion(r), Actual: byRegion[r.id]?.Actual || 0, terpasang: byRegion[r.id]?.terpasang || 0 }))
       .sort((a, b) => (b.Actual - a.Actual) || a.name.localeCompare(b.name));
   }, [filteredVisits, regions, bengkelRegion]);
+  // Agregasi level REGION (7 grup besar) untuk grafik
+  const groupChartData = useMemo(() => {
+    const byGroup = {};
+    chartData.forEach(p => {
+      const o = (byGroup[p.group] ||= { name: p.group, region: p.group, Actual: 0, terpasang: 0 });
+      o.Actual += p.Actual; o.terpasang += p.terpasang;
+    });
+    return Object.values(byGroup).sort((a, b) => (b.Actual - a.Actual) || a.name.localeCompare(b.name));
+  }, [chartData]);
 
   const totalVisits = filteredVisits.length;
   const pemasangan = filteredVisits.filter(v => v.status === HASIL_TERPASANG).length;
@@ -3670,9 +3709,9 @@ function DashboardTab({ visits, mds, bengkels, kotas, regions, distributors, onO
     </g>
   );
 
-  // Warna batang per area/region
+  // Warna batang per region (7 grup)
   const REGION_COLORS = ['#60a5fa', '#34d399', '#fbbf24', '#f472b6', '#a78bfa', '#fb923c', '#22d3ee', '#f87171'];
-  const regionNames = [...new Set(chartData.map(d => d.region).filter(Boolean))].sort();
+  const regionNames = [...new Set(chartData.map(d => d.group).filter(Boolean))].sort();
   const regionColor = Object.fromEntries(regionNames.map((n, i) => [n, REGION_COLORS[i % REGION_COLORS.length]]));
   const colorForRegion = (r) => regionColor[r] || '#71717a';
 
@@ -3710,7 +3749,7 @@ function DashboardTab({ visits, mds, bengkels, kotas, regions, distributors, onO
           {mds.map(m => <option key={m.id} value={m.id}>{m.full_name}</option>)}
         </Select>
         <Select value={filters.regionId} onChange={e => setFilters({ ...filters, regionId: e.target.value })}>
-          <option value="all">Semua Region</option>
+          <option value="all">Semua Provinsi</option>
           {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
         </Select>
         <Select value={filters.distributorId} onChange={e => setFilters({ ...filters, distributorId: e.target.value })}>
@@ -3743,15 +3782,15 @@ function DashboardTab({ visits, mds, bengkels, kotas, regions, distributors, onO
       </div>
 
       <Section title="Visit per Region" subtitle={`Jumlah visit — ${filters.month === 'all' ? 'semua bulan' : monthLabel(filters.month)}`} icon={Activity}>
-        <div className="h-96">
+        <div className="h-80">
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartData} margin={{ top: 10, right: 10, bottom: 10, left: -20 }}>
+            <ComposedChart data={groupChartData} margin={{ top: 10, right: 10, bottom: 10, left: -20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-              <XAxis dataKey="name" stroke="#71717a" interval={0} height={95} tick={renderMdTick} />
+              <XAxis dataKey="name" stroke="#71717a" interval={0} height={80} tick={renderMdTick} />
               <YAxis stroke="#71717a" tick={{ fontSize: 11 }} />
               <Tooltip contentStyle={{ background: '#09090b', border: '1px solid #27272a', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: '#e4e4e7' }} itemStyle={{ color: '#e4e4e7' }} cursor={{ fill: 'rgba(239,68,68,0.05)' }} />
               <Bar dataKey="Actual" radius={[4, 4, 0, 0]}>
-                {chartData.map((d, i) => <Cell key={i} fill={colorForRegion(d.region)} />)}
+                {groupChartData.map((d, i) => <Cell key={i} fill={colorForRegion(d.region)} />)}
                 <LabelList dataKey="Actual" position="top" fill="#ffffff" fontSize={10} fontWeight={600} />
               </Bar>
             </ComposedChart>
@@ -3759,11 +3798,14 @@ function DashboardTab({ visits, mds, bengkels, kotas, regions, distributors, onO
         </div>
 
         <div className="mt-5 space-y-2">
+          <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Rincian per Provinsi</div>
           {chartData.filter(r => r.Actual > 0).map((r, i) => (
             <div key={r.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-slate-950 border border-slate-800">
               <div className="w-6 h-6 rounded-full bg-slate-800/50 flex items-center justify-center text-[10px] font-mono text-slate-400">{i + 1}</div>
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-slate-200 truncate">{r.name}</div>
+                <div className="text-sm font-medium text-slate-200 truncate">{r.name}
+                  <span className="ml-2 text-[10px] font-normal text-slate-500">· {r.group}</span>
+                </div>
               </div>
               <div className="text-right">
                 <div className="text-sm font-semibold text-slate-100">{r.Actual}<span className="text-slate-500"> visit</span></div>
@@ -3918,7 +3960,7 @@ function CoverageTab({ visits, mds, bengkels, kotas, regions, distributors, onOp
           {mds.map(m => <option key={m.id} value={m.id}>{m.full_name}</option>)}
         </Select>
         <Select value={filters.regionId} onChange={e => setFilters({ ...filters, regionId: e.target.value })}>
-          <option value="all">Semua Region</option>
+          <option value="all">Semua Provinsi</option>
           {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
         </Select>
         <Select value={filters.distributorId} onChange={e => setFilters({ ...filters, distributorId: e.target.value })}>
@@ -5090,7 +5132,7 @@ function MasterTab({ regions, kotas, distributors, bengkels, mds, accounts = [],
 
   const sections = [
     { id: 'distributors', label: 'Distributor', icon: Briefcase, items: distributors, getName: d => d.name },
-    { id: 'regions', label: 'Region', icon: Globe, items: regions, getName: r => r.name },
+    { id: 'regions', label: 'Provinsi', icon: Globe, items: regions, getName: r => r.name },
     { id: 'kotas', label: 'Kota', icon: MapPin, items: kotas, getName: k => k.name },
     { id: 'bengkels', label: 'Bengkel', icon: Building2, items: bengkels, getName: b => `${b.code} - ${b.name}` },
     { id: 'mds', label: 'Akun', icon: Users, items: accounts, getName: m => `${m.full_name} (${m.email})` },
@@ -5264,7 +5306,7 @@ function MasterTab({ regions, kotas, distributors, bengkels, mds, accounts = [],
     <div>
       <div className="mb-5">
         <h2 className="text-2xl font-bold text-slate-100 tracking-tight font-display">Master Data</h2>
-        <p className="text-sm text-slate-500 mt-1">Kelola distributor, region, kota, bengkel & akun</p>
+        <p className="text-sm text-slate-500 mt-1">Kelola distributor, provinsi, kota, bengkel & akun</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-4">
