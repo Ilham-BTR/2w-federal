@@ -185,8 +185,7 @@ const visitToCSVRow = (v, ctx) => {
       EXPORT_PHOTO_HEADER[k] || ('link_' + k.replace(/^photo_/, '')),   // mis. link_tampak_depan, link_spanduk_biru, ...
       typeof v[k] === 'string' && v[k].startsWith('http') ? v[k] : (v[k] ? '(foto lokal/idb)' : ''),
     ])),
-    created_at: v.created_at || '',
-    // --- Hasil pengecekan admin/AA (sengaja di kolom paling kanan) ---
+    // --- Hasil pengecekan admin/AA ---
     foto_tidak_sesuai: v.photo_checks
       ? Object.entries(v.photo_checks).filter(([, s]) => s === 'bad').map(([col]) => PHOTO_LABELS[col] || col).join(', ')
       : '',
@@ -194,6 +193,7 @@ const visitToCSVRow = (v, ctx) => {
     tanggal_cek: v.checked_at ? excelDateTimeSerial(v.checked_at) : '',
     status_cek: v.check_status || 'Belum Dicek',
     remarks_admin: v.check_remarks || '',
+    created_at: v.created_at || '',   // tetap kolom paling kanan
   };
 };
 
