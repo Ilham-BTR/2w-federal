@@ -2609,17 +2609,27 @@ function MDView({ currentMD, refreshKey, welcome, onWelcomeClose }) {
   const [kotas, setKotas] = useState([]);
   const [distributors, setDistributors] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [myRegionIds, setMyRegionIds] = useState([]);
 
   useEffect(() => {
-    Promise.all([
-      api.fetchVisits({ mdId: currentMD.id }),
-      api.fetchBengkels(currentMD.region_id || null),  // hanya bengkel region MD -> hemat memori HP
-      api.fetchRegions(),
-      api.fetchKotas(),
-      api.fetchDistributors(),
-    ]).then(([v, b, r, k, d]) => {
-      setVisits(v); setBengkels(b); setRegions(r); setKotas(k); setDistributors(d); setLoading(false);
-    }).catch(err => { console.error(err); setLoading(false); });
+    (async () => {
+      try {
+        // Area MD bisa >1 (tl_regions). WAJIB diambil dulu — kalau hanya pakai
+        // region_id tunggal, bengkel di provinsi keduanya tak pernah ter-load.
+        const mine = await api.fetchMyRegions(currentMD.id).catch(() => []);
+        const ids = mine?.length ? mine : (currentMD.region_id ? [currentMD.region_id] : []);
+        setMyRegionIds(ids);
+        const [v, b, r, k, d] = await Promise.all([
+          api.fetchVisits({ mdId: currentMD.id }),
+          api.fetchBengkels(ids.length ? ids : null),   // bengkel di semua area MD
+          api.fetchRegions(),
+          api.fetchKotas(),
+          api.fetchDistributors(),
+        ]);
+        setVisits(v); setBengkels(b); setRegions(r); setKotas(k); setDistributors(d);
+      } catch (err) { console.error(err); }
+      finally { setLoading(false); }
+    })();
   }, [currentMD.id, refreshKey]);
 
   const reloadVisits = async () => {
@@ -2646,7 +2656,7 @@ function MDView({ currentMD, refreshKey, welcome, onWelcomeClose }) {
       </div>
 
       {tab === 'absen' && <AbsenTab currentMD={currentMD} />}
-      {tab === 'new' && <VisitForm currentMD={currentMD} bengkels={bengkels} regions={regions} kotas={kotas} distributors={distributors} onSubmitted={() => { reloadVisits(); setTab('history'); }} />}
+      {tab === 'new' && <VisitForm currentMD={currentMD} bengkels={bengkels} regions={regions} kotas={kotas} distributors={distributors} myRegionIds={myRegionIds} onSubmitted={() => { reloadVisits(); setTab('history'); }} />}
       {tab === 'history' && <VisitHistory visits={visits} bengkels={bengkels} kotas={kotas} distributors={distributors} currentMD={currentMD} />}
       <WhatsAppCS name={currentMD.full_name} />
     </div>
@@ -2804,7 +2814,7 @@ function MDDashboard({ currentMD, visits, bengkels, kotas }) {
   );
 }
 
-function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmitted }) {
+function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmitted, myRegionIds: initialRegionIds }) {
   const DRAFT_KEY = `visitDraft:${currentMD.id}`;
   const emptyPhotos = { selfie: null, before: null, after: null, spandukJauh: null, spandukSedang: null, poster: null };
   const makeDefaultForm = () => ({
@@ -2836,12 +2846,15 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
   const filteredKotas = kotas.filter(k => k.region_id === form.regionId);
   const filteredBengkels = bengkels.filter(b => !form.kotaId || b.kota_id === form.kotaId);
   // Area MD bisa >1 (tabel tl_regions dipakai juga untuk MD). Fallback: region_id tunggal.
-  const [myRegionIds, setMyRegionIds] = useState(null);
+  // Area dikirim dari MDView (sudah dipakai untuk memuat bengkel) — fetch ulang
+  // hanya bila belum tersedia, supaya daftar bengkel & area selalu sinkron.
+  const [myRegionIds, setMyRegionIds] = useState(initialRegionIds?.length ? initialRegionIds : null);
   useEffect(() => {
+    if (initialRegionIds?.length) { setMyRegionIds(initialRegionIds); return; }
     api.fetchMyRegions(currentMD.id)
       .then(ids => setMyRegionIds(ids?.length ? ids : (currentMD.region_id ? [currentMD.region_id] : [])))
       .catch(() => setMyRegionIds(currentMD.region_id ? [currentMD.region_id] : []));
-  }, [currentMD.id]);
+  }, [currentMD.id, initialRegionIds]);
   const allowedRegionIds = myRegionIds || (currentMD.region_id ? [currentMD.region_id] : []);
   const multiArea = allowedRegionIds.length > 1;
   const areaNames = allowedRegionIds.map(id => regions.find(r => r.id === id)?.name).filter(Boolean);

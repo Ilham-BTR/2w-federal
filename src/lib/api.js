@@ -272,19 +272,23 @@ async function fetchAllPaged(buildQuery, batch = 1000) {
 
 // regionId (opsional): batasi ke bengkel di region itu saja. Dipakai MD supaya
 // tak menarik SEMUA bengkel (2000+) yang bikin OOM di HP RAM kecil.
+/**
+ * @param {string|string[]|null} regionId - 1 region, banyak region (MD multi-area), atau null = semua
+ */
 export async function fetchBengkels(regionId = null) {
+  const ids = (Array.isArray(regionId) ? regionId : [regionId]).filter(Boolean);
   if (MOCK_MODE) {
     const all = [...MOCK_DATA.bengkels];
-    if (!regionId) return all;
-    const kotaIds = new Set(MOCK_DATA.kotas.filter(k => k.region_id === regionId).map(k => k.id));
+    if (!ids.length) return all;
+    const kotaIds = new Set(MOCK_DATA.kotas.filter(k => ids.includes(k.region_id)).map(k => k.id));
     return all.filter(b => kotaIds.has(b.kota_id));
   }
-  if (regionId) {
-    // inner join kotas + filter region -> hanya bengkel di region MD
+  if (ids.length) {
+    // inner join kotas + filter region -> hanya bengkel di region(-region) MD
     return fetchAllPaged(() =>
       supabase.from('bengkels')
         .select('*, kota:kotas!inner(*, region:regions!region_id(*))')
-        .eq('kota.region_id', regionId)
+        .in('kota.region_id', ids)
         .order('code')
     );
   }
