@@ -3531,7 +3531,7 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [] }) {
   const NUM_COLS = [
     { key: 'target',    label: '# Workshop',     get: r => r.target,    raw: true, color: 'text-slate-300' },
     { key: 'visited',   label: 'Visited',        get: r => r.visited,   color: 'text-sky-300' },
-    { key: 'terpasang', label: 'Deploy Spanduk', get: r => r.terpasang, color: 'text-emerald-400' },
+    { key: 'terpasang', label: 'Success Deploy', get: r => r.terpasang, color: 'text-emerald-400' },
     { key: 'spanduk',   label: 'Spanduk',        get: r => r.spanduk,   color: 'text-emerald-300' },
     { key: 'poster',    label: 'Poster',         get: r => r.poster,    color: 'text-emerald-300' },
     ...CATS.map(c => ({ key: c, label: SHORT[c] || c, get: r => r.cats[c], cat: true })),
