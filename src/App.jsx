@@ -175,13 +175,6 @@ const visitToCSVRow = (v, ctx) => {
     bengkel_alamat: b?.address || '',
     hasil_visit: v.status,
     notes: v.remarks || '',
-    status_cek: v.check_status || 'Belum Dicek',
-    remarks_admin: v.check_remarks || '',
-    foto_tidak_sesuai: v.photo_checks
-      ? Object.entries(v.photo_checks).filter(([, s]) => s === 'bad').map(([col]) => PHOTO_LABELS[col] || col).join(', ')
-      : '',
-    dicek_oleh: (ctx.accounts || ctx.mds || []).find(a => a.id === v.checked_by)?.full_name || '',
-    tanggal_cek: v.checked_at ? excelDateTimeSerial(v.checked_at) : '',
     bengkel_lat: b?.lat ?? '',
     bengkel_lng: b?.lng ?? '',
     visit_lat: v.visit_lat ?? '',
@@ -193,6 +186,14 @@ const visitToCSVRow = (v, ctx) => {
       typeof v[k] === 'string' && v[k].startsWith('http') ? v[k] : (v[k] ? '(foto lokal/idb)' : ''),
     ])),
     created_at: v.created_at || '',
+    // --- Hasil pengecekan admin/AA (sengaja di kolom paling kanan) ---
+    foto_tidak_sesuai: v.photo_checks
+      ? Object.entries(v.photo_checks).filter(([, s]) => s === 'bad').map(([col]) => PHOTO_LABELS[col] || col).join(', ')
+      : '',
+    dicek_oleh: (ctx.accounts || ctx.mds || []).find(a => a.id === v.checked_by)?.full_name || '',
+    tanggal_cek: v.checked_at ? excelDateTimeSerial(v.checked_at) : '',
+    status_cek: v.check_status || 'Belum Dicek',
+    remarks_admin: v.check_remarks || '',
   };
 };
 
@@ -2656,7 +2657,7 @@ function MDView({ currentMD, refreshKey, welcome, onWelcomeClose }) {
       </div>
 
       {tab === 'absen' && <AbsenTab currentMD={currentMD} />}
-      {tab === 'new' && <VisitForm currentMD={currentMD} bengkels={bengkels} regions={regions} kotas={kotas} distributors={distributors} myRegionIds={myRegionIds} onSubmitted={() => { reloadVisits(); setTab('history'); }} />}
+      {tab === 'new' && <VisitForm currentMD={currentMD} bengkels={bengkels} regions={regions} kotas={kotas} distributors={distributors} myRegionIds={myRegionIds} onSubmitted={() => { reloadVisits(); setTab('history'); }} onNeedAbsen={() => setTab('absen')} />}
       {tab === 'history' && <VisitHistory visits={visits} bengkels={bengkels} kotas={kotas} distributors={distributors} currentMD={currentMD} />}
       <WhatsAppCS name={currentMD.full_name} />
     </div>
@@ -2814,7 +2815,7 @@ function MDDashboard({ currentMD, visits, bengkels, kotas }) {
   );
 }
 
-function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmitted, myRegionIds: initialRegionIds }) {
+function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmitted, onNeedAbsen, myRegionIds: initialRegionIds }) {
   const DRAFT_KEY = `visitDraft:${currentMD.id}`;
   const emptyPhotos = { selfie: null, before: null, after: null, spandukJauh: null, spandukSedang: null, poster: null };
   const makeDefaultForm = () => ({
@@ -2839,6 +2840,14 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
   const submitLock = useRef(false);
   // ID visit dibuat di awal supaya tiap foto bisa di-upload duluan (eager) ke path-nya.
   const [visitId] = useState(() => crypto.randomUUID());
+  // MD WAJIB absen masuk dulu sebelum boleh mengisi visit hari ini.
+  const [checkedInToday, setCheckedInToday] = useState(null);   // null = masih dicek
+  useEffect(() => {
+    const today = localDateStr();   // tanggal LOKAL — samakan dengan modul absen
+    api.fetchTodayAttendance(currentMD.id, today)
+      .then(a => setCheckedInToday(!!a?.check_in_at))
+      .catch(() => setCheckedInToday(true));   // gagal cek → jangan blokir (fail-open)
+  }, [currentMD.id]);
 
   // GPS user state — di-capture saat bengkel dipilih
   const [gps, setGps] = useState({ status: 'idle', lat: null, lng: null, accuracy: null, error: null });
@@ -2948,7 +2957,7 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
   const GEOFENCE_RADIUS = 150; // meter — MD wajib dalam radius ini dari titik bengkel
   const gpsFar = gpsDistance != null && gpsDistance > GEOFENCE_RADIUS; // terlalu jauh → blokir
 
-  const canSubmit = form.bengkelId && form.status && hasAllRequiredPhotos && !anyCompressing && gps.status === 'ready' && !gpsFar && !submitting;
+  const canSubmit = checkedInToday !== false && form.bengkelId && form.status && hasAllRequiredPhotos && !anyCompressing && gps.status === 'ready' && !gpsFar && !submitting;
 
   const handleSubmit = async () => {
     if (submitLock.current || !canSubmit) return;  // guard sinkron, gak nunggu re-render
@@ -2985,6 +2994,22 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
       submitLock.current = false;  // error → boleh coba lagi
     }
   };
+
+  // Gate: belum absen masuk hari ini → form visit tidak ditampilkan.
+  if (checkedInToday === false) {
+    return (
+      <div className="max-w-md mx-auto text-center py-12">
+        <div className="w-14 h-14 rounded-2xl bg-blue-600/10 flex items-center justify-center mx-auto mb-4">
+          <CalendarDays className="w-7 h-7 text-blue-500" />
+        </div>
+        <h3 className="text-lg font-bold text-slate-100 mb-1">Absen Masuk dulu</h3>
+        <p className="text-sm text-slate-500 mb-5 max-w-xs mx-auto">
+          Kamu belum absen masuk hari ini. Lakukan <span className="text-slate-300">Absen Masuk</span> dulu sebelum mengisi visit.
+        </p>
+        <Button onClick={onNeedAbsen}><LogIn className="w-4 h-4" />Absen Masuk Sekarang</Button>
+      </div>
+    );
+  }
 
   return (
     <>
