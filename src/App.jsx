@@ -3435,18 +3435,18 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [] }) {
 
   // Kolom kategori (selain Visited & Terpasang yang tampil khusus)
   const CATS = STATUS_OPTIONS.filter(s => s !== HASIL_TERPASANG);
-  // Label pendek agar tabel muat tanpa scroll samping
+  // Nama kolom mengikuti laporan Excel AA
   const SHORT = {
-    'Alamat bengkel tidak ditemukan': 'Alamat Tdk Ketemu',
-    'Ditolak': 'Ditolak',
-    'Bukan bengkel': 'Bukan Bengkel',
-    'Owner/PIC tidak di tempat': 'Owner Tdk Ada',
-    'Tidak jual oli Federal': 'Tdk Jual Federal',
+    'Alamat bengkel tidak ditemukan': 'Address Not Found',
+    'Ditolak': 'Decline',
+    'Bukan bengkel': 'Not Bengkel',
+    'Owner/PIC tidak di tempat': 'Closed',
+    'Tidak jual oli Federal': 'Not Selling Federal',
   };
 
   // Agregasi: kunci = provinsi(region_id) atau kota(kota_id)
   const { groups, grand } = useMemo(() => {
-    const blank = () => ({ target: 0, visited: 0, terpasang: 0, cats: Object.fromEntries(CATS.map(c => [c, 0])) });
+    const blank = () => ({ target: 0, visited: 0, terpasang: 0, spanduk: 0, poster: 0, cats: Object.fromEntries(CATS.map(c => [c, 0])) });
     const rows = new Map();   // key -> {name, groupName, ...counts}
 
     const keyOf = (kota) => level === 'kota' ? kota?.id : kota?.region_id;
@@ -3458,7 +3458,7 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [] }) {
       const key = keyOf(kota);
       if (!key) return null;
       if (!rows.has(key)) {
-        rows.set(key, { key, name: nameOf(kota), group: groupOfRegion(regionById.get(kota?.region_id)), ...blank() });
+        rows.set(key, { key, name: nameOf(kota), regionId: kota?.region_id, group: groupOfRegion(regionById.get(kota?.region_id)), ...blank() });
       }
       return rows.get(key);
     };
@@ -3474,8 +3474,11 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [] }) {
       const row = ensure(kotaById.get(b?.kota_id));
       if (!row) return;
       row.visited++;
-      if (v.status === HASIL_TERPASANG) row.terpasang++;
-      else if (row.cats[v.status] != null) row.cats[v.status]++;
+      if (v.status === HASIL_TERPASANG) {
+        row.terpasang++;
+        if (v.photo_spanduk_jauh || v.photo_spanduk_sedang) row.spanduk++;   // bukti spanduk ada
+        if (v.photo_poster) row.poster++;                                     // poster ikut terpasang
+      } else if (row.cats[v.status] != null) row.cats[v.status]++;
     });
 
     // Kelompokkan per region + subtotal
@@ -3487,6 +3490,7 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [] }) {
         const sub = { ...blank(), cats: Object.fromEntries(CATS.map(c => [c, 0])) };
         items.forEach(r => {
           sub.target += r.target; sub.visited += r.visited; sub.terpasang += r.terpasang;
+          sub.spanduk += r.spanduk; sub.poster += r.poster;
           CATS.forEach(c => { sub.cats[c] += r.cats[c]; });
         });
         return { group, items, sub };
@@ -3496,6 +3500,7 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [] }) {
     const grand = { ...blank(), cats: Object.fromEntries(CATS.map(c => [c, 0])) };
     groups.forEach(g => {
       grand.target += g.sub.target; grand.visited += g.sub.visited; grand.terpasang += g.sub.terpasang;
+      grand.spanduk += g.sub.spanduk; grand.poster += g.sub.poster;
       CATS.forEach(c => { grand.cats[c] += g.sub.cats[c]; });
     });
     return { groups, grand };
@@ -3505,36 +3510,102 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [] }) {
   const pct = (n, t) => (t > 0 ? Math.round((n / t) * 100) : 0);
   const cell = (n, t) => `${n} (${pct(n, t)}%)`;
 
+  // MD yang meng-cover tiap provinsi (area MD = provinsi, bisa >1 via tl_regions)
+  const mdByRegion = useMemo(() => {
+    const m = {};
+    (accounts || []).filter(a => a.role === 'md' && a.active !== false).forEach(a => {
+      const ids = a.region_ids?.length ? a.region_ids : (a.region_id ? [a.region_id] : []);
+      ids.forEach(rid => { (m[rid] ||= []).push(a.full_name); });
+    });
+    Object.values(m).forEach(list => list.sort((x, y) => x.localeCompare(y)));
+    return m;
+  }, [accounts]);
+  const mdNamesOf = (regionId) => mdByRegion[regionId] || [];
+  const mdNamesOfGroup = (group) => {
+    const names = new Set();
+    regions.filter(r => groupOfRegion(r) === group).forEach(r => mdNamesOf(r.id).forEach(n => names.add(n)));
+    return [...names].sort((a, b) => a.localeCompare(b));
+  };
+
+  // Definisi kolom angka — dipakai header, baris, subtotal, grand total & export.
+  const NUM_COLS = [
+    { key: 'target',    label: '# Workshop',     get: r => r.target,    raw: true, color: 'text-slate-300' },
+    { key: 'visited',   label: 'Visited',        get: r => r.visited,   color: 'text-sky-300' },
+    { key: 'terpasang', label: 'Deploy Spanduk', get: r => r.terpasang, color: 'text-emerald-400' },
+    { key: 'spanduk',   label: 'Spanduk',        get: r => r.spanduk,   color: 'text-emerald-300' },
+    { key: 'poster',    label: 'Poster',         get: r => r.poster,    color: 'text-emerald-300' },
+    ...CATS.map(c => ({ key: c, label: SHORT[c] || c, get: r => r.cats[c], cat: true })),
+  ];
+  const ALL_COLS = [...NUM_COLS, { key: 'mdcover', label: 'MD Cover' }];
+  const [hiddenCols, setHiddenCols] = useState([]);
+  const show = (k) => !hiddenCols.includes(k);
+  const toggleCol = (k) => setHiddenCols(h => (h.includes(k) ? h.filter(x => x !== k) : [...h, k]));
+  const visibleNumCols = NUM_COLS.filter(c => show(c.key));
+
   const exportLaporan = async () => {
-    const XLSX = await import('xlsx');
-    const data = [];
+    // xlsx-js-style = SheetJS + dukungan style (SheetJS CE mengabaikan style).
+    const XLSX = await import('xlsx-js-style');
+
+    // ---------- Sheet 1: Laporan Coverage (berformat) ----------
+    const headers = ['Region (AA)', level === 'kota' ? 'Kota (AA)' : 'Provinsi (AA)',
+      ...visibleNumCols.map(c => c.label), ...(show('mdcover') ? ['MD Cover'] : [])];
+    const aoa = [headers];
+    const kinds = ['head'];                       // jenis tiap baris untuk styling
     groups.forEach(g => {
-      g.items.forEach(r => data.push({
-        Region: g.group,
-        [level === 'kota' ? 'Kota' : 'Provinsi']: r.name,
-        'Jumlah Bengkel': r.target,
-        Visited: cell(r.visited, r.target),
-        'Spanduk Terpasang': cell(r.terpasang, r.target),
-        ...Object.fromEntries(CATS.map(c => [c, cell(r.cats[c], r.target)])),
-      }));
-      data.push({
-        Region: `${g.group} TOTAL`, [level === 'kota' ? 'Kota' : 'Provinsi']: '',
-        'Jumlah Bengkel': g.sub.target,
-        Visited: cell(g.sub.visited, g.sub.target),
-        'Spanduk Terpasang': cell(g.sub.terpasang, g.sub.target),
-        ...Object.fromEntries(CATS.map(c => [c, cell(g.sub.cats[c], g.sub.target)])),
+      g.items.forEach((r, i) => {
+        aoa.push([i === 0 ? g.group : '', r.name,
+          ...visibleNumCols.map(c => (c.raw ? c.get(r) : cell(c.get(r), r.target))),
+          ...(show('mdcover') ? [mdNamesOf(r.regionId).join(', ')] : [])]);
+        kinds.push('data');
       });
+      aoa.push([`${g.group} TOTAL`, '',
+        ...visibleNumCols.map(c => (c.raw ? c.get(g.sub) : cell(c.get(g.sub), g.sub.target))),
+        ...(show('mdcover') ? [`${mdNamesOfGroup(g.group).length} MD`] : [])]);
+      kinds.push('sub');
     });
-    data.push({
-      Region: 'GRAND TOTAL', [level === 'kota' ? 'Kota' : 'Provinsi']: '',
-      'Jumlah Bengkel': grand.target,
-      Visited: cell(grand.visited, grand.target),
-      'Spanduk Terpasang': cell(grand.terpasang, grand.target),
-      ...Object.fromEntries(CATS.map(c => [c, cell(grand.cats[c], grand.target)])),
-    });
-    const ws = XLSX.utils.json_to_sheet(data);
+    aoa.push(['GRAND TOTAL', '',
+      ...visibleNumCols.map(c => (c.raw ? c.get(grand) : cell(c.get(grand), grand.target))),
+      ...(show('mdcover') ? [`${new Set(Object.values(mdByRegion).flat()).size} MD`] : [])]);
+    kinds.push('grand');
+
+    const BORDER = { style: 'thin', color: { rgb: 'FFB4C6E7' } };
+    const borders = { top: BORDER, bottom: BORDER, left: BORDER, right: BORDER };
+    const styleFor = (kind, colIdx) => {
+      const align = { vertical: 'center', wrapText: true, horizontal: colIdx <= 1 ? 'left' : 'center' };
+      if (kind === 'head') return { font: { bold: true, color: { rgb: 'FFFFFFFF' }, sz: 11 }, fill: { fgColor: { rgb: 'FF1F4E79' } }, alignment: { ...align, horizontal: 'center' }, border: borders };
+      if (kind === 'sub') return { font: { bold: true, color: { rgb: 'FF1F4E79' } }, fill: { fgColor: { rgb: 'FFBDD7EE' } }, alignment: align, border: borders };
+      if (kind === 'grand') return { font: { bold: true, color: { rgb: 'FF1F4E79' } }, fill: { fgColor: { rgb: 'FF9DC3E6' } }, alignment: align, border: borders };
+      return { alignment: align, border: borders };
+    };
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    aoa.forEach((row, ri) => row.forEach((_, ci) => {
+      const ref = XLSX.utils.encode_cell({ r: ri, c: ci });
+      if (ws[ref]) ws[ref].s = styleFor(kinds[ri], ci);
+    }));
+    ws['!cols'] = headers.map((h, i) => ({ wch: i === 0 ? 22 : i === 1 ? 26 : (h === 'MD Cover' ? 40 : Math.max(12, h.length + 3)) }));
+    ws['!rows'] = [{ hpt: 32 }];                 // header lebih tinggi (teks wrap)
+    ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: 0, c: headers.length - 1 } }) };
+
+    // ---------- Sheet 2: Raw Data (semua visit sesuai filter) ----------
+    const ctx = { bengkels, kotas, regions, mds: (accounts || []).filter(a => a.role === 'md'), accounts };
+    const raw = fVisits.map(v => visitToCSVRow(v, ctx));
+    const ws2 = XLSX.utils.json_to_sheet(raw.length ? raw : [{ info: 'Tidak ada visit pada filter ini' }], { cellDates: true });
+    if (raw.length) {
+      const cols = Object.keys(raw[0]);
+      setColDateFormat(XLSX, ws2, 'tanggal', 'dd/mm/yyyy');
+      setColDateFormat(XLSX, ws2, 'waktu_submit', 'dd/mm/yyyy hh:mm');
+      setColDateFormat(XLSX, ws2, 'tanggal_cek', 'dd/mm/yyyy hh:mm');
+      cols.forEach((_, ci) => {
+        const ref = XLSX.utils.encode_cell({ r: 0, c: ci });
+        if (ws2[ref]) ws2[ref].s = { font: { bold: true, color: { rgb: 'FFFFFFFF' } }, fill: { fgColor: { rgb: 'FF1F4E79' } }, alignment: { horizontal: 'center', wrapText: true }, border: borders };
+      });
+      ws2['!cols'] = cols.map(c => ({ wch: Math.min(38, Math.max(12, c.length + 4)) }));
+      ws2['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: 0, c: cols.length - 1 } }) };
+    }
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Laporan Coverage');
+    XLSX.utils.book_append_sheet(wb, ws2, 'Raw Data');
     XLSX.writeFile(wb, `laporan_coverage_${month === 'all' ? 'semua' : month}.xlsx`);
   };
 
@@ -3567,17 +3638,31 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [] }) {
       <DateRangeRow className="mb-4 -mt-1" dari={dari} sampai={sampai} onDari={setDari} onSampai={setSampai}
         onReset={() => { setDari(''); setSampai(''); }} />
 
+      {/* Filter kolom — klik untuk tampil/sembunyikan */}
+      <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 mb-4">
+        <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Tampilkan Kolom</div>
+        <div className="flex flex-wrap gap-1.5">
+          {ALL_COLS.map(c => (
+            <button key={c.key} onClick={() => toggleCol(c.key)}
+              className={`text-[11px] px-2.5 py-1 rounded-lg border transition ${
+                show(c.key) ? 'bg-blue-600/15 border-blue-600/40 text-blue-200' : 'bg-slate-900 border-slate-800 text-slate-500 line-through'
+              }`}>{c.label}</button>
+          ))}
+          {hiddenCols.length > 0 && (
+            <button onClick={() => setHiddenCols([])} className="text-[11px] px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition">Tampilkan semua</button>
+          )}
+        </div>
+      </div>
+
       <div className="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm border-collapse">
             <thead className="bg-blue-950/40 border-b border-slate-800">
               <tr>
-                <Th className="text-left">Region</Th>
-                <Th className="text-left">{level === 'kota' ? 'Kota' : 'Provinsi'}</Th>
-                <Th className="text-right"># Bengkel</Th>
-                <Th className="text-right">Visited</Th>
-                <Th className="text-right">Terpasang</Th>
-                {CATS.map(c => <Th key={c} className="text-right" title={c}>{SHORT[c] || c}</Th>)}
+                <Th className="text-left">Region (AA)</Th>
+                <Th className="text-left">{level === 'kota' ? 'Kota (AA)' : 'Provinsi (AA)'}</Th>
+                {visibleNumCols.map(c => <Th key={c.key} className="text-right" title={c.key}>{c.label}</Th>)}
+                {show('mdcover') && <Th className="text-left">MD Cover</Th>}
               </tr>
             </thead>
             <tbody>
@@ -3589,37 +3674,53 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [] }) {
                         {i === 0 ? g.group : ''}
                       </td>
                       <td className="px-2.5 py-1.5 text-xs text-slate-200 whitespace-nowrap">{r.name}</td>
-                      <td className="px-2.5 py-1.5 text-xs text-right font-mono text-slate-300">{r.target}</td>
-                      <td className="px-2.5 py-1.5 text-xs text-right font-mono text-sky-300 whitespace-nowrap">{cell(r.visited, r.target)}</td>
-                      <td className="px-2.5 py-1.5 text-xs text-right font-mono text-emerald-400 whitespace-nowrap">{cell(r.terpasang, r.target)}</td>
-                      {CATS.map(c => (
-                        <td key={c} className={`px-2.5 py-1.5 text-xs text-right font-mono whitespace-nowrap ${r.cats[c] > 0 ? 'text-amber-300' : 'text-slate-600'}`}>
-                          {cell(r.cats[c], r.target)}
+                      {visibleNumCols.map(c => {
+                        const n = c.get(r);
+                        const color = c.raw ? 'text-slate-300' : (c.cat ? (n > 0 ? 'text-amber-300' : 'text-slate-600') : c.color);
+                        return (
+                          <td key={c.key} className={`px-2.5 py-1.5 text-xs text-right font-mono whitespace-nowrap ${color}`}>
+                            {c.raw ? n : cell(n, r.target)}
+                          </td>
+                        );
+                      })}
+                      {show('mdcover') && (
+                        <td className="px-2.5 py-1.5 text-[11px] text-slate-400 max-w-[260px]" title={mdNamesOf(r.regionId).join(', ')}>
+                          {mdNamesOf(r.regionId).length
+                            ? <span className="line-clamp-2">{mdNamesOf(r.regionId).join(', ')}</span>
+                            : <span className="text-slate-600">—</span>}
                         </td>
-                      ))}
+                      )}
                     </tr>
                   ))}
                   <tr className="bg-blue-900/25 border-b-2 border-slate-800 font-semibold">
                     <td className="px-2.5 py-1.5 text-[11px] text-blue-200 whitespace-nowrap">{g.group} TOTAL</td>
                     <td />
-                    <td className="px-2.5 py-1.5 text-xs text-right font-mono text-slate-100">{g.sub.target}</td>
-                    <td className="px-2.5 py-1.5 text-xs text-right font-mono text-sky-200 whitespace-nowrap">{cell(g.sub.visited, g.sub.target)}</td>
-                    <td className="px-2.5 py-1.5 text-xs text-right font-mono text-emerald-300 whitespace-nowrap">{cell(g.sub.terpasang, g.sub.target)}</td>
-                    {CATS.map(c => (
-                      <td key={c} className="px-2.5 py-1.5 text-xs text-right font-mono text-amber-200 whitespace-nowrap">{cell(g.sub.cats[c], g.sub.target)}</td>
+                    {visibleNumCols.map(c => (
+                      <td key={c.key} className={`px-2.5 py-1.5 text-xs text-right font-mono whitespace-nowrap ${c.raw ? 'text-slate-100' : c.cat ? 'text-amber-200' : c.color}`}>
+                        {c.raw ? c.get(g.sub) : cell(c.get(g.sub), g.sub.target)}
+                      </td>
                     ))}
+                    {show('mdcover') && (
+                      <td className="px-2.5 py-1.5 text-[11px] text-blue-200 whitespace-nowrap" title={mdNamesOfGroup(g.group).join(', ')}>
+                        {mdNamesOfGroup(g.group).length} MD
+                      </td>
+                    )}
                   </tr>
                 </React.Fragment>
               ))}
               <tr className="bg-slate-800/60 font-bold">
                 <td className="px-2.5 py-2 text-[11px] text-slate-100 whitespace-nowrap">GRAND TOTAL</td>
                 <td />
-                <td className="px-2.5 py-2 text-xs text-right font-mono text-slate-100">{grand.target}</td>
-                <td className="px-2.5 py-2 text-xs text-right font-mono text-sky-200 whitespace-nowrap">{cell(grand.visited, grand.target)}</td>
-                <td className="px-2.5 py-2 text-xs text-right font-mono text-emerald-300 whitespace-nowrap">{cell(grand.terpasang, grand.target)}</td>
-                {CATS.map(c => (
-                  <td key={c} className="px-2.5 py-2 text-xs text-right font-mono text-amber-200 whitespace-nowrap">{cell(grand.cats[c], grand.target)}</td>
+                {visibleNumCols.map(c => (
+                  <td key={c.key} className={`px-2.5 py-2 text-xs text-right font-mono whitespace-nowrap ${c.raw ? 'text-slate-100' : c.cat ? 'text-amber-200' : c.color}`}>
+                    {c.raw ? c.get(grand) : cell(c.get(grand), grand.target)}
+                  </td>
                 ))}
+                {show('mdcover') && (
+                  <td className="px-2.5 py-2 text-[11px] text-slate-200 whitespace-nowrap">
+                    {new Set(Object.values(mdByRegion).flat()).size} MD
+                  </td>
+                )}
               </tr>
             </tbody>
           </table>
@@ -4111,22 +4212,23 @@ function DashboardTab({ visits, mds, bengkels, kotas, regions, distributors, onO
       <Section title="Visit per Region" subtitle={`Jumlah visit — ${filters.month === 'all' ? 'semua bulan' : monthLabel(filters.month)}`} icon={Activity}>
         <div className="h-80">
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={groupChartData} margin={{ top: 10, right: 10, bottom: 10, left: -20 }}>
+            {/* SATU sumbu Y untuk kedua batang — kalau dipisah, target 1994 & visit 1
+                tampak sama tinggi (menyesatkan). Skala sama = perbandingan jujur. */}
+            <ComposedChart data={groupChartData} margin={{ top: 28, right: 16, bottom: 10, left: -10 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
               <XAxis dataKey="name" stroke="#71717a" interval={0} height={80} tick={renderMdTick} />
-              <YAxis yAxisId="visit" stroke="#71717a" tick={{ fontSize: 11 }} />
-              <YAxis yAxisId="target" orientation="right" stroke="#2563eb" tick={{ fontSize: 10 }} />
+              <YAxis stroke="#71717a" tick={{ fontSize: 11 }} width={56} />
               <Tooltip contentStyle={{ background: '#09090b', border: '1px solid #27272a', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: '#e4e4e7' }} itemStyle={{ color: '#e4e4e7' }} cursor={{ fill: 'rgba(239,68,68,0.05)' }} />
               {/* Batang Target (kiri, biru) berdampingan dengan batang Visit (kanan, hijau) */}
-              <Bar yAxisId="target" dataKey="Target" name="Target" fill="#2563eb" radius={[4, 4, 0, 0]}>
+              <Bar dataKey="Target" name="Target" fill="#2563eb" radius={[4, 4, 0, 0]}>
                 <LabelList dataKey="Target" position="top" fill="#93c5fd" fontSize={10} fontWeight={600} />
               </Bar>
-              <Bar yAxisId="visit" dataKey="Actual" name="Visit" radius={[4, 4, 0, 0]}>
+              <Bar dataKey="Actual" name="Visit" radius={[4, 4, 0, 0]} minPointSize={2}>
                 {groupChartData.map((d, i) => <Cell key={i} fill={colorForRegion(d.region)} />)}
                 <LabelList dataKey="Actual" position="top" fill="#ffffff" fontSize={10} fontWeight={600} />
               </Bar>
               {/* Seri tak terlihat — hanya supaya angka Terpasang ikut muncul di tooltip */}
-              <Line yAxisId="visit" dataKey="terpasang" name="Berhasil Terpasang" stroke="#10b981" strokeOpacity={0} dot={false} activeDot={false} legendType="none" />
+              <Line dataKey="terpasang" name="Berhasil Terpasang" stroke="#10b981" strokeOpacity={0} dot={false} activeDot={false} legendType="none" />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
