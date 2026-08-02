@@ -337,6 +337,21 @@ export async function fetchAccounts() {
  * Dipakai super admin saat edit akun TL. Create memakai edge function.
  */
 /**
+ * Daftar id bengkel yang SUDAH berhasil dipasangi spanduk.
+ * Dipakai form visit untuk memblokir submit ulang bengkel yang sama
+ * (aturan: 1 bengkel hanya boleh 1x "Spanduk Terpasang").
+ * @returns {Promise<Set<string>>}
+ */
+export async function fetchTerpasangBengkelIds() {
+  if (MOCK_MODE) {
+    return new Set(MOCK_DATA.visits.filter(v => v.status === 'Spanduk Terpasang').map(v => v.bengkel_id));
+  }
+  const { data, error } = await supabase.from('bengkels_terpasang').select('bengkel_id');
+  if (error) { console.warn('fetchTerpasangBengkelIds gagal:', error.message); return new Set(); }
+  return new Set((data || []).map(r => r.bengkel_id));
+}
+
+/**
  * Simpan hasil pengecekan visit oleh admin/AA.
  * @param {string} visitId
  * @param {Object} args - { photoChecks: {selfie:'ok'|'bad',...}, remarks, checkedBy }

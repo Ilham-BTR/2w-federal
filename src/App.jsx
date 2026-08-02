@@ -186,12 +186,12 @@ const visitToCSVRow = (v, ctx) => {
       typeof v[k] === 'string' && v[k].startsWith('http') ? v[k] : (v[k] ? '(foto lokal/idb)' : ''),
     ])),
     // --- Hasil pengecekan admin/AA ---
+    status_cek: v.check_status || 'Belum Dicek',
     foto_tidak_sesuai: v.photo_checks
       ? Object.entries(v.photo_checks).filter(([, s]) => s === 'bad').map(([col]) => PHOTO_LABELS[col] || col).join(', ')
       : '',
     dicek_oleh: (ctx.accounts || ctx.mds || []).find(a => a.id === v.checked_by)?.full_name || '',
     tanggal_cek: v.checked_at ? excelDateTimeSerial(v.checked_at) : '',
-    status_cek: v.check_status || 'Belum Dicek',
     remarks_admin: v.check_remarks || '',
     created_at: v.created_at || '',   // tetap kolom paling kanan
   };
@@ -2840,6 +2840,12 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
   const submitLock = useRef(false);
   // ID visit dibuat di awal supaya tiap foto bisa di-upload duluan (eager) ke path-nya.
   const [visitId] = useState(() => crypto.randomUUID());
+  // Bengkel yang SUDAH terpasang (oleh MD mana pun) — tak boleh disubmit lagi.
+  const [terpasangIds, setTerpasangIds] = useState(() => new Set());
+  useEffect(() => {
+    api.fetchTerpasangBengkelIds().then(setTerpasangIds).catch(() => {});
+  }, [currentMD.id]);
+
   // MD WAJIB absen masuk dulu sebelum boleh mengisi visit hari ini.
   const [checkedInToday, setCheckedInToday] = useState(null);   // null = masih dicek
   useEffect(() => {
@@ -2957,7 +2963,9 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
   const GEOFENCE_RADIUS = 150; // meter — MD wajib dalam radius ini dari titik bengkel
   const gpsFar = gpsDistance != null && gpsDistance > GEOFENCE_RADIUS; // terlalu jauh → blokir
 
-  const canSubmit = checkedInToday !== false && form.bengkelId && form.status && hasAllRequiredPhotos && !anyCompressing && gps.status === 'ready' && !gpsFar && !submitting;
+  // Bengkel terpilih sudah pernah terpasang → kunci submit.
+  const bengkelSudahTerpasang = !!form.bengkelId && terpasangIds.has(form.bengkelId);
+  const canSubmit = checkedInToday !== false && form.bengkelId && !bengkelSudahTerpasang && form.status && hasAllRequiredPhotos && !anyCompressing && gps.status === 'ready' && !gpsFar && !submitting;
 
   const handleSubmit = async () => {
     if (submitLock.current || !canSubmit) return;  // guard sinkron, gak nunggu re-render
@@ -2989,7 +2997,14 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
       setTimeout(() => { setSubmitted(false); setBackfilled(false); onSubmitted(); }, 2000);
     } catch (err) {
       console.error(err);
-      setError(err.message || 'Gagal menyimpan visit');
+      // 23505 = unique violation -> bengkel keburu di-submit MD lain (race).
+      const duplikat = err?.code === '23505' || /visits_one_terpasang_per_bengkel|duplicate key/i.test(err?.message || '');
+      if (duplikat) {
+        setError('Bengkel ini baru saja dilaporkan terpasang oleh MD lain. Visit tidak disimpan — silakan pilih bengkel lain.');
+        setTerpasangIds(s => new Set(s).add(form.bengkelId));
+      } else {
+        setError(err.message || 'Gagal menyimpan visit');
+      }
       setSubmitting(false);
       submitLock.current = false;  // error → boleh coba lagi
     }
@@ -3088,7 +3103,10 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
           <SearchableSelect
             value={form.bengkelId}
             onChange={(val) => setForm({ ...form, bengkelId: val })}
-            options={filteredBengkels.map(b => ({ value: b.id, label: `${b.code} - ${b.name}` }))}
+            options={filteredBengkels.map(b => ({
+              value: b.id,
+              label: `${b.code} - ${b.name}${terpasangIds.has(b.id) ? '  ✓ sudah terpasang' : ''}`,
+            }))}
             placeholder="Pilih bengkel…"
             disabled={!form.kotaId}
             emptyText="Belum ada bengkel di kota ini"
@@ -3098,6 +3116,15 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
               <AlertCircle className="w-3 h-3" />
               Belum ada bengkel terdaftar di kota ini.
             </p>
+          )}
+          {bengkelSudahTerpasang && (
+            <div className="mt-2 p-3 bg-rose-600/10 border border-rose-600/30 rounded-lg flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+              <div className="text-xs text-rose-300">
+                <span className="font-semibold">Bengkel ini sudah terpasang spanduk.</span>{' '}
+                Tidak bisa disubmit lagi — silakan pilih bengkel lain yang belum terpasang.
+              </div>
+            </div>
           )}
           {selectedBengkel?.address && (
             <div className="mt-2 p-2.5 bg-slate-950 border border-slate-800 rounded-lg flex items-start gap-2">
