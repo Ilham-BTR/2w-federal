@@ -549,7 +549,26 @@ const KPI_ICON_COLOR = {
   blue: 'text-blue-500', amber: 'text-amber-500', rose: 'text-rose-500',
 };
 
-function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDeleted, canEdit = false, onUpdated, bengkels = [], distributors = [], canCheck = false, checkerId = null }) {
+function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDeleted, canEdit = false, onUpdated, bengkels = [], distributors = [], canCheck = false, checkerId = null, canEditRemarks = false }) {
+  // MD boleh memperbaiki notes visit miliknya sendiri (field lain tetap terkunci).
+  const [remarksEdit, setRemarksEdit] = useState(false);
+  const [remarksDraft, setRemarksDraft] = useState(visit.remarks || '');
+  const [remarksLocal, setRemarksLocal] = useState(visit.remarks || '');
+  const [savingRemarks, setSavingRemarks] = useState(false);
+  const saveRemarks = async () => {
+    setSavingRemarks(true);
+    try {
+      const saved = await api.updateVisitRemarks(visit.id, remarksDraft);
+      setRemarksLocal(saved || '');
+      setRemarksEdit(false);
+      onUpdated?.();
+    } catch (e) {
+      alert('Gagal simpan notes: ' + (e?.message || e));
+    } finally {
+      setSavingRemarks(false);
+    }
+  };
+
   const [lightboxIdx, setLightboxIdx] = useState(null);
   // Pengecekan admin/AA: tiap foto dinilai Sesuai/Tidak, 1 remarks untuk seluruh visit.
   const [checks, setChecks] = useState(() => visit.photo_checks || {});
@@ -943,18 +962,52 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
                 <Shield className="w-3 h-3" />Hasil Pengecekan Admin
               </div>
               <div className={`text-sm font-semibold ${visit.check_status === 'Sesuai' ? 'text-emerald-400' : 'text-rose-400'}`}>{visit.check_status}</div>
+              {(() => {
+                const bad = Object.entries(visit.photo_checks || {}).filter(([, s]) => s === 'bad').map(([col]) => PHOTO_LABELS[col] || col);
+                if (!bad.length) return null;
+                return (
+                  <div className="mt-2 p-2.5 bg-rose-600/10 border border-rose-600/30 rounded-lg">
+                    <div className="text-[11px] font-semibold text-rose-300 flex items-center gap-1.5">
+                      <Camera className="w-3 h-3" />Foto yang perlu diambil ulang ({bad.length})
+                    </div>
+                    <ul className="mt-1 space-y-0.5">
+                      {bad.map(l => <li key={l} className="text-xs text-rose-200 flex items-center gap-1.5"><X className="w-3 h-3 shrink-0" />{l}</li>)}
+                    </ul>
+                  </div>
+                );
+              })()}
               {visit.check_remarks && <p className="text-sm text-slate-300 whitespace-pre-wrap mt-1.5">{visit.check_remarks}</p>}
               {visit.checked_at && <div className="text-[11px] text-slate-500 mt-2">Dicek {new Date(visit.checked_at).toLocaleString('id-ID')}</div>}
             </div>
           )}
 
-          {/* Remarks */}
-          {!editMode && visit.remarks && (
+          {/* Notes MD — bisa diperbaiki sendiri oleh MD pemilik visit */}
+          {!editMode && (canEditRemarks || remarksLocal) && (
             <div className="bg-slate-950 border border-slate-800 rounded-xl p-4">
-              <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2 flex items-center gap-1.5">
-                <FileText className="w-3 h-3" />Notes dari MD
+              <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2 flex items-center justify-between gap-2">
+                <span className="flex items-center gap-1.5"><FileText className="w-3 h-3" />Notes dari MD</span>
+                {canEditRemarks && !remarksEdit && (
+                  <button onClick={() => { setRemarksDraft(remarksLocal); setRemarksEdit(true); }}
+                    className="normal-case tracking-normal text-[11px] px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-blue-600 text-slate-200 hover:text-white transition flex items-center gap-1">
+                    <Pencil className="w-3 h-3" />{remarksLocal ? 'Edit' : 'Tambah'}
+                  </button>
+                )}
               </div>
-              <p className="text-sm text-slate-300 whitespace-pre-wrap">{visit.remarks}</p>
+              {remarksEdit ? (
+                <>
+                  <Textarea rows={3} placeholder="Tulis catatan…" value={remarksDraft} onChange={e => setRemarksDraft(e.target.value)} />
+                  <div className="flex items-center justify-end gap-2 mt-2">
+                    <button onClick={() => setRemarksEdit(false)} disabled={savingRemarks}
+                      className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm border border-slate-700 transition disabled:opacity-60">Batal</button>
+                    <button onClick={saveRemarks} disabled={savingRemarks}
+                      className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition disabled:opacity-60 flex items-center gap-1.5">
+                      {savingRemarks ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />Menyimpan…</> : <><Check className="w-3.5 h-3.5" />Simpan</>}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-slate-300 whitespace-pre-wrap">{remarksLocal || <span className="text-slate-600">Belum ada catatan.</span>}</p>
+              )}
             </div>
           )}
 
@@ -2643,6 +2696,34 @@ function MDView({ currentMD, refreshKey, welcome, onWelcomeClose }) {
   return (
     <div className="max-w-2xl mx-auto">
       <PasskeyEnrollBanner />
+
+      {/* Notifikasi: hasil pengecekan admin menemukan foto tidak sesuai */}
+      {(() => {
+        const perlu = visits.filter(v => v.check_status === 'Tidak Sesuai');
+        if (!perlu.length) return null;
+        const totalFoto = perlu.reduce(
+          (s, v) => s + Object.values(v.photo_checks || {}).filter(x => x === 'bad').length, 0);
+        return (
+          <div className="mb-4 p-3.5 bg-rose-600/10 border border-rose-600/40 rounded-xl flex items-start gap-3">
+            <div className="w-8 h-8 rounded-full bg-rose-600/20 flex items-center justify-center shrink-0">
+              <AlertCircle className="w-4 h-4 text-rose-400" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-rose-300">
+                {perlu.length} visit perlu perbaikan foto
+              </p>
+              <p className="text-xs text-rose-200/80 mt-0.5">
+                Admin menandai {totalFoto} foto tidak sesuai. Buka detail visit untuk melihat foto mana yang harus diambil ulang.
+              </p>
+              <button onClick={() => setTab('history')}
+                className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-medium transition">
+                <Activity className="w-3.5 h-3.5" />Lihat di History
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
       <div className="grid grid-cols-3 gap-1 p-1 bg-slate-950 border border-slate-800 rounded-xl mb-5 sm:flex">
         {[
           { id: 'absen', label: 'Absen', icon: CalendarDays },
@@ -2658,7 +2739,7 @@ function MDView({ currentMD, refreshKey, welcome, onWelcomeClose }) {
 
       {tab === 'absen' && <AbsenTab currentMD={currentMD} />}
       {tab === 'new' && <VisitForm currentMD={currentMD} bengkels={bengkels} regions={regions} kotas={kotas} distributors={distributors} myRegionIds={myRegionIds} onSubmitted={() => { reloadVisits(); setTab('history'); }} onNeedAbsen={() => setTab('absen')} />}
-      {tab === 'history' && <VisitHistory visits={visits} bengkels={bengkels} kotas={kotas} distributors={distributors} currentMD={currentMD} />}
+      {tab === 'history' && <VisitHistory visits={visits} bengkels={bengkels} kotas={kotas} distributors={distributors} currentMD={currentMD} onUpdated={reloadVisits} />}
       <WhatsAppCS name={currentMD.full_name} />
     </div>
   );
@@ -3253,7 +3334,7 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
   );
 }
 
-function VisitHistory({ visits, bengkels, kotas, distributors, currentMD }) {
+function VisitHistory({ visits, bengkels, kotas, distributors, currentMD, onUpdated }) {
   const [detailId, setDetailId] = useState(null);
   const [search, setSearch] = useState('');
   const [month, setMonth] = useState('all');
@@ -3365,6 +3446,8 @@ function VisitHistory({ visits, bengkels, kotas, distributors, currentMD }) {
             distributor={findDist(dv.distributor_id)}
             md={currentMD}
             onClose={() => setDetailId(null)}
+            canEditRemarks
+            onUpdated={onUpdated}
           />
         );
       })()}

@@ -337,6 +337,24 @@ export async function fetchAccounts() {
  * Dipakai super admin saat edit akun TL. Create memakai edge function.
  */
 /**
+ * MD mengubah notes/remarks visit MILIKNYA sendiri.
+ * RLS (visits_md_update_own) memastikan MD hanya bisa mengubah barisnya sendiri.
+ * @returns {Promise<string|null>} remarks yang tersimpan
+ */
+export async function updateVisitRemarks(visitId, remarks) {
+  const value = remarks?.trim() || null;
+  if (MOCK_MODE) {
+    const v = MOCK_DATA.visits.find(x => x.id === visitId);
+    if (v) v.remarks = value;
+    persistMock();
+    return value;
+  }
+  const { error } = await supabase.from('visits').update({ remarks: value }).eq('id', visitId);
+  if (error) throw error;
+  return value;
+}
+
+/**
  * Daftar id bengkel yang SUDAH berhasil dipasangi spanduk.
  * Dipakai form visit untuk memblokir submit ulang bengkel yang sama
  * (aturan: 1 bengkel hanya boleh 1x "Spanduk Terpasang").
