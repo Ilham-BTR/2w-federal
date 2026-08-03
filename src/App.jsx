@@ -4702,10 +4702,15 @@ function BengkelForm({ kotas, regions, bengkels = [], onSave, initial, onCancel 
       <Field label="Lokasi (opsional — klik / drag pin)">
         <BengkelPickerMap lat={form.lat} lng={form.lng} onChange={handlePick} />
         {(form.lat != null || form.lng != null) && (
-          <button type="button" onClick={() => setForm(f => ({ ...f, lat: null, lng: null }))}
-            className="mt-2 text-[11px] text-rose-400 hover:text-rose-300 flex items-center gap-1">
-            <X className="w-3 h-3" />Hapus koordinat (reset — agar terisi lagi otomatis dari GPS visit MD berikutnya)
-          </button>
+          <div className="mt-2 flex items-center gap-2 flex-wrap">
+            <button type="button" onClick={() => setForm(f => ({ ...f, lat: null, lng: null }))}
+              className="text-xs font-medium flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-rose-600 text-slate-100 border border-slate-700 hover:border-rose-600 transition">
+              <MapPin className="w-3.5 h-3.5" />Reset Koordinat
+            </button>
+            <span className="text-[11px] text-slate-500">
+              Lat/Lng dikosongkan setelah Simpan — terisi ulang otomatis dari GPS visit MD berikutnya.
+            </span>
+          </div>
         )}
       </Field>
 
@@ -5735,6 +5740,22 @@ function MasterTab({ regions, kotas, distributors, bengkels, mds, accounts = [],
     setEditingBengkelId(null);
   };
 
+  // Reset koordinat 1 bengkel — dipakai kalau lat/lng salah (mis. ke-backfill dari
+  // GPS MD di lokasi keliru) sehingga geofence memblokir visit yang sebenarnya sah.
+  const [resettingId, setResettingId] = useState(null);
+  const handleResetKoordinat = async (item) => {
+    if (!confirm(`Reset koordinat "${item.name}"?\n\nLat/Lng dikosongkan dan akan terisi ulang otomatis dari GPS MD saat visit berikutnya.`)) return;
+    setResettingId(item.id);
+    try {
+      await api.updateMaster('bengkels', item.id, { lat: null, lng: null });
+      await onChange();
+    } catch (err) {
+      alert('Gagal reset koordinat: ' + err.message);
+    } finally {
+      setResettingId(null);
+    }
+  };
+
   const handleDelete = async (id) => {
     if (!confirm('Hapus item ini?')) return;
     try {
@@ -6062,6 +6083,14 @@ function MasterTab({ regions, kotas, distributors, bengkels, mds, accounts = [],
                         </button>
                       )}
                     </>
+                  )}
+                  {section === 'bengkels' && canManageMaster && (item.lat != null || item.lng != null) && (
+                    <button onClick={() => handleResetKoordinat(item)}
+                      disabled={resettingId === item.id}
+                      className="opacity-0 group-hover:opacity-100 transition w-7 h-7 rounded-md hover:bg-sky-600/10 hover:text-sky-400 text-slate-500 flex items-center justify-center disabled:opacity-100"
+                      title="Reset koordinat (lat/lng) — akan terisi ulang otomatis dari GPS visit MD berikutnya">
+                      {resettingId === item.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MapPin className="w-3.5 h-3.5" />}
+                    </button>
                   )}
                   {section === 'bengkels' && canManageMaster && (
                     <button onClick={() => setEditingBengkelId(item.id)}
