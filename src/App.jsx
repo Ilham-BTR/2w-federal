@@ -5723,7 +5723,8 @@ function MasterTab({ regions, kotas, distributors, bengkels, mds, accounts = [],
   };
   const [pageSize, setPageSize] = useState(25);  // 10/25/50/100 atau 'all'
   const [page, setPage] = useState(1);
-  const [filterRegion, setFilterRegion] = useState(''); // filter list bengkel
+  const [filterGroup, setFilterGroup] = useState('');   // filter Region (7 grup)
+  const [filterRegion, setFilterRegion] = useState(''); // filter Provinsi
   const [filterKota, setFilterKota] = useState('');
 
   // back HP -> tutup form popup (Tambah/Edit Bengkel/Akun) dgn animasi, bukan pindah tab
@@ -5753,6 +5754,7 @@ function MasterTab({ regions, kotas, distributors, bengkels, mds, accounts = [],
   const filteredItems = current.items.filter(it => {
     // Filter region/kota (khusus list bengkel)
     if (section === 'bengkels') {
+      if (filterGroup && groupOfRegion(regions.find(r => r.id === kotaRegionOf(it.kota_id))) !== filterGroup) return false;
       if (filterRegion && kotaRegionOf(it.kota_id) !== filterRegion) return false;
       if (filterKota && it.kota_id !== filterKota) return false;
     }
@@ -5875,19 +5877,43 @@ function MasterTab({ regions, kotas, distributors, bengkels, mds, accounts = [],
     if (filteredItems.length === 0) return;
     const XLSX = await import('xlsx');
     let rows;
+    // Wilayah dipecah konsisten dengan export visit: Region (7 grup) → Provinsi → Kota
+    const groupOfRegionId = (rid) => {
+      const r = regions.find(x => x.id === rid);
+      return r ? groupOfRegion(r) : '';
+    };
     if (section === 'bengkels') {
       rows = filteredItems.map(b => {
         const k = kotas.find(x => x.id === b.kota_id);
-        return { Kode: b.code, 'Nama Bengkel': b.name, Kota: k?.name || '', Region: regionName(k?.region_id) || '', Alamat: b.address || '', Lat: b.lat ?? '', Lng: b.lng ?? '' };
+        return {
+          Kode: b.code,
+          'Nama Bengkel': b.name,
+          Region: groupOfRegionId(k?.region_id),
+          Provinsi: regionName(k?.region_id) || '',
+          Kota: k?.name || '',
+          Alamat: b.address || '',
+          Lat: b.lat ?? '',
+          Lng: b.lng ?? '',
+        };
       });
     } else if (section === 'kotas') {
-      rows = filteredItems.map(k => ({ Kota: k.name, Region: regionName(k.region_id) || '' }));
+      rows = filteredItems.map(k => ({ Kota: k.name, Provinsi: regionName(k.region_id) || '', Region: groupOfRegionId(k.region_id) }));
     } else if (section === 'distributors') {
-      rows = filteredItems.map(d => ({ Distributor: d.name, Region: regionName(d.region_id) || '' }));
+      rows = filteredItems.map(d => ({ Distributor: d.name, Provinsi: regionName(d.region_id) || '', Region: groupOfRegionId(d.region_id) }));
     } else if (section === 'regions') {
-      rows = filteredItems.map(r => ({ Region: r.name }));
+      rows = filteredItems.map(r => ({ Provinsi: r.name, Region: groupOfRegion(r) }));
     } else if (section === 'mds') {
-      rows = filteredItems.map(m => ({ Nama: m.full_name, Email: m.email, Role: m.role, Region: regionName(m.region_id) || '', Aktif: m.active === false ? 'Tidak' : 'Ya' }));
+      rows = filteredItems.map(m => {
+        const ids = m.region_ids?.length ? m.region_ids : (m.region_id ? [m.region_id] : []);
+        return {
+          Nama: m.full_name,
+          Email: m.email,
+          Role: m.role,
+          Region: [...new Set(ids.map(groupOfRegionId).filter(Boolean))].join(', '),
+          Provinsi: ids.map(id => regionName(id)).filter(Boolean).join(', '),
+          Aktif: m.active === false ? 'Tidak' : 'Ya',
+        };
+      });
     } else {
       rows = filteredItems.map(it => ({ Nama: current.getName(it) }));
     }
@@ -6035,14 +6061,21 @@ function MasterTab({ regions, kotas, distributors, bengkels, mds, accounts = [],
           )}
 
           {section === 'bengkels' && current.items.length > 0 && (
-            <div className="grid grid-cols-2 gap-2 mb-3">
-              <Select value={filterRegion} onChange={e => { setFilterRegion(e.target.value); setFilterKota(''); setPage(1); }}>
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              <Select value={filterGroup} onChange={e => { setFilterGroup(e.target.value); setFilterRegion(''); setFilterKota(''); setPage(1); }}>
                 <option value="">Semua Region</option>
-                {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                {[...new Set(regions.map(groupOfRegion))].sort().map(g => <option key={g} value={g}>{g}</option>)}
+              </Select>
+              <Select value={filterRegion} onChange={e => { setFilterRegion(e.target.value); setFilterKota(''); setPage(1); }}>
+                <option value="">Semua Provinsi</option>
+                {regions.filter(r => !filterGroup || groupOfRegion(r) === filterGroup)
+                  .map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
               </Select>
               <Select value={filterKota} onChange={e => { setFilterKota(e.target.value); setPage(1); }}>
                 <option value="">Semua Kota</option>
-                {kotas.filter(k => !filterRegion || k.region_id === filterRegion).map(k => <option key={k.id} value={k.id}>{k.name}</option>)}
+                {kotas.filter(k => (!filterRegion || k.region_id === filterRegion)
+                    && (!filterGroup || groupOfRegion(regions.find(r => r.id === k.region_id)) === filterGroup))
+                  .map(k => <option key={k.id} value={k.id}>{k.name}</option>)}
               </Select>
             </div>
           )}
@@ -6127,11 +6160,20 @@ function MasterTab({ regions, kotas, distributors, bengkels, mds, accounts = [],
                   ) : (
                     <>
                       <span className="text-sm text-slate-200 truncate">{current.getName(item)}</span>
-                      {section === 'bengkels' && (
-                        <span className={`ml-auto text-[10px] font-mono px-1.5 py-0.5 rounded ${item.lat != null && item.lng != null ? 'bg-emerald-600/10 text-emerald-400' : 'bg-slate-800/50 text-slate-500'}`}>
-                          {item.lat != null && item.lng != null ? `${item.lat.toFixed(3)}, ${item.lng.toFixed(3)}` : 'no-gps'}
-                        </span>
-                      )}
+                      {section === 'bengkels' && (() => {
+                        const k = kotas.find(x => x.id === item.kota_id);
+                        const prov = regions.find(r => r.id === k?.region_id);
+                        return (
+                          <>
+                            <span className="text-[10px] text-slate-500 truncate shrink-0 hidden sm:inline">
+                              {k?.name || '—'} · {prov?.name || '—'} · {prov ? groupOfRegion(prov) : '—'}
+                            </span>
+                            <span className={`ml-auto text-[10px] font-mono px-1.5 py-0.5 rounded shrink-0 ${item.lat != null && item.lng != null ? 'bg-emerald-600/10 text-emerald-400' : 'bg-slate-800/50 text-slate-500'}`}>
+                              {item.lat != null && item.lng != null ? `${item.lat.toFixed(3)}, ${item.lng.toFixed(3)}` : 'no-gps'}
+                            </span>
+                          </>
+                        );
+                      })()}
                       {(section === 'distributors' || section === 'kotas') && (
                         <span className={`ml-auto text-[10px] px-1.5 py-0.5 rounded ${item.region_id ? 'bg-sky-600/10 text-sky-400' : 'bg-slate-800/50 text-slate-500'}`}>
                           {item.region?.name || regionName(item.region_id) || 'no-region'}
