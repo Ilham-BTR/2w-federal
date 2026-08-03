@@ -337,6 +337,30 @@ export async function fetchAccounts() {
  * Dipakai super admin saat edit akun TL. Create memakai edge function.
  */
 /**
+ * Set penanda target untuk banyak bengkel sekaligus.
+ * @param {string[]} ids
+ * @param {boolean} isTarget
+ */
+export async function setBengkelTarget(ids, isTarget) {
+  const list = (ids || []).filter(Boolean);
+  if (!list.length) return 0;
+  if (MOCK_MODE) {
+    MOCK_DATA.bengkels.forEach(b => { if (list.includes(b.id)) b.is_target = isTarget; });
+    persistMock();
+    return list.length;
+  }
+  // Dipecah agar URL filter .in() tidak kepanjangan saat ribuan bengkel dipilih.
+  const CHUNK = 200;
+  for (let i = 0; i < list.length; i += CHUNK) {
+    const { error } = await supabase.from('bengkels')
+      .update({ is_target: isTarget })
+      .in('id', list.slice(i, i + CHUNK));
+    if (error) throw error;
+  }
+  return list.length;
+}
+
+/**
  * MD mengubah notes/remarks visit MILIKNYA sendiri.
  * RLS (visits_md_update_own) memastikan MD hanya bisa mengubah barisnya sendiri.
  * @returns {Promise<string|null>} remarks yang tersimpan

@@ -3611,8 +3611,10 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [] }) {
       return rows.get(key);
     };
 
-    // Target = jumlah bengkel terdata
+    // Target = jumlah bengkel yang DITANDAI target (is_target). Bengkel di luar
+    // program tetap ada di master tapi tidak dihitung sebagai target.
     bengkels.forEach(b => {
+      if (b.is_target === false) return;
       const row = ensure(kotaById.get(b.kota_id));
       if (row) row.target++;
     });
@@ -4244,9 +4246,10 @@ function DashboardTab({ visits, mds, bengkels, kotas, regions, distributors, onO
       o.Actual++;
       if (v.status === HASIL_TERPASANG) o.terpasang++;
     });
-    // Target = jumlah bengkel terdata (database) per provinsi
+    // Target = jumlah bengkel yang ditandai target (is_target) per provinsi
     const dbCount = {};
     bengkels.forEach(b => {
+      if (b.is_target === false) return;
       const rid = kotaRegion[b.kota_id];
       if (rid) dbCount[rid] = (dbCount[rid] || 0) + 1;
     });
@@ -5723,6 +5726,7 @@ function MasterTab({ regions, kotas, distributors, bengkels, mds, accounts = [],
   };
   const [pageSize, setPageSize] = useState(25);  // 10/25/50/100 atau 'all'
   const [page, setPage] = useState(1);
+  const [filterTarget, setFilterTarget] = useState(''); // '' | 'target' | 'non'
   const [filterGroup, setFilterGroup] = useState('');   // filter Region (7 grup)
   const [filterRegion, setFilterRegion] = useState(''); // filter Provinsi
   const [filterKota, setFilterKota] = useState('');
@@ -5754,6 +5758,8 @@ function MasterTab({ regions, kotas, distributors, bengkels, mds, accounts = [],
   const filteredItems = current.items.filter(it => {
     // Filter region/kota (khusus list bengkel)
     if (section === 'bengkels') {
+      if (filterTarget === 'target' && it.is_target === false) return false;
+      if (filterTarget === 'non' && it.is_target !== false) return false;
       if (filterGroup && groupOfRegion(regions.find(r => r.id === kotaRegionOf(it.kota_id))) !== filterGroup) return false;
       if (filterRegion && kotaRegionOf(it.kota_id) !== filterRegion) return false;
       if (filterKota && it.kota_id !== filterKota) return false;
@@ -5856,6 +5862,24 @@ function MasterTab({ regions, kotas, distributors, bengkels, mds, accounts = [],
   const toggleSelect = (id) => setSelectedIds(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const allFilteredSelected = filteredItems.length > 0 && filteredItems.every(it => selectedIds.has(it.id));
   const toggleSelectAll = () => setSelectedIds(allFilteredSelected ? new Set() : new Set(filteredItems.map(it => it.id)));
+  // Tandai / lepas target untuk bengkel terpilih (massal)
+  const [targetingBulk, setTargetingBulk] = useState(false);
+  const handleBulkTarget = async (isTarget) => {
+    const ids = [...selectedIds];
+    if (!ids.length) return;
+    if (!confirm(`${isTarget ? 'Jadikan target' : 'Keluarkan dari target'} ${ids.length} bengkel terpilih?`)) return;
+    setTargetingBulk(true);
+    try {
+      await api.setBengkelTarget(ids, isTarget);
+      setSelectedIds(new Set());
+      await onChange();
+    } catch (e) {
+      alert('Gagal set target: ' + (e?.message || e));
+    } finally {
+      setTargetingBulk(false);
+    }
+  };
+
   const handleBulkDelete = async () => {
     const ids = [...selectedIds];
     if (ids.length === 0) return;
@@ -5888,6 +5912,7 @@ function MasterTab({ regions, kotas, distributors, bengkels, mds, accounts = [],
         return {
           Kode: b.code,
           'Nama Bengkel': b.name,
+          Target: b.is_target === false ? 'Tidak' : 'Ya',
           Region: groupOfRegionId(k?.region_id),
           Provinsi: regionName(k?.region_id) || '',
           Kota: k?.name || '',
@@ -6061,7 +6086,12 @@ function MasterTab({ regions, kotas, distributors, bengkels, mds, accounts = [],
           )}
 
           {section === 'bengkels' && current.items.length > 0 && (
-            <div className="grid grid-cols-3 gap-2 mb-3">
+            <div className="grid grid-cols-4 gap-2 mb-3">
+              <Select value={filterTarget} onChange={e => { setFilterTarget(e.target.value); setPage(1); }}>
+                <option value="">Target & Non-target</option>
+                <option value="target">Target saja</option>
+                <option value="non">Non-target saja</option>
+              </Select>
               <Select value={filterGroup} onChange={e => { setFilterGroup(e.target.value); setFilterRegion(''); setFilterKota(''); setPage(1); }}>
                 <option value="">Semua Region</option>
                 {[...new Set(regions.map(groupOfRegion))].sort().map(g => <option key={g} value={g}>{g}</option>)}
@@ -6096,6 +6126,19 @@ function MasterTab({ regions, kotas, distributors, bengkels, mds, accounts = [],
                 <input type="checkbox" checked={allFilteredSelected} onChange={toggleSelectAll} className="accent-blue-600" />
                 Pilih semua ({filteredItems.length})
               </label>
+              {section === 'bengkels' && selectedIds.size > 0 && (
+                <div className="flex items-center gap-2 ml-auto mr-2">
+                  <button onClick={() => handleBulkTarget(true)} disabled={targetingBulk}
+                    className="flex items-center gap-1.5 text-xs text-emerald-300 bg-emerald-600/10 hover:bg-emerald-600/20 border border-emerald-600/30 rounded-lg px-3 py-1.5 disabled:opacity-50">
+                    {targetingBulk ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Target className="w-3.5 h-3.5" />}
+                    Jadikan target ({selectedIds.size})
+                  </button>
+                  <button onClick={() => handleBulkTarget(false)} disabled={targetingBulk}
+                    className="flex items-center gap-1.5 text-xs text-slate-300 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg px-3 py-1.5 disabled:opacity-50">
+                    <X className="w-3.5 h-3.5" />Keluarkan dari target
+                  </button>
+                </div>
+              )}
               {selectedIds.size > 0 && (
                 <button onClick={handleBulkDelete} disabled={bulkDeleting}
                   className="flex items-center gap-1.5 text-xs text-rose-300 bg-rose-600/10 hover:bg-rose-600/20 border border-rose-600/30 rounded-lg px-3 py-1.5 disabled:opacity-50">
@@ -6165,6 +6208,9 @@ function MasterTab({ regions, kotas, distributors, bengkels, mds, accounts = [],
                         const prov = regions.find(r => r.id === k?.region_id);
                         return (
                           <>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded shrink-0 font-medium ${item.is_target === false ? 'bg-slate-800/60 text-slate-500' : 'bg-emerald-600/10 text-emerald-400'}`}>
+                              {item.is_target === false ? 'non-target' : 'target'}
+                            </span>
                             <span className="text-[10px] text-slate-500 truncate shrink-0 hidden sm:inline">
                               {k?.name || '—'} · {prov?.name || '—'} · {prov ? groupOfRegion(prov) : '—'}
                             </span>
