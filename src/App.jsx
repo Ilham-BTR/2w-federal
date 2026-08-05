@@ -172,6 +172,7 @@ const visitToCSVRow = (v, ctx) => {
     kota: k?.name || v.kota_name || '',
     bengkel_code: b?.code || '',
     bengkel_name: b?.name || v.bengkel_name || '',
+    bengkel_class: b?.workshop_class || '',
     bengkel_alamat: b?.address || '',
     hasil_visit: v.status,
     notes: v.remarks || '',
@@ -3562,6 +3563,7 @@ function LeaderboardTab({ visits, mds, regions }) {
 // ============================================================
 function LaporanTab({ visits, bengkels, kotas, regions, accounts = [] }) {
   const [level, setLevel] = useState('provinsi');   // provinsi | kota
+  const [kelas, setKelas] = useState('all');        // filter AA Workshop Class
   const [month, setMonth] = useState('all');
   const [dari, setDari] = useState('');
   const [sampai, setSampai] = useState('');
@@ -3594,7 +3596,7 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [] }) {
 
   // Agregasi: kunci = provinsi(region_id) atau kota(kota_id)
   const { groups, grand } = useMemo(() => {
-    const blank = () => ({ target: 0, visited: 0, terpasang: 0, spanduk: 0, poster: 0, cats: Object.fromEntries(CATS.map(c => [c, 0])) });
+    const blank = () => ({ target: 0, foc: 0, iws: 0, visited: 0, terpasang: 0, spanduk: 0, poster: 0, cats: Object.fromEntries(CATS.map(c => [c, 0])) });
     const rows = new Map();   // key -> {name, groupName, ...counts}
 
     const keyOf = (kota) => level === 'kota' ? kota?.id : kota?.region_id;
@@ -3611,16 +3613,22 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [] }) {
       return rows.get(key);
     };
 
+    // Filter kelas bengkel (AA Workshop Class) bila dipilih
+    const lolosKelas = (b) => kelas === 'all' || b?.workshop_class === kelas;
     // Target = jumlah bengkel yang DITANDAI target (is_target). Bengkel di luar
     // program tetap ada di master tapi tidak dihitung sebagai target.
     bengkels.forEach(b => {
-      if (b.is_target === false) return;
+      if (b.is_target === false || !lolosKelas(b)) return;
       const row = ensure(kotaById.get(b.kota_id));
-      if (row) row.target++;
+      if (!row) return;
+      row.target++;
+      if (b.workshop_class === 'FOC') row.foc++;
+      else if (b.workshop_class === 'IWS') row.iws++;
     });
     // Realisasi
     fVisits.forEach(v => {
       const b = bengkelById.get(v.bengkel_id);
+      if (!lolosKelas(b)) return;
       const row = ensure(kotaById.get(b?.kota_id));
       if (!row) return;
       row.visited++;
@@ -3641,6 +3649,7 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [] }) {
         items.forEach(r => {
           sub.target += r.target; sub.visited += r.visited; sub.terpasang += r.terpasang;
           sub.spanduk += r.spanduk; sub.poster += r.poster;
+          sub.foc += r.foc; sub.iws += r.iws;
           CATS.forEach(c => { sub.cats[c] += r.cats[c]; });
         });
         return { group, items, sub };
@@ -3651,11 +3660,12 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [] }) {
     groups.forEach(g => {
       grand.target += g.sub.target; grand.visited += g.sub.visited; grand.terpasang += g.sub.terpasang;
       grand.spanduk += g.sub.spanduk; grand.poster += g.sub.poster;
+      grand.foc += g.sub.foc; grand.iws += g.sub.iws;
       CATS.forEach(c => { grand.cats[c] += g.sub.cats[c]; });
     });
     return { groups, grand };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fVisits, bengkels, kotaById, regionById, bengkelById, level]);
+  }, [fVisits, bengkels, kotaById, regionById, bengkelById, level, kelas]);
 
   const pct = (n, t) => (t > 0 ? Math.round((n / t) * 100) : 0);
   const cell = (n, t) => `${n} (${pct(n, t)}%)`;
@@ -3680,6 +3690,8 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [] }) {
   // Definisi kolom angka — dipakai header, baris, subtotal, grand total & export.
   const NUM_COLS = [
     { key: 'target',    label: '# Workshop',     get: r => r.target,    raw: true, color: 'text-slate-300' },
+    { key: 'foc',       label: 'FOC',            get: r => r.foc,       raw: true, color: 'text-amber-300' },
+    { key: 'iws',       label: 'IWS',            get: r => r.iws,       raw: true, color: 'text-sky-300' },
     { key: 'visited',   label: 'Visited',        get: r => r.visited,   color: 'text-sky-300' },
     { key: 'terpasang', label: 'Success Deploy', get: r => r.terpasang, color: 'text-emerald-400' },
     { key: 'spanduk',   label: 'Spanduk',        get: r => r.spanduk,   color: 'text-emerald-300' },
@@ -3768,7 +3780,10 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [] }) {
       <div className="flex items-center justify-between mb-5 gap-3 flex-wrap">
         <div>
           <h2 className="text-2xl font-bold text-slate-100 tracking-tight font-display">Laporan Coverage</h2>
-          <p className="text-sm text-slate-500 mt-1">Realisasi vs jumlah bengkel terdata · {grand.visited} visit</p>
+          <p className="text-sm text-slate-500 mt-1">
+            Realisasi vs jumlah bengkel terdata · {grand.visited} visit
+            {kelas !== 'all' && <span className="ml-1 text-sky-400">· class {kelas}</span>}
+          </p>
         </div>
         <Button variant="secondary" onClick={exportLaporan} disabled={grand.target === 0}>
           <Download className="w-4 h-4" />Export Excel
@@ -3779,6 +3794,11 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [] }) {
         <Select value={level} onChange={e => setLevel(e.target.value)}>
           <option value="provinsi">Rincian per Provinsi</option>
           <option value="kota">Rincian per Kota</option>
+        </Select>
+        <Select value={kelas} onChange={e => setKelas(e.target.value)}>
+          <option value="all">Semua Class</option>
+          {[...new Set(bengkels.map(b => b.workshop_class).filter(Boolean))].sort()
+            .map(c => <option key={c} value={c}>{c} saja</option>)}
         </Select>
         <Select value={month} onChange={e => setMonth(e.target.value)}>
           <option value="all">Semua Bulan</option>
@@ -5727,6 +5747,7 @@ function MasterTab({ regions, kotas, distributors, bengkels, mds, accounts = [],
   const [pageSize, setPageSize] = useState(25);  // 10/25/50/100 atau 'all'
   const [page, setPage] = useState(1);
   const [filterTarget, setFilterTarget] = useState(''); // '' | 'target' | 'non'
+  const [filterClass, setFilterClass] = useState('');   // IWS | FOC
   const [filterGroup, setFilterGroup] = useState('');   // filter Region (7 grup)
   const [filterRegion, setFilterRegion] = useState(''); // filter Provinsi
   const [filterKota, setFilterKota] = useState('');
@@ -5758,6 +5779,7 @@ function MasterTab({ regions, kotas, distributors, bengkels, mds, accounts = [],
   const filteredItems = current.items.filter(it => {
     // Filter region/kota (khusus list bengkel)
     if (section === 'bengkels') {
+      if (filterClass && it.workshop_class !== filterClass) return false;
       if (filterTarget === 'target' && it.is_target === false) return false;
       if (filterTarget === 'non' && it.is_target !== false) return false;
       if (filterGroup && groupOfRegion(regions.find(r => r.id === kotaRegionOf(it.kota_id))) !== filterGroup) return false;
@@ -5912,6 +5934,7 @@ function MasterTab({ regions, kotas, distributors, bengkels, mds, accounts = [],
         return {
           Kode: b.code,
           'Nama Bengkel': b.name,
+          Class: b.workshop_class || '',
           Target: b.is_target === false ? 'Tidak' : 'Ya',
           Region: groupOfRegionId(k?.region_id),
           Provinsi: regionName(k?.region_id) || '',
@@ -6086,11 +6109,16 @@ function MasterTab({ regions, kotas, distributors, bengkels, mds, accounts = [],
           )}
 
           {section === 'bengkels' && current.items.length > 0 && (
-            <div className="grid grid-cols-4 gap-2 mb-3">
+            <div className="grid grid-cols-5 gap-2 mb-3">
               <Select value={filterTarget} onChange={e => { setFilterTarget(e.target.value); setPage(1); }}>
                 <option value="">Target & Non-target</option>
                 <option value="target">Target saja</option>
                 <option value="non">Non-target saja</option>
+              </Select>
+              <Select value={filterClass} onChange={e => { setFilterClass(e.target.value); setPage(1); }}>
+                <option value="">Semua Class</option>
+                {[...new Set(bengkels.map(b => b.workshop_class).filter(Boolean))].sort()
+                  .map(c => <option key={c} value={c}>{c}</option>)}
               </Select>
               <Select value={filterGroup} onChange={e => { setFilterGroup(e.target.value); setFilterRegion(''); setFilterKota(''); setPage(1); }}>
                 <option value="">Semua Region</option>
@@ -6211,6 +6239,11 @@ function MasterTab({ regions, kotas, distributors, bengkels, mds, accounts = [],
                             <span className={`text-[10px] px-1.5 py-0.5 rounded shrink-0 font-medium ${item.is_target === false ? 'bg-slate-800/60 text-slate-500' : 'bg-emerald-600/10 text-emerald-400'}`}>
                               {item.is_target === false ? 'non-target' : 'target'}
                             </span>
+                            {item.workshop_class && (
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded shrink-0 font-medium ${item.workshop_class === 'FOC' ? 'bg-amber-600/10 text-amber-400' : 'bg-sky-600/10 text-sky-400'}`}>
+                                {item.workshop_class}
+                              </span>
+                            )}
                             <span className="text-[10px] text-slate-500 truncate shrink-0 hidden sm:inline">
                               {k?.name || '—'} · {prov?.name || '—'} · {prov ? groupOfRegion(prov) : '—'}
                             </span>
