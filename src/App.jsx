@@ -3561,8 +3561,10 @@ function LeaderboardTab({ visits, mds, regions }) {
 // LAPORAN COVERAGE — rekap Region → Provinsi/Kota vs jumlah bengkel (target),
 // dipecah per kategori hasil visit. Format mengikuti laporan Excel AA.
 // ============================================================
-function LaporanTab({ visits, bengkels, kotas, regions, accounts = [] }) {
-  const [level, setLevel] = useState('provinsi');   // provinsi | kota
+function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distributors = [], mode = 'wilayah' }) {
+  const byDistributor = mode === 'distributor';
+  const distById = useMemo(() => new Map(distributors.map(d => [d.id, d])), [distributors]);
+  const [level, setLevel] = useState('provinsi');   // provinsi | kota (mode wilayah)
   const [kelas, setKelas] = useState('all');        // filter AA Workshop Class
   const [month, setMonth] = useState('all');
   const [dari, setDari] = useState('');
@@ -3599,16 +3601,23 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [] }) {
     const blank = () => ({ target: 0, foc: 0, iws: 0, visited: 0, terpasang: 0, spanduk: 0, poster: 0, cats: Object.fromEntries(CATS.map(c => [c, 0])) });
     const rows = new Map();   // key -> {name, groupName, ...counts}
 
-    const keyOf = (kota) => level === 'kota' ? kota?.id : kota?.region_id;
-    const nameOf = (kota) => {
-      if (level === 'kota') return kota?.name || '—';
-      return regionById.get(kota?.region_id)?.name || '—';
-    };
-    const ensure = (kota) => {
-      const key = keyOf(kota);
+    // Baris laporan dikunci per DISTRIBUTOR (mode distributor) atau per
+    // provinsi/kota (mode wilayah). Grup atas tetap Region (7 grup besar).
+    const ensure = (b) => {
+      if (!b) return null;
+      const kota = kotaById.get(b.kota_id);
+      let key, name, regionId;
+      if (byDistributor) {
+        const d = distById.get(b.distributor_id);
+        key = b.distributor_id; name = d?.name || '—'; regionId = d?.region_id ?? kota?.region_id;
+      } else {
+        key = level === 'kota' ? kota?.id : kota?.region_id;
+        name = level === 'kota' ? (kota?.name || '—') : (regionById.get(kota?.region_id)?.name || '—');
+        regionId = kota?.region_id;
+      }
       if (!key) return null;
       if (!rows.has(key)) {
-        rows.set(key, { key, name: nameOf(kota), regionId: kota?.region_id, group: groupOfRegion(regionById.get(kota?.region_id)), ...blank() });
+        rows.set(key, { key, name, regionId, group: groupOfRegion(regionById.get(regionId)), ...blank() });
       }
       return rows.get(key);
     };
@@ -3619,7 +3628,7 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [] }) {
     // program tetap ada di master tapi tidak dihitung sebagai target.
     bengkels.forEach(b => {
       if (b.is_target === false || !lolosKelas(b)) return;
-      const row = ensure(kotaById.get(b.kota_id));
+      const row = ensure(b);
       if (!row) return;
       row.target++;
       if (b.workshop_class === 'FOC') row.foc++;
@@ -3629,7 +3638,7 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [] }) {
     fVisits.forEach(v => {
       const b = bengkelById.get(v.bengkel_id);
       if (!lolosKelas(b)) return;
-      const row = ensure(kotaById.get(b?.kota_id));
+      const row = ensure(b);
       if (!row) return;
       row.visited++;
       if (v.status === HASIL_TERPASANG) {
@@ -3665,7 +3674,7 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [] }) {
     });
     return { groups, grand };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fVisits, bengkels, kotaById, regionById, bengkelById, level, kelas]);
+  }, [fVisits, bengkels, kotaById, regionById, bengkelById, distById, level, kelas, byDistributor]);
 
   const pct = (n, t) => (t > 0 ? Math.round((n / t) * 100) : 0);
   const cell = (n, t) => `${n} (${pct(n, t)}%)`;
@@ -3709,7 +3718,8 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [] }) {
     const XLSX = await import('xlsx-js-style');
 
     // ---------- Sheet 1: Laporan Coverage (berformat) ----------
-    const headers = ['Region (AA)', level === 'kota' ? 'Kota (AA)' : 'Provinsi (AA)',
+    const kolom2 = byDistributor ? 'Distributor' : (level === 'kota' ? 'Kota (AA)' : 'Provinsi (AA)');
+    const headers = ['Region (AA)', kolom2,
       ...visibleNumCols.map(c => c.label), ...(show('mdcover') ? ['MD Cover'] : [])];
     const aoa = [headers];
     const kinds = ['head'];                       // jenis tiap baris untuk styling
@@ -3766,9 +3776,9 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [] }) {
     }
 
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Laporan Coverage');
+    XLSX.utils.book_append_sheet(wb, ws, byDistributor ? 'Per Distributor' : 'Laporan Coverage');
     XLSX.utils.book_append_sheet(wb, ws2, 'Raw Data');
-    XLSX.writeFile(wb, `laporan_coverage_${month === 'all' ? 'semua' : month}.xlsx`);
+    XLSX.writeFile(wb, `${byDistributor ? 'laporan_distributor' : 'laporan_coverage'}_${month === 'all' ? 'semua' : month}.xlsx`);
   };
 
   const Th = ({ children, className = '' }) => (
@@ -3779,7 +3789,9 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [] }) {
     <div>
       <div className="flex items-center justify-between mb-5 gap-3 flex-wrap">
         <div>
-          <h2 className="text-2xl font-bold text-slate-100 tracking-tight font-display">Laporan Coverage</h2>
+          <h2 className="text-2xl font-bold text-slate-100 tracking-tight font-display">
+            {byDistributor ? 'Laporan per Distributor' : 'Laporan Coverage'}
+          </h2>
           <p className="text-sm text-slate-500 mt-1">
             Realisasi vs jumlah bengkel terdata · {grand.visited} visit
             {kelas !== 'all' && <span className="ml-1 text-sky-400">· class {kelas}</span>}
@@ -3791,10 +3803,12 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [] }) {
       </div>
 
       <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 mb-4 grid grid-cols-2 md:grid-cols-3 gap-2">
-        <Select value={level} onChange={e => setLevel(e.target.value)}>
-          <option value="provinsi">Rincian per Provinsi</option>
-          <option value="kota">Rincian per Kota</option>
-        </Select>
+        {!byDistributor && (
+          <Select value={level} onChange={e => setLevel(e.target.value)}>
+            <option value="provinsi">Rincian per Provinsi</option>
+            <option value="kota">Rincian per Kota</option>
+          </Select>
+        )}
         <Select value={kelas} onChange={e => setKelas(e.target.value)}>
           <option value="all">Semua Class</option>
           {[...new Set(bengkels.map(b => b.workshop_class).filter(Boolean))].sort()
@@ -3830,7 +3844,7 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [] }) {
             <thead className="bg-blue-950/40 border-b border-slate-800">
               <tr>
                 <Th className="text-left">Region (AA)</Th>
-                <Th className="text-left">{level === 'kota' ? 'Kota (AA)' : 'Provinsi (AA)'}</Th>
+                <Th className="text-left">{byDistributor ? 'Distributor' : (level === 'kota' ? 'Kota (AA)' : 'Provinsi (AA)')}</Th>
                 {visibleNumCols.map(c => <Th key={c.key} className="text-right" title={c.key}>{c.label}</Th>)}
                 {show('mdcover') && <Th className="text-left">MD Cover</Th>}
               </tr>
@@ -3966,6 +3980,7 @@ function AdminView({ profile }) {
         {[
           { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
           { id: 'laporan', label: 'Laporan', icon: Target },
+          { id: 'laporan_dist', label: 'Laporan Distributor', icon: Briefcase },
           { id: 'visits', label: 'Visits', icon: ClipboardList },
           { id: 'absen', label: 'Absen', icon: CalendarDays },
           { id: 'coverage', label: 'Coverage Map', icon: MapIcon },
@@ -3979,7 +3994,8 @@ function AdminView({ profile }) {
       </div>
 
       {tab === 'dashboard' && <DashboardTab visits={sVisits} mds={activeMds} onOpenVisit={openDetail} bengkels={bengkels} kotas={kotas} distributors={distributors} regions={regions} accounts={accounts} />}
-      {tab === 'laporan' && <LaporanTab visits={sVisits} bengkels={bengkels} kotas={kotas} regions={regions} accounts={accounts} />}
+      {tab === 'laporan' && <LaporanTab visits={sVisits} bengkels={bengkels} kotas={kotas} regions={regions} accounts={accounts} distributors={distributors} />}
+      {tab === 'laporan_dist' && <LaporanTab mode="distributor" visits={sVisits} bengkels={bengkels} kotas={kotas} regions={regions} accounts={accounts} distributors={distributors} />}
       {tab === 'visits' && <VisitsTab visits={sVisits} mds={activeMds} bengkels={bengkels} kotas={kotas} distributors={distributors} regions={regions} onOpenVisit={openDetail} accounts={accounts} />}
       {tab === 'absen' && <AdminAbsenTab mds={activeMds} allowedMdIds={allowedMdIds} isSuperAdmin={isSuperAdmin} regions={regions} />}
       {tab === 'coverage' &&<CoverageTab visits={sVisits} mds={activeMds} bengkels={bengkels} kotas={kotas} regions={regions} distributors={distributors} onOpenVisit={openDetail} />}
