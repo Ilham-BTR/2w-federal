@@ -3613,24 +3613,25 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
     const ensure = (b) => {
       if (!b) return null;
       const kota = kotaById.get(b.kota_id);
-      let key, name, name2, regionId;
+      let key, name, group, regionId;
       if (byDistributor) {
+        // Grup atas = distributor, rincian per provinsi (1 distributor bisa
+        // menangani bengkel di lebih dari satu provinsi).
         const d = distById.get(b.distributor_id);
-        // Satu baris = distributor x provinsi, karena 1 distributor bisa
-        // menangani bengkel di lebih dari satu provinsi.
+        if (!b.distributor_id) return null;
         regionId = kota?.region_id ?? d?.region_id;
         key = `${b.distributor_id}|${regionId}`;
-        name = d?.name || '—';
-        name2 = regionById.get(regionId)?.name || '—';
-        if (!b.distributor_id) key = null;
+        name = regionById.get(regionId)?.name || '—';
+        group = d?.name || '—';
       } else {
         key = level === 'kota' ? kota?.id : kota?.region_id;
         name = level === 'kota' ? (kota?.name || '—') : (regionById.get(kota?.region_id)?.name || '—');
         regionId = kota?.region_id;
+        group = groupOfRegion(regionById.get(regionId));
       }
       if (!key) return null;
       if (!rows.has(key)) {
-        rows.set(key, { key, name, name2, regionId, group: groupOfRegion(regionById.get(regionId)), ...blank() });
+        rows.set(key, { key, name, regionId, group, ...blank() });
       }
       return rows.get(key);
     };
@@ -3673,7 +3674,7 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
     [...rows.values()].forEach(r => { (byGroup[r.group] ||= []).push(r); });
     const groups = Object.entries(byGroup)
       .map(([group, items]) => {
-        items.sort((a, b) => a.name.localeCompare(b.name) || (a.name2 || '').localeCompare(b.name2 || ''));
+        items.sort((a, b) => a.name.localeCompare(b.name));
         const sub = blank();
         items.forEach(r => {
           SUM_KEYS.forEach(k => { sub[k] += r[k]; });
@@ -3708,20 +3709,20 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
     return m;
   }, [accounts]);
   const mdNamesOf = (regionId) => mdByRegion[regionId] || [];
-  const mdNamesOfGroup = (group) => {
+  // MD di baris subtotal = gabungan MD dari semua provinsi di grup tersebut.
+  const mdNamesOfGroup = (items) => {
     const names = new Set();
-    regions.filter(r => groupOfRegion(r) === group).forEach(r => mdNamesOf(r.id).forEach(n => names.add(n)));
+    items.forEach(r => mdNamesOf(r.regionId).forEach(n => names.add(n)));
     return [...names].sort((a, b) => a.localeCompare(b));
   };
 
   // Definisi kolom angka — dipakai header, baris, subtotal, grand total & export.
-  // BWS = kelas FOC di master AA (label laporan pakai istilah BWS).
   const NUM_COLS = [
     { key: 'target',     label: '# Workshop',     get: r => r.target,     raw: true, color: 'text-slate-300' },
     { key: 'visited',    label: 'Visited',        get: r => r.visited,    color: 'text-sky-300' },
     { key: 'unvisited',  label: 'Unvisited',      get: r => r.unvisited,  color: 'text-slate-400' },
-    { key: 'foc',        label: '# Workshop BWS', get: r => r.foc,        raw: true, color: 'text-amber-300' },
-    { key: 'focVisited', label: 'BWS',            get: r => r.focVisited, den: r => r.foc, color: 'text-amber-300' },
+    { key: 'foc',        label: '# Workshop FOC', get: r => r.foc,        raw: true, color: 'text-amber-300' },
+    { key: 'focVisited', label: 'FOC',            get: r => r.focVisited, den: r => r.foc, color: 'text-amber-300' },
     { key: 'iws',        label: '# Workshop IWS', get: r => r.iws,        raw: true, color: 'text-sky-300' },
     { key: 'iwsVisited', label: 'IWS',            get: r => r.iwsVisited, den: r => r.iws, color: 'text-sky-300' },
     { key: 'terpasang',  label: 'Success Deploy', get: r => r.terpasang,  color: 'text-emerald-400' },
@@ -3742,24 +3743,25 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
     const XLSX = await import('xlsx-js-style');
 
     // ---------- Sheet 1: Laporan Coverage (berformat) ----------
-    const kolom2 = byDistributor ? 'Distributor' : (level === 'kota' ? 'Kota (AA)' : 'Provinsi (AA)');
-    const headers = ['Region (AA)', kolom2, ...(byDistributor ? ['Provinsi (AA)'] : []),
+    const headers = [
+      byDistributor ? 'Distributor' : 'Region (AA)',
+      !byDistributor && level === 'kota' ? 'Kota (AA)' : 'Provinsi (AA)',
       ...visibleNumCols.map(c => c.label), ...(show('mdcover') ? ['MD Cover'] : [])];
     const aoa = [headers];
     const kinds = ['head'];                       // jenis tiap baris untuk styling
     groups.forEach(g => {
       g.items.forEach((r, i) => {
-        aoa.push([i === 0 ? g.group : '', r.name, ...(byDistributor ? [r.name2] : []),
+        aoa.push([i === 0 ? g.group : '', r.name,
           ...visibleNumCols.map(c => fmt(c, r)),
           ...(show('mdcover') ? [mdNamesOf(r.regionId).join(', ')] : [])]);
         kinds.push('data');
       });
-      aoa.push([`${g.group} TOTAL`, '', ...(byDistributor ? [''] : []),
+      aoa.push([`${g.group} TOTAL`, '',
         ...visibleNumCols.map(c => fmt(c, g.sub)),
-        ...(show('mdcover') ? [`${mdNamesOfGroup(g.group).length} MD`] : [])]);
+        ...(show('mdcover') ? [`${mdNamesOfGroup(g.items).length} MD`] : [])]);
       kinds.push('sub');
     });
-    aoa.push(['GRAND TOTAL', '', ...(byDistributor ? [''] : []),
+    aoa.push(['GRAND TOTAL', '',
       ...visibleNumCols.map(c => fmt(c, grand)),
       ...(show('mdcover') ? [`${new Set(Object.values(mdByRegion).flat()).size} MD`] : [])]);
     kinds.push('grand');
@@ -3767,8 +3769,7 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
     const BORDER = { style: 'thin', color: { rgb: 'FFB4C6E7' } };
     const borders = { top: BORDER, bottom: BORDER, left: BORDER, right: BORDER };
     const styleFor = (kind, colIdx) => {
-      const teksTerakhir = byDistributor ? 2 : 1;   // kolom teks di kiri (rata kiri)
-      const align = { vertical: 'center', wrapText: true, horizontal: colIdx <= teksTerakhir ? 'left' : 'center' };
+      const align = { vertical: 'center', wrapText: true, horizontal: colIdx <= 1 ? 'left' : 'center' };
       if (kind === 'head') return { font: { bold: true, color: { rgb: 'FFFFFFFF' }, sz: 11 }, fill: { fgColor: { rgb: 'FF1F4E79' } }, alignment: { ...align, horizontal: 'center' }, border: borders };
       if (kind === 'sub') return { font: { bold: true, color: { rgb: 'FF1F4E79' } }, fill: { fgColor: { rgb: 'FFBDD7EE' } }, alignment: align, border: borders };
       if (kind === 'grand') return { font: { bold: true, color: { rgb: 'FF1F4E79' } }, fill: { fgColor: { rgb: 'FF9DC3E6' } }, alignment: align, border: borders };
@@ -3780,7 +3781,7 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
       if (ws[ref]) ws[ref].s = styleFor(kinds[ri], ci);
     }));
     ws['!cols'] = headers.map((h, i) => ({
-      wch: i === 0 ? 22 : i === 1 ? 26 : (byDistributor && i === 2) ? 22 : (h === 'MD Cover' ? 40 : Math.max(12, h.length + 3)),
+      wch: i === 0 ? (byDistributor ? 34 : 22) : i === 1 ? 26 : (h === 'MD Cover' ? 40 : Math.max(12, h.length + 3)),
     }));
     ws['!rows'] = [{ hpt: 32 }];                 // header lebih tinggi (teks wrap)
     ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: 0, c: headers.length - 1 } }) };
@@ -3870,9 +3871,8 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
           <table className="w-full text-sm border-collapse">
             <thead className="bg-blue-950/40 border-b border-slate-800">
               <tr>
-                <Th className="text-left">Region (AA)</Th>
-                <Th className="text-left">{byDistributor ? 'Distributor' : (level === 'kota' ? 'Kota (AA)' : 'Provinsi (AA)')}</Th>
-                {byDistributor && <Th className="text-left">Provinsi (AA)</Th>}
+                <Th className="text-left">{byDistributor ? 'Distributor' : 'Region (AA)'}</Th>
+                <Th className="text-left">{!byDistributor && level === 'kota' ? 'Kota (AA)' : 'Provinsi (AA)'}</Th>
                 {visibleNumCols.map(c => <Th key={c.key} className="text-right" title={c.key}>{c.label}</Th>)}
                 {show('mdcover') && <Th className="text-left">MD Cover</Th>}
               </tr>
@@ -3885,12 +3885,7 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
                       <td className="px-2.5 py-1.5 text-[11px] font-semibold text-slate-400 whitespace-nowrap">
                         {i === 0 ? g.group : ''}
                       </td>
-                      <td className="px-2.5 py-1.5 text-xs text-slate-200 whitespace-nowrap">
-                        {byDistributor && i > 0 && g.items[i - 1].name === r.name ? '' : r.name}
-                      </td>
-                      {byDistributor && (
-                        <td className="px-2.5 py-1.5 text-xs text-slate-300 whitespace-nowrap">{r.name2}</td>
-                      )}
+                      <td className="px-2.5 py-1.5 text-xs text-slate-200 whitespace-nowrap">{r.name}</td>
                       {visibleNumCols.map(c => {
                         const n = c.get(r);
                         const color = c.raw ? 'text-slate-300' : (c.cat ? (n > 0 ? 'text-amber-300' : 'text-slate-600') : c.color);
@@ -3912,15 +3907,14 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
                   <tr className="bg-blue-900/25 border-b-2 border-slate-800 font-semibold">
                     <td className="px-2.5 py-1.5 text-[11px] text-blue-200 whitespace-nowrap">{g.group} TOTAL</td>
                     <td />
-                    {byDistributor && <td />}
                     {visibleNumCols.map(c => (
                       <td key={c.key} className={`px-2.5 py-1.5 text-xs text-right font-mono whitespace-nowrap ${c.raw ? 'text-slate-100' : c.cat ? 'text-amber-200' : c.color}`}>
                         {fmt(c, g.sub)}
                       </td>
                     ))}
                     {show('mdcover') && (
-                      <td className="px-2.5 py-1.5 text-[11px] text-blue-200 whitespace-nowrap" title={mdNamesOfGroup(g.group).join(', ')}>
-                        {mdNamesOfGroup(g.group).length} MD
+                      <td className="px-2.5 py-1.5 text-[11px] text-blue-200 whitespace-nowrap" title={mdNamesOfGroup(g.items).join(', ')}>
+                        {mdNamesOfGroup(g.items).length} MD
                       </td>
                     )}
                   </tr>
@@ -3929,7 +3923,6 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
               <tr className="bg-slate-800/60 font-bold">
                 <td className="px-2.5 py-2 text-[11px] text-slate-100 whitespace-nowrap">GRAND TOTAL</td>
                 <td />
-                {byDistributor && <td />}
                 {visibleNumCols.map(c => (
                   <td key={c.key} className={`px-2.5 py-2 text-xs text-right font-mono whitespace-nowrap ${c.raw ? 'text-slate-100' : c.cat ? 'text-amber-200' : c.color}`}>
                     {fmt(c, grand)}
@@ -3946,7 +3939,7 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
         </div>
       </div>
       <p className="text-[11px] text-slate-500 mt-2">
-        Persentase dihitung terhadap # Workshop di baris tersebut (kolom BWS &amp; IWS terhadap
+        Persentase dihitung terhadap # Workshop di baris tersebut (kolom FOC &amp; IWS terhadap
         # Workshop kelasnya masing-masing). Unvisited = bengkel target yang belum pernah divisit;
         Visited menghitung jumlah visit sehingga bisa lebih dari 1 per bengkel. Not Success sudah
         termasuk Not Selling Federal.
