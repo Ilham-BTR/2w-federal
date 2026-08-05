@@ -3718,18 +3718,19 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
 
   // Definisi kolom angka — dipakai header, baris, subtotal, grand total & export.
   const NUM_COLS = [
-    { key: 'target',     label: '# Workshop',     get: r => r.target,     raw: true, color: 'text-slate-300' },
+    { key: 'target',     label: 'Target',         get: r => r.target,     raw: true, color: 'text-slate-300' },
     { key: 'visited',    label: 'Visited',        get: r => r.visited,    color: 'text-sky-300' },
     { key: 'unvisited',  label: 'Unvisited',      get: r => r.unvisited,  color: 'text-slate-400' },
-    { key: 'foc',        label: '# Workshop FOC', get: r => r.foc,        raw: true, color: 'text-amber-300' },
-    { key: 'focVisited', label: 'FOC',            get: r => r.focVisited, den: r => r.foc, color: 'text-amber-300' },
-    { key: 'iws',        label: '# Workshop IWS', get: r => r.iws,        raw: true, color: 'text-sky-300' },
+    // BWS = kelas FOC di master AA (laporan pakai istilah BWS).
+    { key: 'foc',        label: 'BWS Target',     get: r => r.foc,        raw: true, color: 'text-amber-300' },
+    { key: 'focVisited', label: 'BWS',            get: r => r.focVisited, den: r => r.foc, color: 'text-amber-300' },
+    { key: 'iws',        label: 'IWS Target',     get: r => r.iws,        raw: true, color: 'text-sky-300' },
     { key: 'iwsVisited', label: 'IWS',            get: r => r.iwsVisited, den: r => r.iws, color: 'text-sky-300' },
-    { key: 'terpasang',  label: 'Success Deploy', get: r => r.terpasang,  color: 'text-emerald-400' },
-    { key: 'spanduk',    label: 'Banner',         get: r => r.spanduk,    color: 'text-emerald-300' },
-    { key: 'poster',     label: 'Poster',         get: r => r.poster,     color: 'text-emerald-300' },
-    { key: 'notSuccess', label: 'Not Success',    get: r => r.notSuccess, color: 'text-rose-300' },
-    ...CATS.map(c => ({ key: c, label: SHORT[c] || c, get: r => r.cats[c], cat: true })),
+    { key: 'terpasang',  label: 'Success Deploy', get: r => r.terpasang,  den: r => r.visited, color: 'text-emerald-400' },
+    { key: 'spanduk',    label: 'Banner',         get: r => r.spanduk,    raw: true, color: 'text-emerald-300' },
+    { key: 'poster',     label: 'Poster',         get: r => r.poster,     raw: true, color: 'text-emerald-300' },
+    { key: 'notSuccess', label: 'Not Success',    get: r => r.notSuccess, den: r => r.visited, color: 'text-rose-300' },
+    ...CATS.map(c => ({ key: c, label: SHORT[c] || c, get: r => r.cats[c], den: r => r.notSuccess, cat: true })),
   ];
   const ALL_COLS = [...NUM_COLS, { key: 'mdcover', label: 'MD Cover' }];
   // Not Selling Federal ikut dihitung di Not Success, kolom rinciannya default disembunyikan.
@@ -3888,7 +3889,7 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
                       <td className="px-2.5 py-1.5 text-xs text-slate-200 whitespace-nowrap">{r.name}</td>
                       {visibleNumCols.map(c => {
                         const n = c.get(r);
-                        const color = c.raw ? 'text-slate-300' : (c.cat ? (n > 0 ? 'text-amber-300' : 'text-slate-600') : c.color);
+                        const color = c.cat ? (n > 0 ? 'text-amber-300' : 'text-slate-600') : (c.color || 'text-slate-300');
                         return (
                           <td key={c.key} className={`px-2.5 py-1.5 text-xs text-right font-mono whitespace-nowrap ${color}`}>
                             {fmt(c, r)}
@@ -3908,7 +3909,7 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
                     <td className="px-2.5 py-1.5 text-[11px] text-blue-200 whitespace-nowrap">{g.group} TOTAL</td>
                     <td />
                     {visibleNumCols.map(c => (
-                      <td key={c.key} className={`px-2.5 py-1.5 text-xs text-right font-mono whitespace-nowrap ${c.raw ? 'text-slate-100' : c.cat ? 'text-amber-200' : c.color}`}>
+                      <td key={c.key} className={`px-2.5 py-1.5 text-xs text-right font-mono whitespace-nowrap ${c.cat ? 'text-amber-200' : (c.color || 'text-slate-100')}`}>
                         {fmt(c, g.sub)}
                       </td>
                     ))}
@@ -3924,7 +3925,7 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
                 <td className="px-2.5 py-2 text-[11px] text-slate-100 whitespace-nowrap">GRAND TOTAL</td>
                 <td />
                 {visibleNumCols.map(c => (
-                  <td key={c.key} className={`px-2.5 py-2 text-xs text-right font-mono whitespace-nowrap ${c.raw ? 'text-slate-100' : c.cat ? 'text-amber-200' : c.color}`}>
+                  <td key={c.key} className={`px-2.5 py-2 text-xs text-right font-mono whitespace-nowrap ${c.cat ? 'text-amber-200' : (c.color || 'text-slate-100')}`}>
                     {fmt(c, grand)}
                   </td>
                 ))}
@@ -3939,10 +3940,11 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
         </div>
       </div>
       <p className="text-[11px] text-slate-500 mt-2">
-        Persentase dihitung terhadap # Workshop di baris tersebut (kolom FOC &amp; IWS terhadap
-        # Workshop kelasnya masing-masing). Unvisited = bengkel target yang belum pernah divisit;
-        Visited menghitung jumlah visit sehingga bisa lebih dari 1 per bengkel. Not Success sudah
-        termasuk Not Selling Federal.
+        Penyebut persentase: Visited &amp; Unvisited terhadap Target; BWS &amp; IWS terhadap target
+        kelasnya masing-masing; Success Deploy &amp; Not Success terhadap Visited; Decline, Closed,
+        Address Not Found &amp; Non-Workshop terhadap Not Success. Banner &amp; Poster angka saja.
+        Unvisited = bengkel target yang belum pernah divisit, sedangkan Visited menghitung jumlah
+        visit sehingga bisa lebih dari 1 per bengkel. Not Success sudah termasuk Not Selling Federal.
       </p>
     </div>
   );
