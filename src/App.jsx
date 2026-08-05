@@ -3606,10 +3606,16 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
     const ensure = (b) => {
       if (!b) return null;
       const kota = kotaById.get(b.kota_id);
-      let key, name, regionId;
+      let key, name, name2, regionId;
       if (byDistributor) {
         const d = distById.get(b.distributor_id);
-        key = b.distributor_id; name = d?.name || '—'; regionId = d?.region_id ?? kota?.region_id;
+        // Satu baris = distributor x provinsi, karena 1 distributor bisa
+        // menangani bengkel di lebih dari satu provinsi.
+        regionId = kota?.region_id ?? d?.region_id;
+        key = `${b.distributor_id}|${regionId}`;
+        name = d?.name || '—';
+        name2 = regionById.get(regionId)?.name || '—';
+        if (!b.distributor_id) key = null;
       } else {
         key = level === 'kota' ? kota?.id : kota?.region_id;
         name = level === 'kota' ? (kota?.name || '—') : (regionById.get(kota?.region_id)?.name || '—');
@@ -3617,7 +3623,7 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
       }
       if (!key) return null;
       if (!rows.has(key)) {
-        rows.set(key, { key, name, regionId, group: groupOfRegion(regionById.get(regionId)), ...blank() });
+        rows.set(key, { key, name, name2, regionId, group: groupOfRegion(regionById.get(regionId)), ...blank() });
       }
       return rows.get(key);
     };
@@ -3653,7 +3659,7 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
     [...rows.values()].forEach(r => { (byGroup[r.group] ||= []).push(r); });
     const groups = Object.entries(byGroup)
       .map(([group, items]) => {
-        items.sort((a, b) => a.name.localeCompare(b.name));
+        items.sort((a, b) => a.name.localeCompare(b.name) || (a.name2 || '').localeCompare(b.name2 || ''));
         const sub = { ...blank(), cats: Object.fromEntries(CATS.map(c => [c, 0])) };
         items.forEach(r => {
           sub.target += r.target; sub.visited += r.visited; sub.terpasang += r.terpasang;
@@ -3719,23 +3725,23 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
 
     // ---------- Sheet 1: Laporan Coverage (berformat) ----------
     const kolom2 = byDistributor ? 'Distributor' : (level === 'kota' ? 'Kota (AA)' : 'Provinsi (AA)');
-    const headers = ['Region (AA)', kolom2,
+    const headers = ['Region (AA)', kolom2, ...(byDistributor ? ['Provinsi (AA)'] : []),
       ...visibleNumCols.map(c => c.label), ...(show('mdcover') ? ['MD Cover'] : [])];
     const aoa = [headers];
     const kinds = ['head'];                       // jenis tiap baris untuk styling
     groups.forEach(g => {
       g.items.forEach((r, i) => {
-        aoa.push([i === 0 ? g.group : '', r.name,
+        aoa.push([i === 0 ? g.group : '', r.name, ...(byDistributor ? [r.name2] : []),
           ...visibleNumCols.map(c => (c.raw ? c.get(r) : cell(c.get(r), r.target))),
           ...(show('mdcover') ? [mdNamesOf(r.regionId).join(', ')] : [])]);
         kinds.push('data');
       });
-      aoa.push([`${g.group} TOTAL`, '',
+      aoa.push([`${g.group} TOTAL`, '', ...(byDistributor ? [''] : []),
         ...visibleNumCols.map(c => (c.raw ? c.get(g.sub) : cell(c.get(g.sub), g.sub.target))),
         ...(show('mdcover') ? [`${mdNamesOfGroup(g.group).length} MD`] : [])]);
       kinds.push('sub');
     });
-    aoa.push(['GRAND TOTAL', '',
+    aoa.push(['GRAND TOTAL', '', ...(byDistributor ? [''] : []),
       ...visibleNumCols.map(c => (c.raw ? c.get(grand) : cell(c.get(grand), grand.target))),
       ...(show('mdcover') ? [`${new Set(Object.values(mdByRegion).flat()).size} MD`] : [])]);
     kinds.push('grand');
@@ -3743,7 +3749,8 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
     const BORDER = { style: 'thin', color: { rgb: 'FFB4C6E7' } };
     const borders = { top: BORDER, bottom: BORDER, left: BORDER, right: BORDER };
     const styleFor = (kind, colIdx) => {
-      const align = { vertical: 'center', wrapText: true, horizontal: colIdx <= 1 ? 'left' : 'center' };
+      const teksTerakhir = byDistributor ? 2 : 1;   // kolom teks di kiri (rata kiri)
+      const align = { vertical: 'center', wrapText: true, horizontal: colIdx <= teksTerakhir ? 'left' : 'center' };
       if (kind === 'head') return { font: { bold: true, color: { rgb: 'FFFFFFFF' }, sz: 11 }, fill: { fgColor: { rgb: 'FF1F4E79' } }, alignment: { ...align, horizontal: 'center' }, border: borders };
       if (kind === 'sub') return { font: { bold: true, color: { rgb: 'FF1F4E79' } }, fill: { fgColor: { rgb: 'FFBDD7EE' } }, alignment: align, border: borders };
       if (kind === 'grand') return { font: { bold: true, color: { rgb: 'FF1F4E79' } }, fill: { fgColor: { rgb: 'FF9DC3E6' } }, alignment: align, border: borders };
@@ -3754,7 +3761,9 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
       const ref = XLSX.utils.encode_cell({ r: ri, c: ci });
       if (ws[ref]) ws[ref].s = styleFor(kinds[ri], ci);
     }));
-    ws['!cols'] = headers.map((h, i) => ({ wch: i === 0 ? 22 : i === 1 ? 26 : (h === 'MD Cover' ? 40 : Math.max(12, h.length + 3)) }));
+    ws['!cols'] = headers.map((h, i) => ({
+      wch: i === 0 ? 22 : i === 1 ? 26 : (byDistributor && i === 2) ? 22 : (h === 'MD Cover' ? 40 : Math.max(12, h.length + 3)),
+    }));
     ws['!rows'] = [{ hpt: 32 }];                 // header lebih tinggi (teks wrap)
     ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: 0, c: headers.length - 1 } }) };
 
@@ -3845,6 +3854,7 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
               <tr>
                 <Th className="text-left">Region (AA)</Th>
                 <Th className="text-left">{byDistributor ? 'Distributor' : (level === 'kota' ? 'Kota (AA)' : 'Provinsi (AA)')}</Th>
+                {byDistributor && <Th className="text-left">Provinsi (AA)</Th>}
                 {visibleNumCols.map(c => <Th key={c.key} className="text-right" title={c.key}>{c.label}</Th>)}
                 {show('mdcover') && <Th className="text-left">MD Cover</Th>}
               </tr>
@@ -3857,7 +3867,12 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
                       <td className="px-2.5 py-1.5 text-[11px] font-semibold text-slate-400 whitespace-nowrap">
                         {i === 0 ? g.group : ''}
                       </td>
-                      <td className="px-2.5 py-1.5 text-xs text-slate-200 whitespace-nowrap">{r.name}</td>
+                      <td className="px-2.5 py-1.5 text-xs text-slate-200 whitespace-nowrap">
+                        {byDistributor && i > 0 && g.items[i - 1].name === r.name ? '' : r.name}
+                      </td>
+                      {byDistributor && (
+                        <td className="px-2.5 py-1.5 text-xs text-slate-300 whitespace-nowrap">{r.name2}</td>
+                      )}
                       {visibleNumCols.map(c => {
                         const n = c.get(r);
                         const color = c.raw ? 'text-slate-300' : (c.cat ? (n > 0 ? 'text-amber-300' : 'text-slate-600') : c.color);
@@ -3879,6 +3894,7 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
                   <tr className="bg-blue-900/25 border-b-2 border-slate-800 font-semibold">
                     <td className="px-2.5 py-1.5 text-[11px] text-blue-200 whitespace-nowrap">{g.group} TOTAL</td>
                     <td />
+                    {byDistributor && <td />}
                     {visibleNumCols.map(c => (
                       <td key={c.key} className={`px-2.5 py-1.5 text-xs text-right font-mono whitespace-nowrap ${c.raw ? 'text-slate-100' : c.cat ? 'text-amber-200' : c.color}`}>
                         {c.raw ? c.get(g.sub) : cell(c.get(g.sub), g.sub.target)}
@@ -3895,6 +3911,7 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
               <tr className="bg-slate-800/60 font-bold">
                 <td className="px-2.5 py-2 text-[11px] text-slate-100 whitespace-nowrap">GRAND TOTAL</td>
                 <td />
+                {byDistributor && <td />}
                 {visibleNumCols.map(c => (
                   <td key={c.key} className={`px-2.5 py-2 text-xs text-right font-mono whitespace-nowrap ${c.raw ? 'text-slate-100' : c.cat ? 'text-amber-200' : c.color}`}>
                     {c.raw ? c.get(grand) : cell(c.get(grand), grand.target)}
