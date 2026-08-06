@@ -580,12 +580,30 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
   useBackDismiss(true, onClose);                                  // back -> tutup modal detail
   useBackDismiss(lightboxIdx != null, () => setLightboxIdx(null)); // back -> tutup foto fullscreen dulu
 
-  // Ganti foto (admin) — upload foto baru ke R2 lalu update kolom visit.
-  const [photoOverrides, setPhotoOverrides] = useState({}); // col -> url baru
+  // Tambah / ganti / hapus foto (admin) — upload ke R2 lalu update kolom visit.
+  // Dipakai mis. saat hasil visit diubah jadi "Spanduk Terpasang" sehingga
+  // butuh foto lanjutan yang belum pernah diisi MD.
+  const [photoOverrides, setPhotoOverrides] = useState({}); // col -> url baru (null = dihapus)
   const [replacingCol, setReplacingCol] = useState(null);
   const replaceFileRef = useRef(null);
   const pendingColRef = useRef(null);
   const pickReplace = (col) => { pendingColRef.current = col; replaceFileRef.current?.click(); };
+
+  // Foto berubah = penilaian foto itu tidak berlaku lagi, jadi visit balik ke
+  // status belum dicek supaya admin menilai ulang.
+  const patchResetCek = (col) => {
+    const sisa = { ...checks };
+    delete sisa[col];
+    return {
+      photo_checks: Object.keys(sisa).length ? sisa : null,
+      check_status: null, checked_by: null, checked_at: null,
+    };
+  };
+  const lupakanCek = (col) => {
+    setChecks(c => { const n = { ...c }; delete n[col]; return n; });
+    setCheckSaved(false);
+  };
+
   const onReplaceFile = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = '';
@@ -597,11 +615,27 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
     try {
       const compressed = await imageCompression(file, { maxSizeMB: 0.2, maxWidthOrHeight: 1024, useWebWorker: true, fileType: 'image/jpeg' });
       const { url } = await api.uploadOneVisitPhoto(compressed, visit.id, uiKey);
-      await api.updateMaster('visits', visit.id, { [col]: url });
+      await api.updateMaster('visits', visit.id, { [col]: url, ...patchResetCek(col) });
       setPhotoOverrides(o => ({ ...o, [col]: url }));
+      lupakanCek(col);
       onUpdated?.();
     } catch (err) {
-      alert('Gagal ganti foto: ' + (err?.message || err));
+      alert('Gagal simpan foto: ' + (err?.message || err));
+    } finally {
+      setReplacingCol(null);
+    }
+  };
+
+  const hapusFoto = async (col) => {
+    if (!confirm(`Hapus foto "${PHOTO_LABELS[col]}" dari visit ini?`)) return;
+    setReplacingCol(col);
+    try {
+      await api.updateMaster('visits', visit.id, { [col]: null, ...patchResetCek(col) });
+      setPhotoOverrides(o => ({ ...o, [col]: null }));
+      lupakanCek(col);
+      onUpdated?.();
+    } catch (err) {
+      alert('Gagal hapus foto: ' + (err?.message || err));
     } finally {
       setReplacingCol(null);
     }
@@ -644,6 +678,7 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
   });
 
   // Edit data visit (super admin) — ubah field yang diisi MD.
+  const [statusLocal, setStatusLocal] = useState(visit.status);   // hasil visit setelah diedit admin
   const [editMode, setEditMode] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(null);
@@ -671,6 +706,7 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
         bengkel_id: form.bengkel_id,
         remarks: form.remarks?.trim() || null,
       });
+      setStatusLocal(form.status);   // slot foto wajib ikut hasil visit yang baru
       onUpdated?.();
       setEditMode(false);
     } catch (e) {
@@ -680,9 +716,17 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
     }
   };
 
-  const availablePhotos = PHOTO_KEYS
-    .filter(k => photoOverrides[k] ?? visit[k])
-    .map(k => ({ key: k, label: PHOTO_LABELS[k], url: photoOverrides[k] ?? visit[k] }));
+  // Slot yang relevan mengikuti hasil visit: selain "Spanduk Terpasang" cukup
+  // selfie + tampak depan (before). Slot yang terlanjur berisi tetap ditampilkan
+  // supaya foto lama tidak hilang begitu saja saat hasil visit diubah.
+  const urlFoto = (k) => (k in photoOverrides ? photoOverrides[k] : visit[k]);
+  const SLOT_DASAR = ['photo_selfie', 'photo_before'];
+  const photoSlots = PHOTO_KEYS
+    .filter(k => statusLocal === HASIL_TERPASANG || SLOT_DASAR.includes(k) || urlFoto(k))
+    .map(k => ({ key: k, label: PHOTO_LABELS[k], url: urlFoto(k) }))
+    // Slot kosong hanya berguna buat yang boleh mengisi.
+    .filter(p => p.url || canEdit);
+  const availablePhotos = photoSlots.filter(p => p.url);
 
   const isMockPhoto = isPlaceholderPhoto;
   const hasBengkelCoord = bengkel?.lat != null && bengkel?.lng != null;
@@ -845,30 +889,44 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
           {/* Photo gallery */}
           <div>
             <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2 flex items-center gap-2 flex-wrap">
-              <Camera className="w-3 h-3" />Dokumentasi Foto ({availablePhotos.length}/{PHOTO_KEYS.length})
-              {canEdit && <span className="normal-case tracking-normal font-normal text-slate-600">· tap "Ganti" untuk perbaiki foto</span>}
+              <Camera className="w-3 h-3" />Dokumentasi Foto ({availablePhotos.length}/{photoSlots.length})
+              {canEdit && <span className="normal-case tracking-normal font-normal text-slate-600">· tap "Tambah" untuk isi slot kosong, "Ganti" untuk perbaiki foto</span>}
             </div>
             {canEdit && <input ref={replaceFileRef} type="file" accept="image/*" className="hidden" onChange={onReplaceFile} />}
-            {availablePhotos.length === 0 ? (
+            {photoSlots.length === 0 ? (
               <div className="text-center text-sm text-slate-500 py-8 bg-slate-950 border border-slate-800 rounded-xl">Tidak ada foto</div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {availablePhotos.map((p, i) => (
+                {photoSlots.map((p) => (
                   <div key={p.key}
-                    className="relative rounded-xl overflow-hidden border border-slate-800 hover:border-blue-600/50 transition group bg-slate-950">
-                    <button onClick={() => setLightboxIdx(i)} className="relative block w-full aspect-[4/3]">
-                      {isMockPhoto(p.url) ? (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-600">
-                          <Camera className="w-5 h-5 mb-1" />
-                          <span className="text-[9px] uppercase tracking-wider">No Foto</span>
-                        </div>
-                      ) : (
-                        <StoredImage src={p.url} alt={p.label} className="absolute inset-0 w-full h-full object-cover" />
-                      )}
-                    </button>
+                    className={`relative rounded-xl overflow-hidden border transition group bg-slate-950 ${
+                      p.url ? 'border-slate-800 hover:border-blue-600/50' : 'border-dashed border-slate-700'
+                    }`}>
+                    {p.url ? (
+                      <button onClick={() => setLightboxIdx(availablePhotos.findIndex(a => a.key === p.key))} className="relative block w-full aspect-[4/3]">
+                        {isMockPhoto(p.url) ? (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-600">
+                            <Camera className="w-5 h-5 mb-1" />
+                            <span className="text-[9px] uppercase tracking-wider">No Foto</span>
+                          </div>
+                        ) : (
+                          <StoredImage src={p.url} alt={p.label} className="absolute inset-0 w-full h-full object-cover" />
+                        )}
+                      </button>
+                    ) : (
+                      <button onClick={() => pickReplace(p.key)} disabled={replacingCol === p.key}
+                        className="relative flex w-full aspect-[4/3] flex-col items-center justify-center gap-1.5 text-slate-500 hover:text-blue-400 hover:bg-blue-950/20 transition disabled:opacity-60"
+                        title={`Tambah ${p.label}`}>
+                        {replacingCol === p.key ? (
+                          <><Loader2 className="w-5 h-5 animate-spin" /><span className="text-[10px]">Uploading…</span></>
+                        ) : (
+                          <><Plus className="w-5 h-5" /><span className="text-[10px] uppercase tracking-wider font-semibold">Tambah Foto</span></>
+                        )}
+                      </button>
+                    )}
                     <div className="bg-slate-950 border-t border-slate-800 px-2.5 py-2">
                       <div className="text-[11px] font-medium text-slate-200 leading-snug">{p.label}</div>
-                      {canCheck ? (
+                      {canCheck && p.url ? (
                         <div className="grid grid-cols-2 gap-1.5 mt-2">
                           <button onClick={() => setCheck(p.key, 'ok')}
                             className={`py-1.5 rounded-md text-[11px] font-semibold border transition flex items-center justify-center gap-1 ${
@@ -879,18 +937,25 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
                               checks[p.key] === 'bad' ? 'bg-rose-600 border-rose-600 text-white' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-rose-400'
                             }`}><X className="w-3 h-3" />Tidak</button>
                         </div>
-                      ) : visit.photo_checks?.[p.key] && (
+                      ) : p.url && visit.photo_checks?.[p.key] && (
                         <div className={`mt-1.5 text-[10px] font-semibold flex items-center gap-1 ${visit.photo_checks[p.key] === 'ok' ? 'text-emerald-400' : 'text-rose-400'}`}>
                           {visit.photo_checks[p.key] === 'ok' ? <><Check className="w-3 h-3" />Sesuai</> : <><X className="w-3 h-3" />Tidak Sesuai</>}
                         </div>
                       )}
                     </div>
-                    {canEdit && (
-                      <button onClick={() => pickReplace(p.key)} disabled={replacingCol === p.key}
-                        className="absolute top-1 right-1 z-10 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-black/70 hover:bg-blue-600 text-white text-[9px] font-medium backdrop-blur-sm transition disabled:opacity-60"
-                        title="Ganti foto ini">
-                        {replacingCol === p.key ? 'Uploading…' : <><Camera className="w-3 h-3" />Ganti</>}
-                      </button>
+                    {canEdit && p.url && (
+                      <div className="absolute top-1 right-1 z-10 flex items-center gap-1">
+                        <button onClick={() => pickReplace(p.key)} disabled={replacingCol === p.key}
+                          className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-black/70 hover:bg-blue-600 text-white text-[9px] font-medium backdrop-blur-sm transition disabled:opacity-60"
+                          title="Ganti foto ini">
+                          {replacingCol === p.key ? 'Uploading…' : <><Camera className="w-3 h-3" />Ganti</>}
+                        </button>
+                        <button onClick={() => hapusFoto(p.key)} disabled={replacingCol === p.key}
+                          className="flex items-center px-1.5 py-0.5 rounded-md bg-black/70 hover:bg-rose-600 text-white text-[9px] font-medium backdrop-blur-sm transition disabled:opacity-60"
+                          title="Hapus foto ini">
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
                     )}
                   </div>
                 ))}
