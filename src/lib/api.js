@@ -419,6 +419,73 @@ export async function saveVisitCheck(visitId, { photoChecks, remarks, checkedBy 
   return patch;
 }
 
+// ---------------------------------------------------------------------------
+// Izin edit foto visit — MD mengajukan, super admin memutuskan.
+// Izin yang disetujui berlaku 24 jam dan hanya membuka slot foto 1 visit.
+// ---------------------------------------------------------------------------
+const IZIN_JAM = 24;
+export const izinEditAktif = (req) =>
+  !!req && req.status === 'approved' && !!req.expires_at && new Date(req.expires_at) > new Date();
+
+/** MD mengajukan izin edit foto untuk 1 visit miliknya. */
+export async function createEditRequest(visitId, mdId, reason) {
+  const row = {
+    visit_id: visitId, md_id: mdId,
+    reason: reason?.trim() || null,
+    status: 'pending', created_at: new Date().toISOString(),
+  };
+  if (MOCK_MODE) {
+    MOCK_DATA.visit_edit_requests ||= [];
+    if (MOCK_DATA.visit_edit_requests.some(r => r.visit_id === visitId && r.status === 'pending')) {
+      throw new Error('Sudah ada permintaan yang menunggu keputusan untuk visit ini.');
+    }
+    const saved = { id: crypto.randomUUID(), ...row };
+    MOCK_DATA.visit_edit_requests.push(saved);
+    persistMock();
+    return saved;
+  }
+  const { data, error } = await supabase.from('visit_edit_requests').insert(row).select().single();
+  if (error) {
+    // unique index parsial: 1 permintaan pending per visit
+    if (error.code === '23505') throw new Error('Sudah ada permintaan yang menunggu keputusan untuk visit ini.');
+    throw error;
+  }
+  return data;
+}
+
+/** Daftar permintaan. mdId diisi → hanya milik MD tsb (dipakai di halaman MD). */
+export async function fetchEditRequests(mdId = null) {
+  if (MOCK_MODE) {
+    const all = MOCK_DATA.visit_edit_requests || [];
+    return mdId ? all.filter(r => r.md_id === mdId) : all;
+  }
+  let q = supabase.from('visit_edit_requests').select('*').order('created_at', { ascending: false });
+  if (mdId) q = q.eq('md_id', mdId);
+  const { data, error } = await q;
+  if (error) throw error;
+  return data || [];
+}
+
+/** Super admin menyetujui / menolak. Disetujui → berlaku 24 jam sejak sekarang. */
+export async function decideEditRequest(id, approve, deciderId) {
+  const now = new Date();
+  const patch = {
+    status: approve ? 'approved' : 'rejected',
+    decided_by: deciderId || null,
+    decided_at: now.toISOString(),
+    expires_at: approve ? new Date(now.getTime() + IZIN_JAM * 3600 * 1000).toISOString() : null,
+  };
+  if (MOCK_MODE) {
+    const r = (MOCK_DATA.visit_edit_requests || []).find(x => x.id === id);
+    if (r) Object.assign(r, patch);
+    persistMock();
+    return { ...r };
+  }
+  const { data, error } = await supabase.from('visit_edit_requests').update(patch).eq('id', id).select().single();
+  if (error) throw error;
+  return data;
+}
+
 /**
  * Daftar region milik user yang sedang login (MD/TL multi-area).
  * Baca tl_regions milik sendiri — RLS mengizinkan (tl_id = auth.uid()).

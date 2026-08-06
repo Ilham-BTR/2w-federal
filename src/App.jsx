@@ -550,7 +550,11 @@ const KPI_ICON_COLOR = {
   blue: 'text-blue-500', amber: 'text-amber-500', rose: 'text-rose-500',
 };
 
-function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDeleted, canEdit = false, onUpdated, bengkels = [], distributors = [], canCheck = false, checkerId = null, canEditRemarks = false }) {
+function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDeleted, canEdit = false, onUpdated, bengkels = [], distributors = [], canCheck = false, checkerId = null, canEditRemarks = false, editRequest = null, onRequestEdit = null }) {
+  // MD boleh mengubah foto visit ini kalau super admin sudah memberi izin dan
+  // izinnya belum kedaluwarsa. Hasil visit & tanggal tetap terkunci untuk MD.
+  const izinFoto = api.izinEditAktif(editRequest);
+  const bolehUbahFoto = canEdit || izinFoto;
   // MD boleh memperbaiki notes visit miliknya sendiri (field lain tetap terkunci).
   const [remarksEdit, setRemarksEdit] = useState(false);
   const [remarksDraft, setRemarksDraft] = useState(visit.remarks || '');
@@ -640,6 +644,21 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
       setReplacingCol(null);
     }
   };
+  // MD mengajukan izin edit foto ke super admin.
+  const [reqOpen, setReqOpen] = useState(false);
+  const [reqReason, setReqReason] = useState('');
+  const [reqSending, setReqSending] = useState(false);
+  const kirimPermintaan = async () => {
+    setReqSending(true);
+    try {
+      await api.createEditRequest(visit.id, visit.md_id || md?.id, reqReason);
+      setReqOpen(false); setReqReason('');
+      onRequestEdit?.();
+    } catch (e) {
+      alert('Gagal kirim permintaan: ' + (e?.message || e));
+    } finally { setReqSending(false); }
+  };
+
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -725,7 +744,7 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
     .filter(k => statusLocal === HASIL_TERPASANG || SLOT_DASAR.includes(k) || urlFoto(k))
     .map(k => ({ key: k, label: PHOTO_LABELS[k], url: urlFoto(k) }))
     // Slot kosong hanya berguna buat yang boleh mengisi.
-    .filter(p => p.url || canEdit);
+    .filter(p => p.url || bolehUbahFoto);
   const availablePhotos = photoSlots.filter(p => p.url);
 
   const isMockPhoto = isPlaceholderPhoto;
@@ -886,13 +905,72 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
             </div>
           )}
 
+          {/* Izin edit foto — hanya untuk MD pemilik visit (admin tidak perlu izin) */}
+          {canEditRemarks && !canEdit && (() => {
+            const st = editRequest?.status;
+            if (izinFoto) return (
+              <div className="bg-emerald-950/20 border border-emerald-700/40 rounded-xl p-3.5 flex items-start gap-3">
+                <Shield className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                <div className="text-xs text-emerald-200/90">
+                  <span className="font-semibold text-emerald-300">Izin edit foto aktif.</span>{' '}
+                  Berlaku sampai {new Date(editRequest.expires_at).toLocaleString('id-ID')}. Kamu bisa menambah,
+                  mengganti, atau menghapus foto di visit ini. Hasil visit tetap hanya bisa diubah admin.
+                </div>
+              </div>
+            );
+            if (st === 'pending') return (
+              <div className="bg-amber-950/20 border border-amber-700/40 rounded-xl p-3.5 flex items-start gap-3">
+                <Loader2 className="w-4 h-4 text-amber-400 shrink-0 mt-0.5 animate-spin" />
+                <div className="text-xs text-amber-200/90">
+                  <span className="font-semibold text-amber-300">Permintaan izin edit terkirim.</span>{' '}
+                  Menunggu keputusan super admin.
+                </div>
+              </div>
+            );
+            return (
+              <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3.5">
+                {!reqOpen ? (
+                  <div className="flex items-start gap-3">
+                    <Shield className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs text-slate-400">
+                        Visit yang sudah dikirim terkunci. Kalau fotonya perlu diperbaiki atau dilengkapi,
+                        minta izin ke super admin dulu.
+                        {st === 'approved' && ' Izin sebelumnya sudah kedaluwarsa.'}
+                        {st === 'rejected' && ' Permintaan sebelumnya ditolak.'}
+                      </div>
+                      <button onClick={() => setReqOpen(true)}
+                        className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition">
+                        <Shield className="w-3.5 h-3.5" />Minta izin edit foto
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    <div className="text-[11px] text-slate-400">Alasan (biar admin cepat memutuskan)</div>
+                    <Textarea rows={3} value={reqReason} onChange={e => setReqReason(e.target.value)}
+                      placeholder="Mis. bengkel ternyata ketemu dan spanduk sudah terpasang, mau melengkapi foto spanduk & poster…" />
+                    <div className="flex items-center gap-2">
+                      <button onClick={kirimPermintaan} disabled={reqSending || !reqReason.trim()}
+                        className="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition disabled:opacity-50 flex items-center gap-1.5">
+                        {reqSending ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />Mengirim…</> : <><Check className="w-3.5 h-3.5" />Kirim permintaan</>}
+                      </button>
+                      <button onClick={() => { setReqOpen(false); setReqReason(''); }}
+                        className="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm transition">Batal</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
           {/* Photo gallery */}
           <div>
             <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2 flex items-center gap-2 flex-wrap">
               <Camera className="w-3 h-3" />Dokumentasi Foto ({availablePhotos.length}/{photoSlots.length})
-              {canEdit && <span className="normal-case tracking-normal font-normal text-slate-600">· tap "Tambah" untuk isi slot kosong, "Ganti" untuk perbaiki foto</span>}
+              {bolehUbahFoto && <span className="normal-case tracking-normal font-normal text-slate-600">· tap "Tambah" untuk isi slot kosong, "Ganti" untuk perbaiki foto</span>}
             </div>
-            {canEdit && <input ref={replaceFileRef} type="file" accept="image/*" className="hidden" onChange={onReplaceFile} />}
+            {bolehUbahFoto && <input ref={replaceFileRef} type="file" accept="image/*" className="hidden" onChange={onReplaceFile} />}
             {photoSlots.length === 0 ? (
               <div className="text-center text-sm text-slate-500 py-8 bg-slate-950 border border-slate-800 rounded-xl">Tidak ada foto</div>
             ) : (
@@ -943,7 +1021,7 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
                         </div>
                       )}
                     </div>
-                    {canEdit && p.url && (
+                    {bolehUbahFoto && p.url && (
                       <div className="absolute top-1 right-1 z-10 flex items-center gap-1">
                         <button onClick={() => pickReplace(p.key)} disabled={replacingCol === p.key}
                           className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-black/70 hover:bg-blue-600 text-white text-[9px] font-medium backdrop-blur-sm transition disabled:opacity-60"
@@ -2730,6 +2808,21 @@ function MDView({ currentMD, refreshKey, welcome, onWelcomeClose }) {
   const [distributors, setDistributors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [myRegionIds, setMyRegionIds] = useState([]);
+  const [editReqs, setEditReqs] = useState([]);   // izin edit foto milik MD ini
+
+  const reloadEditReqs = async () => {
+    setEditReqs(await api.fetchEditRequests(currentMD.id).catch(() => []));
+  };
+  useEffect(() => { reloadEditReqs(); }, [currentMD.id, refreshKey]);   // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Permintaan terbaru per visit — itu yang menentukan status & izin aktif.
+  const reqByVisit = useMemo(() => {
+    const m = new Map();
+    [...editReqs]
+      .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+      .forEach(r => m.set(r.visit_id, r));
+    return m;
+  }, [editReqs]);
 
   useEffect(() => {
     (async () => {
@@ -2762,6 +2855,59 @@ function MDView({ currentMD, refreshKey, welcome, onWelcomeClose }) {
   return (
     <div className="max-w-2xl mx-auto">
       <PasskeyEnrollBanner />
+
+      {/* Notifikasi: keputusan super admin atas permintaan izin edit foto */}
+      {(() => {
+        const aktif = editReqs.filter(api.izinEditAktif);
+        const ditolak = editReqs.filter(r => r.status === 'rejected');
+        const nunggu = editReqs.filter(r => r.status === 'pending');
+        if (!aktif.length && !ditolak.length && !nunggu.length) return null;
+        const namaBengkel = (r) => {
+          const v = visits.find(x => x.id === r.visit_id);
+          // bengkels hanya memuat area MD ini, jadi pakai nama dari visit sbg cadangan
+          return bengkels.find(b => b.id === v?.bengkel_id)?.name || v?.bengkel_name || 'visit';
+        };
+        return (
+          <div className={`mb-4 p-3.5 rounded-xl flex items-start gap-3 border ${
+            aktif.length ? 'bg-emerald-600/10 border-emerald-600/40' : nunggu.length ? 'bg-amber-600/10 border-amber-600/40' : 'bg-slate-800/40 border-slate-700'
+          }`}>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+              aktif.length ? 'bg-emerald-600/20' : nunggu.length ? 'bg-amber-600/20' : 'bg-slate-700/40'
+            }`}>
+              <Shield className={`w-4 h-4 ${aktif.length ? 'text-emerald-400' : nunggu.length ? 'text-amber-400' : 'text-slate-400'}`} />
+            </div>
+            <div className="min-w-0 flex-1">
+              {aktif.length > 0 && (
+                <p className="text-sm font-semibold text-emerald-300">
+                  Izin edit foto disetujui · {aktif.map(namaBengkel).join(', ')}
+                </p>
+              )}
+              {aktif.length > 0 && (
+                <p className="text-xs text-emerald-200/80 mt-0.5">
+                  Berlaku sampai {new Date(Math.max(...aktif.map(r => new Date(r.expires_at)))).toLocaleString('id-ID')}.
+                  Buka detail visit di History untuk memperbaiki fotonya.
+                </p>
+              )}
+              {!aktif.length && nunggu.length > 0 && (
+                <>
+                  <p className="text-sm font-semibold text-amber-300">{nunggu.length} permintaan izin edit menunggu</p>
+                  <p className="text-xs text-amber-200/80 mt-0.5">Super admin belum memutuskan. Cek lagi nanti.</p>
+                </>
+              )}
+              {!aktif.length && !nunggu.length && ditolak.length > 0 && (
+                <>
+                  <p className="text-sm font-semibold text-slate-300">Permintaan izin edit ditolak</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Hubungi admin kalau fotonya memang perlu diperbaiki.</p>
+                </>
+              )}
+              <button onClick={() => setTab('history')}
+                className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 text-xs font-medium transition">
+                <Activity className="w-3.5 h-3.5" />Lihat di History
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Notifikasi: hasil pengecekan admin menemukan foto tidak sesuai */}
       {(() => {
@@ -2805,7 +2951,9 @@ function MDView({ currentMD, refreshKey, welcome, onWelcomeClose }) {
 
       {tab === 'absen' && <AbsenTab currentMD={currentMD} />}
       {tab === 'new' && <VisitForm currentMD={currentMD} bengkels={bengkels} regions={regions} kotas={kotas} distributors={distributors} myRegionIds={myRegionIds} onSubmitted={() => { reloadVisits(); setTab('history'); }} onNeedAbsen={() => setTab('absen')} />}
-      {tab === 'history' && <VisitHistory visits={visits} bengkels={bengkels} kotas={kotas} distributors={distributors} currentMD={currentMD} onUpdated={reloadVisits} />}
+      {tab === 'history' && <VisitHistory visits={visits} bengkels={bengkels} kotas={kotas} distributors={distributors} currentMD={currentMD}
+        reqByVisit={reqByVisit} onReqChanged={reloadEditReqs}
+        onUpdated={() => { reloadVisits(); reloadEditReqs(); }} />}
       <WhatsAppCS name={currentMD.full_name} />
     </div>
   );
@@ -3400,7 +3548,7 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
   );
 }
 
-function VisitHistory({ visits, bengkels, kotas, distributors, currentMD, onUpdated }) {
+function VisitHistory({ visits, bengkels, kotas, distributors, currentMD, onUpdated, reqByVisit = new Map(), onReqChanged }) {
   const [detailId, setDetailId] = useState(null);
   const [search, setSearch] = useState('');
   const [month, setMonth] = useState('all');
@@ -3513,6 +3661,8 @@ function VisitHistory({ visits, bengkels, kotas, distributors, currentMD, onUpda
             md={currentMD}
             onClose={() => setDetailId(null)}
             canEditRemarks
+            editRequest={reqByVisit.get(dv.id) || null}
+            onRequestEdit={onReqChanged}
             onUpdated={onUpdated}
           />
         );
@@ -4015,6 +4165,123 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
   );
 }
 
+// Persetujuan izin edit foto (super admin). Izin yang disetujui membuka slot
+// foto 1 visit untuk MD-nya selama 24 jam.
+function IzinEditTab({ requests, visits, bengkels, mds, deciderId, onOpenVisit, onChanged }) {
+  const [busyId, setBusyId] = useState(null);
+  const putuskan = async (r, setuju) => {
+    if (!setuju && !confirm('Tolak permintaan izin edit ini?')) return;
+    setBusyId(r.id);
+    try {
+      await api.decideEditRequest(r.id, setuju, deciderId);
+      onChanged?.();
+    } catch (e) { alert('Gagal menyimpan keputusan: ' + (e?.message || e)); }
+    finally { setBusyId(null); }
+  };
+
+  const info = (r) => {
+    const v = visits.find(x => x.id === r.visit_id);
+    const b = v ? bengkels.find(x => x.id === v.bengkel_id) : null;
+    return {
+      visit: v,
+      bengkel: b?.name || v?.bengkel_name || '—',
+      md: mds.find(m => m.id === r.md_id)?.full_name || '—',
+    };
+  };
+  const pending = requests.filter(r => r.status === 'pending');
+  const riwayat = requests.filter(r => r.status !== 'pending').slice(0, 50);
+
+  const Kartu = ({ r, aksi }) => {
+    const { visit, bengkel, md } = info(r);
+    const aktif = api.izinEditAktif(r);
+    return (
+      <div className="bg-slate-950 border border-slate-800 rounded-xl p-4">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-slate-100">{bengkel}</div>
+            <div className="text-xs text-slate-500 mt-0.5">
+              {md} · {visit?.visit_date || '—'} · {visit ? <StatusBadge status={visit.status} /> : null}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {visit && (
+              <button onClick={() => onOpenVisit(visit.id)}
+                className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs transition">Lihat visit</button>
+            )}
+            {aksi}
+          </div>
+        </div>
+        {r.reason && (
+          <p className="text-xs text-slate-300 mt-2.5 pt-2.5 border-t border-slate-800">
+            <span className="text-slate-500">Alasan MD:</span> {r.reason}
+          </p>
+        )}
+        <div className="text-[11px] text-slate-500 mt-2">
+          Diajukan {new Date(r.created_at).toLocaleString('id-ID')}
+          {r.decided_at && ` · diputuskan ${new Date(r.decided_at).toLocaleString('id-ID')}`}
+          {r.status === 'approved' && (aktif
+            ? ` · berlaku sampai ${new Date(r.expires_at).toLocaleString('id-ID')}`
+            : ' · izin sudah kedaluwarsa')}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div>
+      <div className="mb-5">
+        <h2 className="text-2xl font-bold text-slate-100 tracking-tight font-display">Izin Edit Foto</h2>
+        <p className="text-sm text-slate-500 mt-1">
+          MD tidak bisa mengubah visit yang sudah dikirim. Izin yang disetujui membuka slot foto
+          pada satu visit selama 24 jam — hasil visit, tanggal, dan bengkel tetap hanya bisa diubah di sini.
+        </p>
+      </div>
+
+      <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2">
+        Menunggu keputusan ({pending.length})
+      </div>
+      {pending.length === 0 ? (
+        <div className="text-center py-8 text-slate-500 text-sm bg-slate-950 border border-slate-800 rounded-xl">
+          Tidak ada permintaan yang menunggu.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {pending.map(r => (
+            <Kartu key={r.id} r={r} aksi={
+              <>
+                <button onClick={() => putuskan(r, true)} disabled={busyId === r.id}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition disabled:opacity-50 flex items-center gap-1.5">
+                  <Check className="w-3.5 h-3.5" />Setujui
+                </button>
+                <button onClick={() => putuskan(r, false)} disabled={busyId === r.id}
+                  className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-rose-600 text-slate-200 hover:text-white text-xs font-medium transition disabled:opacity-50 flex items-center gap-1.5">
+                  <X className="w-3.5 h-3.5" />Tolak
+                </button>
+              </>
+            } />
+          ))}
+        </div>
+      )}
+
+      {riwayat.length > 0 && (
+        <>
+          <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mt-6 mb-2">Riwayat</div>
+          <div className="space-y-3">
+            {riwayat.map(r => (
+              <Kartu key={r.id} r={r} aksi={
+                <span className={`px-2 py-1 rounded-full text-[11px] font-semibold ${
+                  r.status === 'approved' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                                          : 'bg-slate-800 text-slate-400 border border-slate-700'
+                }`}>{r.status === 'approved' ? 'Disetujui' : 'Ditolak'}</span>
+              } />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function AdminView({ profile }) {
   const isSuperAdmin = profile?.role === 'super_admin';
   const [tab, setTab] = useState('dashboard');
@@ -4028,6 +4295,7 @@ function AdminView({ profile }) {
   const [distributors, setDistributors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [detailVisitId, setDetailVisitId] = useState(null);
+  const [editReqs, setEditReqs] = useState([]);   // permintaan izin edit foto dari MD
 
   // silent=true → refresh data tanpa memunculkan layar Loading (cegah remount &
   // pindah section di Master Data setiap habis update).
@@ -4036,9 +4304,10 @@ function AdminView({ profile }) {
     Promise.all([
       api.fetchVisits(), api.fetchAccounts(), api.fetchBengkels(),
       api.fetchRegions(), api.fetchKotas(), api.fetchDistributors(),
-    ]).then(([v, acc, b, r, k, d]) => {
+      api.fetchEditRequests().catch(() => []),
+    ]).then(([v, acc, b, r, k, d, er]) => {
       setVisits(v); setAccounts(acc); setMds(acc.filter(a => a.role === 'md'));
-      setBengkels(b); setRegions(r); setKotas(k); setDistributors(d);
+      setBengkels(b); setRegions(r); setKotas(k); setDistributors(d); setEditReqs(er);
       setLoading(false);
     }).catch(err => { console.error(err); setLoading(false); });
   };
@@ -4067,6 +4336,8 @@ function AdminView({ profile }) {
   // Role bp = admin viewer: semua tab KECUALI Master Data
   const showMaster = profile?.role !== 'bp';
 
+  const pendingReqs = isSuperAdmin ? editReqs.filter(r => r.status === 'pending') : [];
+
   const openDetail = (id) => setDetailVisitId(id);
   const detailVisit = detailVisitId ? sVisits.find(v => v.id === detailVisitId) : null;
   const detailBengkel = detailVisit ? bengkels.find(b => b.id === detailVisit.bengkel_id) : null;
@@ -4082,13 +4353,17 @@ function AdminView({ profile }) {
           { id: 'laporan', label: 'Laporan', icon: Target },
           { id: 'laporan_dist', label: 'Laporan Distributor', icon: Briefcase },
           { id: 'visits', label: 'Visits', icon: ClipboardList },
+          { id: 'izin', label: 'Izin Edit', icon: Shield, badge: pendingReqs.length },
           { id: 'absen', label: 'Absen', icon: CalendarDays },
           { id: 'coverage', label: 'Coverage Map', icon: MapIcon },
           { id: 'master', label: 'Master Data', icon: Database },
-        ].filter(t => t.id !== 'master' || showMaster).map(t => (
+        ].filter(t => (t.id !== 'master' || showMaster) && (t.id !== 'izin' || isSuperAdmin)).map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
             className={`flex-1 flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-lg text-[11px] font-medium transition sm:flex-row sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm whitespace-nowrap ${tab === t.id ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-100'}`}>
             <t.icon className="w-4 h-4 shrink-0" /><span>{t.label}</span>
+            {t.badge > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[10px] font-bold leading-none">{t.badge}</span>
+            )}
           </button>
         ))}
       </div>
@@ -4097,6 +4372,10 @@ function AdminView({ profile }) {
       {tab === 'laporan' && <LaporanTab visits={sVisits} bengkels={bengkels} kotas={kotas} regions={regions} accounts={accounts} distributors={distributors} />}
       {tab === 'laporan_dist' && <LaporanTab mode="distributor" visits={sVisits} bengkels={bengkels} kotas={kotas} regions={regions} accounts={accounts} distributors={distributors} />}
       {tab === 'visits' && <VisitsTab visits={sVisits} mds={activeMds} bengkels={bengkels} kotas={kotas} distributors={distributors} regions={regions} onOpenVisit={openDetail} accounts={accounts} />}
+      {tab === 'izin' && isSuperAdmin && (
+        <IzinEditTab requests={editReqs} visits={visits} bengkels={bengkels} mds={mds}
+          deciderId={profile?.id} onOpenVisit={openDetail} onChanged={() => loadAll(true)} />
+      )}
       {tab === 'absen' && <AdminAbsenTab mds={activeMds} allowedMdIds={allowedMdIds} isSuperAdmin={isSuperAdmin} regions={regions} />}
       {tab === 'coverage' &&<CoverageTab visits={sVisits} mds={activeMds} bengkels={bengkels} kotas={kotas} regions={regions} distributors={distributors} onOpenVisit={openDetail} />}
       {tab === 'master' && showMaster && <MasterTab regions={regions} kotas={kotas} distributors={distributors} bengkels={bengkels} mds={sMds} accounts={sAccounts} onChange={() => loadAll(true)} isSuperAdmin={isSuperAdmin} canManageMaster={canManageMaster} />}
