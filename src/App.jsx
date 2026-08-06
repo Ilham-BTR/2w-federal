@@ -2798,6 +2798,31 @@ function useBackDismiss(isOpen, onClose) {
   }, [isOpen]);
 }
 
+/**
+ * Ambil ulang data secara berkala tanpa perlu reload halaman.
+ * Dipakai untuk hal yang berubah di sisi lain (izin edit, hasil pengecekan admin):
+ *   - tiap `ms` selama tab terlihat (timer dihentikan saat tab disembunyikan)
+ *   - dan langsung begitu user kembali ke tab/app — ini yang paling sering kepakai
+ *     di HP, karena MD biasanya menutup app lalu membukanya lagi.
+ */
+function useAutoRefresh(fn, ms = 60000) {
+  const fnRef = useRef(fn);
+  fnRef.current = fn;
+  useEffect(() => {
+    let timer = null;
+    const jalan = () => { timer = setInterval(() => fnRef.current?.(), ms); };
+    const stop = () => { if (timer) { clearInterval(timer); timer = null; } };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') { fnRef.current?.(); stop(); jalan(); }
+      else stop();
+    };
+    jalan();
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => { stop(); document.removeEventListener('visibilitychange', onVisible); window.removeEventListener('focus', onVisible); };
+  }, [ms]);
+}
+
 function MDView({ currentMD, refreshKey, welcome, onWelcomeClose }) {
   const [tab, setTab] = useState('new');
   useTabBackButton(tab, setTab);
@@ -2849,6 +2874,10 @@ function MDView({ currentMD, refreshKey, welcome, onWelcomeClose }) {
     const v = await api.fetchVisits({ mdId: currentMD.id });
     setVisits(v);
   };
+
+  // Keputusan admin (izin edit & hasil pengecekan foto) datang dari sisi lain,
+  // jadi ditarik ulang berkala supaya MD tak perlu me-reload app.
+  useAutoRefresh(() => { reloadEditReqs(); reloadVisits().catch(() => {}); });
 
   if (loading) return <Loading />;
 
@@ -4313,6 +4342,13 @@ function AdminView({ profile }) {
   };
 
   useEffect(() => { loadAll(); }, []);
+
+  // Permintaan izin dari MD masuk kapan saja. Yang ditarik ulang cuma tabel
+  // permintaannya (ringan) — bukan loadAll yang ikut menarik ribuan bengkel.
+  useAutoRefresh(() => {
+    if (profile?.role !== 'super_admin') return;
+    api.fetchEditRequests().then(setEditReqs).catch(() => {});
+  });
 
   if (loading) return <Loading />;
 
