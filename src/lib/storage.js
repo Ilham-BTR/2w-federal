@@ -18,13 +18,49 @@ import { savePhoto } from './photoStore';
  * @param {File|Blob} file
  * @returns {Promise<string>} public URL foto
  */
+// supabase-js hanya melaporkan "Edge Function returned a non-2xx status code"
+// tanpa isi respons. Ambil penyebab aslinya dari error.context supaya pesan ke
+// user menyebut masalahnya (sesi habis, tipe file ditolak, dsb).
+async function invokeUploadUrl(body) {
+  const { data, error } = await supabase.functions.invoke('get-upload-url', { body });
+  if (!error) return data;
+
+  let pesan = error.message;
+  let status;
+  const ctx = error.context;
+  if (ctx && typeof ctx.text === 'function') {
+    status = ctx.status;
+    try {
+      const teks = await ctx.text();
+      pesan = JSON.parse(teks)?.error || JSON.parse(teks)?.message || teks || pesan;
+    } catch { /* respons bukan JSON — pakai pesan bawaan */ }
+  }
+  const e = new Error(pesan);
+  e.status = status;
+  throw e;
+}
+
 async function presignAndPut(scope, payload, file) {
   const contentType = file.type || 'image/jpeg';
+  const body = { scope, ...payload, contentType };
 
-  const { data, error } = await supabase.functions.invoke('get-upload-url', {
-    body: { scope, ...payload, contentType },
-  });
-  if (error) throw new Error(`Gagal minta upload URL: ${error.message}`);
+  let data;
+  try {
+    data = await invokeUploadUrl(body);
+  } catch (e) {
+    // 401 = access token kedaluwarsa (halaman dibiarkan terbuka lama).
+    // Refresh sesi lalu coba sekali lagi sebelum menyerah.
+    if (e.status !== 401) throw new Error(`Gagal minta upload URL: ${e.message}`);
+    const { error: refreshErr } = await supabase.auth.refreshSession();
+    if (refreshErr) throw new Error('Sesi login sudah habis. Logout lalu login lagi, baru ulangi ganti foto.');
+    try {
+      data = await invokeUploadUrl(body);
+    } catch (e2) {
+      throw new Error(e2.status === 401
+        ? 'Sesi login sudah habis. Logout lalu login lagi, baru ulangi ganti foto.'
+        : `Gagal minta upload URL: ${e2.message}`);
+    }
+  }
   if (!data?.uploadUrl) throw new Error(data?.error || 'Upload URL kosong dari server');
 
   // Content-Type WAJIB sama dengan yang ditandatangani edge function
