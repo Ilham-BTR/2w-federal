@@ -381,12 +381,12 @@ export async function updateVisitRemarks(visitId, remarks) {
 /**
  * Daftar id bengkel yang SUDAH berhasil dipasangi spanduk.
  * Dipakai form visit untuk memblokir submit ulang bengkel yang sama
- * (aturan: 1 bengkel hanya boleh 1x "Spanduk Terpasang").
+ * (aturan: 1 bengkel hanya boleh 1x "Berhasil Pasang").
  * @returns {Promise<Set<string>>}
  */
 export async function fetchTerpasangBengkelIds() {
   if (MOCK_MODE) {
-    return new Set(MOCK_DATA.visits.filter(v => v.status === 'Spanduk Terpasang').map(v => v.bengkel_id));
+    return new Set(MOCK_DATA.visits.filter(v => v.status === 'Berhasil Pasang').map(v => v.bengkel_id));
   }
   const { data, error } = await supabase.from('bengkels_terpasang').select('bengkel_id');
   if (error) { console.warn('fetchTerpasangBengkelIds gagal:', error.message); return new Set(); }

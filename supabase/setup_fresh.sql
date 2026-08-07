@@ -21,7 +21,7 @@ exception when duplicate_object then null; end $$;
 
 do $$ begin
   create type visit_status as enum (
-    'Spanduk Terpasang',
+    'Berhasil Pasang',
     'Alamat bengkel tidak ditemukan',
     'Ditolak',
     'Bukan bengkel',
@@ -246,8 +246,8 @@ create or replace view md_monthly_performance as
 select p.id as md_id, p.full_name as md_name, p.monthly_target,
   date_trunc('month', v.visit_date)::date as month,
   count(*) as visits_actual,
-  count(*) filter (where v.status = 'Spanduk Terpasang')  as visits_terpasang,
-  count(*) filter (where v.status <> 'Spanduk Terpasang') as visits_tidak_terpasang,
+  count(*) filter (where v.status = 'Berhasil Pasang')  as visits_terpasang,
+  count(*) filter (where v.status <> 'Berhasil Pasang') as visits_tidak_terpasang,
   round(100.0 * count(*) / nullif(p.monthly_target, 0), 1) as achievement_pct
 from profiles p
 left join visits v on v.md_id = p.id

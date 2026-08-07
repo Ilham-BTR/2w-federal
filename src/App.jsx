@@ -585,7 +585,7 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
   useBackDismiss(lightboxIdx != null, () => setLightboxIdx(null)); // back -> tutup foto fullscreen dulu
 
   // Tambah / ganti / hapus foto (admin) — upload ke R2 lalu update kolom visit.
-  // Dipakai mis. saat hasil visit diubah jadi "Spanduk Terpasang" sehingga
+  // Dipakai mis. saat hasil visit diubah jadi "Berhasil Pasang" sehingga
   // butuh foto lanjutan yang belum pernah diisi MD.
   const [photoOverrides, setPhotoOverrides] = useState({}); // col -> url baru (null = dihapus)
   const [replacingCol, setReplacingCol] = useState(null);
@@ -735,7 +735,7 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
     }
   };
 
-  // Slot yang relevan mengikuti hasil visit: selain "Spanduk Terpasang" cukup
+  // Slot yang relevan mengikuti hasil visit: selain "Berhasil Pasang" cukup
   // selfie + tampak depan (before). Slot yang terlanjur berisi tetap ditampilkan
   // supaya foto lama tidak hilang begitu saja saat hasil visit diubah.
   const urlFoto = (k) => (k in photoOverrides ? photoOverrides[k] : visit[k]);
@@ -949,7 +949,7 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
                   <div className="space-y-2.5">
                     <div className="text-[11px] text-slate-400">Alasan (biar admin cepat memutuskan)</div>
                     <Textarea rows={3} value={reqReason} onChange={e => setReqReason(e.target.value)}
-                      placeholder="Mis. bengkel ternyata ketemu dan spanduk sudah terpasang, mau melengkapi foto spanduk & poster…" />
+                      placeholder="Mis. bengkel ternyata ketemu dan sudah berhasil dipasang, mau melengkapi fotonya…" />
                     <div className="flex items-center gap-2">
                       <button onClick={kirimPermintaan} disabled={reqSending || !reqReason.trim()}
                         className="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition disabled:opacity-50 flex items-center gap-1.5">
@@ -1253,8 +1253,9 @@ const REGION_GROUP_OF = {
 };
 const groupOfRegion = (r) => REGION_GROUP_OF[r?.name] || 'Lainnya';
 
-// Hasil visit 2W Federal — 1 tingkat. "Spanduk Terpasang" membuka foto lanjutan (after/spanduk/poster).
-const HASIL_TERPASANG = 'Spanduk Terpasang';
+// Hasil visit 2W Federal — 1 tingkat. "Berhasil Pasang" membuka foto lanjutan (after/spanduk/poster).
+// Nilai ini = label enum visit_status di database (lihat migrasi 0012).
+const HASIL_TERPASANG = 'Berhasil Pasang';
 const STATUS_OPTIONS = [
   HASIL_TERPASANG,
   'Alamat bengkel tidak ditemukan',
@@ -3273,7 +3274,7 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
   const anyCompressing = Object.values(form.photos).some(p => p?.status === 'compressing');
   const anyUploading = Object.values(form.photos).some(p => p?.status === 'uploading');
 
-  // Foto wajib dasar: selfie + tampak depan before. Kalau hasil "Spanduk Terpasang" →
+  // Foto wajib dasar: selfie + tampak depan before. Kalau hasil "Berhasil Pasang" →
   // wajib tambah tampak depan after. Foto spanduk/banner & poster OPSIONAL.
   const terpasang = form.status === HASIL_TERPASANG;
   const requiredPhotos = ['selfie', 'before'];
@@ -3430,7 +3431,7 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
             onChange={(val) => setForm({ ...form, bengkelId: val })}
             options={filteredBengkels.map(b => ({
               value: b.id,
-              label: `${b.code} - ${b.name}${terpasangIds.has(b.id) ? '  ✓ sudah terpasang' : ''}`,
+              label: `${b.code} - ${b.name}${terpasangIds.has(b.id) ? '  ✓ sudah berhasil pasang' : ''}`,
             }))}
             placeholder="Pilih bengkel…"
             disabled={!form.kotaId}
@@ -3446,8 +3447,8 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
             <div className="mt-2 p-3 bg-rose-600/10 border border-rose-600/30 rounded-lg flex items-start gap-2.5">
               <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
               <div className="text-xs text-rose-300">
-                <span className="font-semibold">Bengkel ini sudah terpasang spanduk.</span>{' '}
-                Tidak bisa disubmit lagi — silakan pilih bengkel lain yang belum terpasang.
+                <span className="font-semibold">Bengkel ini sudah berhasil dipasang.</span>{' '}
+                Tidak bisa disubmit lagi — silakan pilih bengkel lain yang belum berhasil dipasang.
               </div>
             </div>
           )}
@@ -3503,10 +3504,10 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
         </Field>
 
         {terpasang && (
-          <p className="text-[11px] text-emerald-400 -mt-1 mb-2">Spanduk Terpasang — lengkapi foto After, Spanduk & Poster di bagian Dokumentasi Foto di bawah.</p>
+          <p className="text-[11px] text-emerald-400 -mt-1 mb-2">Berhasil Pasang — lengkapi foto After di bagian Dokumentasi Foto di bawah. Foto spanduk & poster opsional.</p>
         )}
         {form.status && !terpasang && (
-          <p className="text-[11px] text-slate-500 -mt-1 mb-2">Hasil visit bukan "Spanduk Terpasang" — cukup foto selfie & tampak depan (before), lalu isi notes jika ada.</p>
+          <p className="text-[11px] text-slate-500 -mt-1 mb-2">Hasil visit bukan "Berhasil Pasang" — cukup foto selfie & tampak depan (before), lalu isi notes jika ada.</p>
         )}
       </Section>
 
@@ -4794,7 +4795,7 @@ function DashboardTab({ visits, mds, bengkels, kotas, regions, distributors, onO
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         {[
           { label: 'Total Visit', value: totalVisits, sub: 'kunjungan tercatat', icon: Activity, color: 'red' },
-          { label: 'Spanduk Terpasang', value: countStatus(HASIL_TERPASANG), sub: 'berhasil terpasang', icon: Check, color: 'emerald' },
+          { label: 'Berhasil Pasang', value: countStatus(HASIL_TERPASANG), sub: 'berhasil dipasang', icon: Check, color: 'emerald' },
           { label: 'Alamat Tidak Ditemukan', value: countStatus('Alamat bengkel tidak ditemukan'), sub: 'bengkel tak ketemu', icon: MapPin, color: 'amber' },
           { label: 'Ditolak', value: countStatus('Ditolak'), sub: 'pemasangan ditolak', icon: X, color: 'rose' },
           { label: 'Bukan Bengkel', value: countStatus('Bukan bengkel'), sub: 'data tidak sesuai', icon: Building2, color: 'blue' },
@@ -4832,7 +4833,7 @@ function DashboardTab({ visits, mds, bengkels, kotas, regions, distributors, onO
                 <LabelList dataKey="Actual" position="top" fill="#ffffff" fontSize={10} fontWeight={600} />
               </Bar>
               {/* Seri tak terlihat — hanya supaya angka Terpasang ikut muncul di tooltip */}
-              <Line dataKey="terpasang" name="Berhasil Terpasang" stroke="#10b981" strokeOpacity={0} dot={false} activeDot={false} legendType="none" />
+              <Line dataKey="terpasang" name="Berhasil Pasang" stroke="#10b981" strokeOpacity={0} dot={false} activeDot={false} legendType="none" />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
