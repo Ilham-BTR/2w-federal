@@ -6797,7 +6797,62 @@ function Loading() {
 // ROOT APP
 // ============================================================
 
+/**
+ * Deteksi app sudah di-deploy ulang. App yang dibiarkan terbuka berhari-hari
+ * (kebiasaan MD di lapangan) tetap menjalankan bundle lama sampai di-reload —
+ * dan bundle lama bisa mengirim data dengan aturan yang sudah berubah.
+ * Nama file bundle ber-hash, jadi cukup bandingkan index.html terbaru dengan
+ * skrip yang sedang jalan.
+ */
+function useVersiBaru() {
+  const [adaVersiBaru, setAdaVersiBaru] = useState(false);
+  useEffect(() => {
+    const skripSekarang = [...document.querySelectorAll('script[type="module"][src]')]
+      .map(s => new URL(s.src, location.href).pathname);
+    if (!skripSekarang.length) return;
+    let berhenti = false;
+    const cek = async () => {
+      if (berhenti || document.visibilityState !== 'visible') return;
+      try {
+        const res = await fetch('/index.html', { cache: 'no-store' });
+        if (!res.ok) return;
+        const html = await res.text();
+        const skripBaru = [...html.matchAll(/<script[^>]+src="([^"]+)"/g)].map(m => m[1]);
+        if (skripBaru.length && !skripBaru.some(s => skripSekarang.includes(s))) setAdaVersiBaru(true);
+      } catch { /* offline / jaringan putus — coba lagi nanti */ }
+    };
+    cek();
+    const timer = setInterval(cek, 5 * 60 * 1000);
+    document.addEventListener('visibilitychange', cek);
+    window.addEventListener('focus', cek);
+    return () => {
+      berhenti = true; clearInterval(timer);
+      document.removeEventListener('visibilitychange', cek);
+      window.removeEventListener('focus', cek);
+    };
+  }, []);
+  return adaVersiBaru;
+}
+
+function BannerVersiBaru() {
+  return (
+    <div className="sticky top-0 z-50 bg-amber-500 text-slate-950">
+      <div className="max-w-[1800px] mx-auto px-4 py-2 flex items-center justify-between gap-3 flex-wrap">
+        <div className="text-xs font-semibold flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          Ada versi baru aplikasi. Perbarui dulu supaya data bisa tersimpan.
+        </div>
+        <button onClick={() => location.reload()}
+          className="px-3 py-1.5 rounded-lg bg-slate-950 text-amber-400 text-xs font-bold hover:bg-slate-800 transition shrink-0">
+          Perbarui Sekarang
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
+  const adaVersiBaru = useVersiBaru();
   const [profile, setProfile] = useState(null);
   const [bootstrapping, setBootstrapping] = useState(true);
   const [welcome, setWelcome] = useState(false); // popup ringkasan saat MD baru login
@@ -6827,6 +6882,8 @@ export default function App() {
         @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Archivo:wght@500;600;700;800;900&display=swap');
         h1, h2, h3, .font-display { font-family: 'Archivo', sans-serif; letter-spacing: -0.02em; }
       `}</style>
+
+      {adaVersiBaru && <BannerVersiBaru />}
 
       {bootstrapping ? <Loading /> :
        !profile ? <LoginScreen onLogin={handleLogin} /> :
