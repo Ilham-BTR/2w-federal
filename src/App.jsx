@@ -3274,11 +3274,12 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
   const anyUploading = Object.values(form.photos).some(p => p?.status === 'uploading');
 
   // Foto wajib dasar: selfie + tampak depan before. Kalau hasil "Spanduk Terpasang" →
-  // wajib tambah after + spanduk jauh/sedang. Poster OPSIONAL.
+  // wajib tambah tampak depan after. Foto spanduk/banner & poster OPSIONAL.
   const terpasang = form.status === HASIL_TERPASANG;
   const requiredPhotos = ['selfie', 'before'];
-  if (terpasang) requiredPhotos.push('after', 'spandukJauh', 'spandukSedang');
-  const hasAllRequiredPhotos = requiredPhotos.every(k => PRESENT.includes(form.photos[k]?.status));
+  if (terpasang) requiredPhotos.push('after');
+  const requiredDone = requiredPhotos.filter(k => PRESENT.includes(form.photos[k]?.status)).length;
+  const hasAllRequiredPhotos = requiredDone === requiredPhotos.length;
   // Jarak GPS user ↔ bengkel (kalau dua-duanya ada). Bengkel tanpa koordinat →
   // null → tidak diblokir (mis. visit pertama yang justru mengisi koordinatnya).
   const gpsDistance = (gps.status === 'ready' && selectedBengkel?.lat != null && selectedBengkel?.lng != null)
@@ -3509,7 +3510,8 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
         )}
       </Section>
 
-      <Section title="Dokumentasi Foto" subtitle={`${photoCount} / ${requiredPhotos.length} foto wajib`} icon={Camera}>
+      <Section title="Dokumentasi Foto"
+        subtitle={`${requiredDone}/${requiredPhotos.length} foto wajib · ${photoCount} foto terisi`} icon={Camera}>
         <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Selfie</div>
         <div className="grid grid-cols-3 gap-3">
           <PhotoTile label="Selfie Depan Bengkel" required hint="Selfie dengan latar bengkel terlihat" photo={form.photos.selfie} onChange={v => setPhoto('selfie', v)} />
@@ -3524,10 +3526,10 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
         </div>
 
         {terpasang && (<>
-          <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mt-5 mb-2 pt-4 border-t border-slate-800">Spanduk</div>
+          <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mt-5 mb-2 pt-4 border-t border-slate-800">Spanduk (opsional)</div>
           <div className="grid grid-cols-3 gap-3">
-            <PhotoTile label="Spanduk Jarak Jauh" required photo={form.photos.spandukJauh} onChange={v => setPhoto('spandukJauh', v)} />
-            <PhotoTile label="Spanduk Jarak Sedang" required photo={form.photos.spandukSedang} onChange={v => setPhoto('spandukSedang', v)} />
+            <PhotoTile label="Spanduk Jarak Jauh" hint="Opsional — isi jika ada" photo={form.photos.spandukJauh} onChange={v => setPhoto('spandukJauh', v)} />
+            <PhotoTile label="Spanduk Jarak Sedang" hint="Opsional — isi jika ada" photo={form.photos.spandukSedang} onChange={v => setPhoto('spandukSedang', v)} />
           </div>
 
           <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mt-5 mb-2 pt-4 border-t border-slate-800">Poster (opsional)</div>
