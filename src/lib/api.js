@@ -260,12 +260,26 @@ export async function fetchDistributors() {
 // pakai .range() sampai habis. buildQuery() harus mengembalikan query BARU tiap
 // dipanggil (karena .range diterapkan ulang).
 async function fetchAllPaged(buildQuery, batch = 1000) {
-  const all = [];
-  for (let from = 0; ; from += batch) {
+  const ambil = async (from) => {
     const { data, error } = await buildQuery().range(from, from + batch - 1);
     if (error) throw error;
-    all.push(...(data || []));
-    if (!data || data.length < batch) break;
+    return data || [];
+  };
+  const pertama = await ambil(0);
+  if (pertama.length < batch) return pertama;
+
+  // Halaman sisanya diambil BARENGAN. Sebelumnya berurutan, dan untuk tabel
+  // bengkel (7 halaman) itu menumpuk jadi ~4 detik layar loading tiap login.
+  // Dikejar bertahap supaya tetap berhenti begitu ketemu halaman terakhir,
+  // tanpa perlu query count lebih dulu.
+  const all = [...pertama];
+  const SEKALIGUS = 6;
+  for (let putaran = 1; ; putaran += SEKALIGUS) {
+    const hasil = await Promise.all(
+      Array.from({ length: SEKALIGUS }, (_, i) => ambil((putaran + i) * batch))
+    );
+    hasil.forEach(h => all.push(...h));
+    if (hasil.some(h => h.length < batch)) break;
   }
   return all;
 }
@@ -283,18 +297,19 @@ export async function fetchBengkels(regionId = null) {
     const kotaIds = new Set(MOCK_DATA.kotas.filter(k => ids.includes(k.region_id)).map(k => k.id));
     return all.filter(b => kotaIds.has(b.kota_id));
   }
+  // Kota & region TIDAK ikut di-embed: pemakainya selalu memetakan lewat
+  // kota_id ke daftar kotas/regions yang di-fetch terpisah, jadi embed hanya
+  // menggandakan payload di 6.000+ baris.
   if (ids.length) {
-    // inner join kotas + filter region -> hanya bengkel di region(-region) MD
+    // inner join kotas dipakai murni sebagai filter region, kolomnya tak dibawa
     return fetchAllPaged(() =>
       supabase.from('bengkels')
-        .select('*, kota:kotas!inner(*, region:regions!region_id(*))')
-        .in('kota.region_id', ids)
+        .select('*, kotas!inner(region_id)')
+        .in('kotas.region_id', ids)
         .order('code')
     );
   }
-  return fetchAllPaged(() =>
-    supabase.from('bengkels').select('*, kota:kotas(*, region:regions!region_id(*))').order('code')
-  );
+  return fetchAllPaged(() => supabase.from('bengkels').select('*').order('code'));
 }
 
 export async function fetchMDs() {

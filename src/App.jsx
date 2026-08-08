@@ -2833,6 +2833,7 @@ function MDView({ currentMD, refreshKey, welcome, onWelcomeClose }) {
   const [kotas, setKotas] = useState([]);
   const [distributors, setDistributors] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [bengkelsLoading, setBengkelsLoading] = useState(true);
   const [myRegionIds, setMyRegionIds] = useState([]);
   const [editReqs, setEditReqs] = useState([]);   // izin edit foto milik MD ini
 
@@ -2858,14 +2859,22 @@ function MDView({ currentMD, refreshKey, welcome, onWelcomeClose }) {
         const mine = await api.fetchMyRegions(currentMD.id).catch(() => []);
         const ids = mine?.length ? mine : (currentMD.region_id ? [currentMD.region_id] : []);
         setMyRegionIds(ids);
-        const [v, b, r, k, d] = await Promise.all([
+        // Bengkel se-area MD bisa ribuan baris dan paling lama ditarik. Dilepas
+        // ke latar supaya menu Absen & History langsung bisa dipakai; dropdown
+        // bengkel di form baru aktif setelah datanya sampai.
+        setBengkelsLoading(true);
+        api.fetchBengkels(ids.length ? ids : null)
+          .then(b => setBengkels(b))
+          .catch(err => console.error(err))
+          .finally(() => setBengkelsLoading(false));
+
+        const [v, r, k, d] = await Promise.all([
           api.fetchVisits({ mdId: currentMD.id }),
-          api.fetchBengkels(ids.length ? ids : null),   // bengkel di semua area MD
           api.fetchRegions(),
           api.fetchKotas(),
           api.fetchDistributors(),
         ]);
-        setVisits(v); setBengkels(b); setRegions(r); setKotas(k); setDistributors(d);
+        setVisits(v); setRegions(r); setKotas(k); setDistributors(d);
       } catch (err) { console.error(err); }
       finally { setLoading(false); }
     })();
@@ -2980,7 +2989,7 @@ function MDView({ currentMD, refreshKey, welcome, onWelcomeClose }) {
       </div>
 
       {tab === 'absen' && <AbsenTab currentMD={currentMD} />}
-      {tab === 'new' && <VisitForm currentMD={currentMD} bengkels={bengkels} regions={regions} kotas={kotas} distributors={distributors} myRegionIds={myRegionIds} onSubmitted={() => { reloadVisits(); setTab('history'); }} onNeedAbsen={() => setTab('absen')} />}
+      {tab === 'new' && <VisitForm currentMD={currentMD} bengkels={bengkels} bengkelsLoading={bengkelsLoading} regions={regions} kotas={kotas} distributors={distributors} myRegionIds={myRegionIds} onSubmitted={() => { reloadVisits(); setTab('history'); }} onNeedAbsen={() => setTab('absen')} />}
       {tab === 'history' && <VisitHistory visits={visits} bengkels={bengkels} kotas={kotas} distributors={distributors} currentMD={currentMD}
         reqByVisit={reqByVisit} onReqChanged={reloadEditReqs}
         onUpdated={() => { reloadVisits(); reloadEditReqs(); }} />}
@@ -3140,7 +3149,7 @@ function MDDashboard({ currentMD, visits, bengkels, kotas }) {
   );
 }
 
-function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmitted, onNeedAbsen, myRegionIds: initialRegionIds }) {
+function VisitForm({ currentMD, bengkels, bengkelsLoading = false, regions, kotas, distributors, onSubmitted, onNeedAbsen, myRegionIds: initialRegionIds }) {
   const DRAFT_KEY = `visitDraft:${currentMD.id}`;
   const emptyPhotos = { selfie: null, before: null, after: null, spandukJauh: null, spandukSedang: null, poster: null };
   const makeDefaultForm = () => ({
@@ -3433,11 +3442,17 @@ function VisitForm({ currentMD, bengkels, regions, kotas, distributors, onSubmit
               value: b.id,
               label: `${b.code} - ${b.name}${terpasangIds.has(b.id) ? '  ✓ sudah berhasil pasang' : ''}`,
             }))}
-            placeholder="Pilih bengkel…"
-            disabled={!form.kotaId}
-            emptyText="Belum ada bengkel di kota ini"
+            placeholder={bengkelsLoading ? 'Memuat daftar bengkel…' : 'Pilih bengkel…'}
+            disabled={!form.kotaId || bengkelsLoading}
+            emptyText={bengkelsLoading ? 'Memuat…' : 'Belum ada bengkel di kota ini'}
           />
-          {form.kotaId && filteredBengkels.length === 0 && (
+          {bengkelsLoading && (
+            <p className="text-[11px] text-blue-300 mt-1.5 flex items-center gap-1.5">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              Daftar bengkel masih dimuat…
+            </p>
+          )}
+          {!bengkelsLoading && form.kotaId && filteredBengkels.length === 0 && (
             <p className="text-[11px] text-amber-400 mt-1.5 flex items-center gap-1.5">
               <AlertCircle className="w-3 h-3" />
               Belum ada bengkel terdaftar di kota ini.
@@ -4326,20 +4341,30 @@ function AdminView({ profile }) {
   const [kotas, setKotas] = useState([]);
   const [distributors, setDistributors] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [bengkelsLoading, setBengkelsLoading] = useState(true);
   const [detailVisitId, setDetailVisitId] = useState(null);
   const [editReqs, setEditReqs] = useState([]);   // permintaan izin edit foto dari MD
 
   // silent=true → refresh data tanpa memunculkan layar Loading (cegah remount &
   // pindah section di Master Data setiap habis update).
+  // Master bengkel ~6.000 baris (±1 MB) — paling lama sendiri. Ditarik terpisah
+  // supaya layar tidak menunggu: tab langsung bisa dibuka, angka yang bergantung
+  // pada bengkel menyusul beberapa saat kemudian.
   const loadAll = (silent = false) => {
     if (!silent) setLoading(true);
+    setBengkelsLoading(true);
+    api.fetchBengkels()
+      .then(b => setBengkels(b))
+      .catch(err => console.error(err))
+      .finally(() => setBengkelsLoading(false));
+
     Promise.all([
-      api.fetchVisits(), api.fetchAccounts(), api.fetchBengkels(),
+      api.fetchVisits(), api.fetchAccounts(),
       api.fetchRegions(), api.fetchKotas(), api.fetchDistributors(),
       api.fetchEditRequests().catch(() => []),
-    ]).then(([v, acc, b, r, k, d, er]) => {
+    ]).then(([v, acc, r, k, d, er]) => {
       setVisits(v); setAccounts(acc); setMds(acc.filter(a => a.role === 'md'));
-      setBengkels(b); setRegions(r); setKotas(k); setDistributors(d); setEditReqs(er);
+      setRegions(r); setKotas(k); setDistributors(d); setEditReqs(er);
       setLoading(false);
     }).catch(err => { console.error(err); setLoading(false); });
   };
@@ -4386,7 +4411,15 @@ function AdminView({ profile }) {
 
   return (
     <div className="max-w-[1800px] mx-auto">
-      <div className="grid grid-cols-3 gap-1 p-1 bg-slate-950 border border-slate-800 rounded-xl mb-5 sm:flex">
+      {bengkelsLoading && (
+        <div className="mb-3 px-3 py-2 rounded-lg bg-blue-950/30 border border-blue-800/40 text-[11px] text-blue-300 flex items-center gap-2">
+          <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+          Memuat master bengkel — angka target &amp; laporan menyusul sebentar lagi.
+        </div>
+      )}
+      {/* sm:flex-wrap — 8 tab butuh ±1050px, jadi di tablet (±775px) tab terakhir
+          meluber keluar layar kalau dipaksa satu baris. */}
+      <div className="grid grid-cols-3 gap-1 p-1 bg-slate-950 border border-slate-800 rounded-xl mb-5 sm:flex sm:flex-wrap">
         {[
           { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
           { id: 'laporan', label: 'Laporan', icon: Target },
