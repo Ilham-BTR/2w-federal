@@ -520,6 +520,19 @@ function StoredImage({ src, alt, className, onClick }) {
   return <img src={resolved} alt={alt} className={className} onClick={onClick} />;
 }
 
+// Setelan kompresi foto — dipakai SEMUA jalur upload (foto visit MD, selfie
+// absen, dan ganti/tambah foto oleh admin) supaya kualitasnya seragam.
+// FHD 1920px, plafon 800KB. Plafon sengaja longgar: kalau terlalu ketat,
+// library menurunkan kualitas JPEG sampai foto beresolusi tinggi malah
+// terlihat berblok. Foto bengkel biasanya mendarat di 450-650KB.
+const FOTO_KOMPRES = {
+  maxSizeMB: 0.8,
+  maxWidthOrHeight: 1920,
+  useWebWorker: true,
+  fileType: 'image/jpeg',
+  initialQuality: 0.85,
+};
+
 const PHOTO_LABELS = {
   photo_selfie:         'Selfie Depan Bengkel',
   photo_before:         'Tampak Depan (Before)',
@@ -617,7 +630,7 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
     if (!uiKey) { alert('Slot foto tak dikenal.'); return; }
     setReplacingCol(col);
     try {
-      const compressed = await imageCompression(file, { maxSizeMB: 0.2, maxWidthOrHeight: 1024, useWebWorker: true, fileType: 'image/jpeg' });
+      const compressed = await imageCompression(file, FOTO_KOMPRES);
       const { url } = await api.uploadOneVisitPhoto(compressed, visit.id, uiKey);
       await api.updateMaster('visits', visit.id, { [col]: url, ...patchResetCek(col) });
       setPhotoOverrides(o => ({ ...o, [col]: url }));
@@ -1486,9 +1499,7 @@ const PhotoTile = ({ label, photo, onChange, required, example, hint }) => {
     onChange({ status: 'compressing', preview: null, file: null, originalSize: file.size, compressedSize: 0 });
 
     try {
-      const compressed = await imageCompression(file, {
-        maxSizeMB: 0.2, maxWidthOrHeight: 1024, useWebWorker: true, fileType: 'image/jpeg',
-      });
+      const compressed = await imageCompression(file, FOTO_KOMPRES);
       const compressedPreview = URL.createObjectURL(compressed);
       onChange({ status: 'ready', preview: compressedPreview, file: compressed, originalSize: file.size, compressedSize: compressed.size });
     } catch (err) {
@@ -2292,7 +2303,7 @@ function AbsenForm({ kind, currentMD, todayStr, onCancel, onDone }) {
     // Jangan decode foto original (boros RAM di HP lama) — overlay saja saat kompres.
     setSelfie({ status: 'compressing', preview: null, file: null });
     try {
-      const compressed = await imageCompression(file, { maxSizeMB: 0.2, maxWidthOrHeight: 1024, useWebWorker: true, fileType: 'image/jpeg' });
+      const compressed = await imageCompression(file, FOTO_KOMPRES);
       const cPreview = URL.createObjectURL(compressed);
       setSelfie({ status: 'uploading', preview: cPreview, file: compressed });
       // Upload-saat-diambil: selfie langsung naik ke storage (path attendance/{userId}/{date}/{kind})
@@ -2466,7 +2477,7 @@ function AdminAbsenTab({ mds, allowedMdIds, isSuperAdmin, regions = [] }) {
     if (!file || !kind) return;
     setReplacingKind(kind);
     try {
-      const compressed = await imageCompression(file, { maxSizeMB: 0.2, maxWidthOrHeight: 1024, useWebWorker: true, fileType: 'image/jpeg' });
+      const compressed = await imageCompression(file, FOTO_KOMPRES);
       const url = await api.uploadAttendancePhoto(compressed, detail.md_id, detail.date, kind);
       setEF(kind === 'in' ? { check_in_photo: url } : { check_out_photo: url });
     } catch (err) { alert('Gagal ganti foto: ' + (err?.message || err)); }
