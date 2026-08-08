@@ -103,6 +103,8 @@ async function exportVisitsXlsx(visits, ctx, filename) {
   const ws = XLSX.utils.json_to_sheet(rows, { cellDates: true });
   setColDateFormat(XLSX, ws, 'tanggal', 'dd/mm/yyyy');
   setColDateFormat(XLSX, ws, 'waktu_submit', 'dd/mm/yyyy hh:mm');
+  setColDateFormat(XLSX, ws, 'tanggal_cek', 'dd/mm/yyyy hh:mm');
+  setColDateFormat(XLSX, ws, 'created_at', 'dd/mm/yyyy hh:mm');
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Visits');
   XLSX.writeFile(wb, filename);
@@ -194,7 +196,9 @@ const visitToCSVRow = (v, ctx) => {
     dicek_oleh: (ctx.accounts || ctx.mds || []).find(a => a.id === v.checked_by)?.full_name || '',
     tanggal_cek: v.checked_at ? excelDateTimeSerial(v.checked_at) : '',
     remarks_admin: v.check_remarks || '',
-    created_at: v.created_at || '',   // tetap kolom paling kanan
+    // Tetap kolom paling kanan. Serial Excel (WIB), bukan teks ISO mentah,
+    // supaya bisa disortir & difilter tanggal seperti kolom waktu lainnya.
+    created_at: excelDateTimeSerial(v.created_at),
   };
 };
 
@@ -4069,6 +4073,7 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
       setColDateFormat(XLSX, ws2, 'tanggal', 'dd/mm/yyyy');
       setColDateFormat(XLSX, ws2, 'waktu_submit', 'dd/mm/yyyy hh:mm');
       setColDateFormat(XLSX, ws2, 'tanggal_cek', 'dd/mm/yyyy hh:mm');
+      setColDateFormat(XLSX, ws2, 'created_at', 'dd/mm/yyyy hh:mm');
       cols.forEach((_, ci) => {
         const ref = XLSX.utils.encode_cell({ r: 0, c: ci });
         if (ws2[ref]) ws2[ref].s = { font: { bold: true, color: { rgb: 'FFFFFFFF' } }, fill: { fgColor: { rgb: 'FF1F4E79' } }, alignment: { horizontal: 'center', wrapText: true }, border: borders };
