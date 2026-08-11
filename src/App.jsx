@@ -3013,7 +3013,8 @@ function MDView({ currentMD, refreshKey, welcome, onWelcomeClose }) {
       </div>
 
       {tab === 'absen' && <AbsenTab currentMD={currentMD} />}
-      {tab === 'new' && <VisitForm currentMD={currentMD} bengkels={bengkels} bengkelsLoading={bengkelsLoading} regions={regions} kotas={kotas} distributors={distributors} myRegionIds={myRegionIds} onSubmitted={() => { reloadVisits(); setTab('history'); }} onNeedAbsen={() => setTab('absen')} />}
+      {tab === 'new' && <VisitForm currentMD={currentMD} bengkels={bengkels} bengkelsLoading={bengkelsLoading} regions={regions} kotas={kotas} distributors={distributors} myRegionIds={myRegionIds}
+        onSubmitted={(opt) => { reloadVisits(); if (!opt?.tetapDiForm) setTab('history'); }} onNeedAbsen={() => setTab('absen')} />}
       {tab === 'history' && <VisitHistory visits={visits} bengkels={bengkels} kotas={kotas} distributors={distributors} currentMD={currentMD}
         reqByVisit={reqByVisit} onReqChanged={reloadEditReqs}
         onUpdated={() => { reloadVisits(); reloadEditReqs(); }} />}
@@ -3192,12 +3193,14 @@ function VisitForm({ currentMD, bengkels, bengkelsLoading = false, regions, kota
   });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [backfilled, setBackfilled] = useState(false);
   const [error, setError] = useState('');
   // Lock sinkron — cegah dobel submit dari double-tap cepat (sebelum state submitting ke-render)
   const submitLock = useRef(false);
   // ID visit dibuat di awal supaya tiap foto bisa di-upload duluan (eager) ke path-nya.
-  const [visitId] = useState(() => crypto.randomUUID());
+  // Di-generate ulang saat MD memilih "Isi Visit Lagi" dari popup sukses.
+  const [visitId, setVisitId] = useState(() => crypto.randomUUID());
+  // Ringkasan visit yg baru tersimpan — dipakai popup sukses (form sudah dikosongkan).
+  const [ringkasan, setRingkasan] = useState(null);
   // Bengkel yang SUDAH terpasang (oleh MD mana pun) — tak boleh disubmit lagi.
   const [terpasangIds, setTerpasangIds] = useState(() => new Set());
   useEffect(() => {
@@ -3356,9 +3359,15 @@ function VisitForm({ currentMD, bengkels, bengkelsLoading = false, regions, kota
         backfillBengkelCoords: bengkelLacksCoords,
       });
 
+      setRingkasan({
+        bengkel: selectedBengkel ? `${selectedBengkel.code} - ${selectedBengkel.name}` : '—',
+        kota: kotas.find(k => k.id === form.kotaId)?.name || '',
+        status: form.status,
+        jumlahFoto: Object.values(form.photos).filter(p => PRESENT.includes(p?.status)).length,
+      });
       setSubmitted(true);
-      setBackfilled(bengkelBackfilled);
-      setTimeout(() => { setSubmitted(false); setBackfilled(false); onSubmitted(); }, 2000);
+      // Getar singkat — MD sering menyimpan sambil berjalan, tak selalu melihat layar.
+      try { navigator.vibrate?.(120); } catch { /* tak semua HP mendukung */ }
     } catch (err) {
       console.error(err);
       // 23505 = unique violation -> bengkel keburu di-submit MD lain (race).
@@ -3372,6 +3381,20 @@ function VisitForm({ currentMD, bengkels, bengkelsLoading = false, regions, kota
       setSubmitting(false);
       submitLock.current = false;  // error → boleh coba lagi
     }
+  };
+
+  // Tutup popup lalu siapkan form kosong untuk visit berikutnya — MD biasanya
+  // mengisi beberapa bengkel berturut-turut, jadi tak perlu balik ke History.
+  const lanjutVisitBaru = () => {
+    setSubmitted(false);
+    setRingkasan(null);
+    setError('');
+    setForm(makeDefaultForm());
+    setVisitId(crypto.randomUUID());   // foto visit berikutnya masuk folder sendiri
+    setSubmitting(false);
+    submitLock.current = false;
+    onSubmitted({ tetapDiForm: true });   // refresh daftar visit, jangan pindah tab
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // Gate: belum absen masuk hari ini → form visit tidak ditampilkan.
@@ -3392,24 +3415,51 @@ function VisitForm({ currentMD, bengkels, bengkelsLoading = false, regions, kota
 
   return (
     <>
-      {submitted && (
-        <div className="mb-4 p-4 bg-emerald-600/10 border border-emerald-600/30 rounded-xl flex items-start gap-3">
-          <div className="w-8 h-8 rounded-full bg-emerald-600/100 flex items-center justify-center shrink-0">
-            <Check className="w-5 h-5 text-slate-900" strokeWidth={3} />
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-emerald-400">Visit berhasil disimpan</p>
-            <p className="text-xs text-emerald-400">Foto sudah diupload ke storage…</p>
-            {backfilled && (
-              <div className="mt-2 p-2 bg-sky-600/10 border border-sky-600/30 rounded-lg flex items-start gap-2">
-                <MapPin className="w-3.5 h-3.5 text-sky-400 shrink-0 mt-0.5" />
-                <p className="text-[11px] text-sky-400">
-                  Koordinat bengkel di master data otomatis ter-update dari GPS Anda. Visit berikutnya akan langsung pakai koord ini.
-                </p>
+      {submitted && ringkasan && createPortal(
+        <div className="fixed inset-0 z-[100] bg-slate-950/80 flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-slate-900 border border-emerald-600/40 rounded-2xl overflow-hidden shadow-2xl">
+            <div className="px-5 pt-6 pb-4 text-center border-b border-slate-800">
+              <div className="w-16 h-16 rounded-full bg-emerald-500 flex items-center justify-center mx-auto mb-3">
+                <Check className="w-9 h-9 text-slate-900" strokeWidth={3} />
               </div>
-            )}
+              <h3 className="text-lg font-bold text-slate-100 font-display">Visit Berhasil Disimpan</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Data sudah masuk ke sistem</p>
+            </div>
+
+            <div className="px-5 py-4 space-y-2.5">
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Bengkel</div>
+                <div className="text-sm text-slate-100 font-medium break-words">{ringkasan.bengkel}</div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Kota</div>
+                  <div className="text-sm text-slate-200">{ringkasan.kota || '—'}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Foto</div>
+                  <div className="text-sm text-slate-200">{ringkasan.jumlahFoto} foto terkirim</div>
+                </div>
+              </div>
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Hasil Visit</div>
+                <StatusBadge status={ringkasan.status} />
+              </div>
+            </div>
+
+            <div className="px-5 pb-5 grid grid-cols-2 gap-2">
+              <button onClick={lanjutVisitBaru}
+                className="py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition flex items-center justify-center gap-1.5">
+                <Plus className="w-4 h-4" />Visit Lagi
+              </button>
+              <button onClick={() => { setSubmitted(false); onSubmitted(); }}
+                className="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold transition flex items-center justify-center gap-1.5">
+                <Activity className="w-4 h-4" />Lihat History
+              </button>
+            </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {error && (
