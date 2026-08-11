@@ -40,25 +40,31 @@ async function invokeUploadUrl(body) {
   throw e;
 }
 
-async function presignAndPut(scope, payload, file) {
-  const contentType = file.type || 'image/jpeg';
-  const body = { scope, ...payload, contentType };
+// Error yang percuma diulang — masalahnya bukan di jaringan.
+const fatal = (pesan) => Object.assign(new Error(pesan), { fatal: true });
+const tidur = (ms) => new Promise(r => setTimeout(r, ms));
 
+// Jeda antar percobaan. Sinyal seluler MD di lapangan sering hilang beberapa
+// detik (jalur ke Cloudflare sempat tersendat), jadi jeda dinaikkan bertahap
+// supaya percobaan berikutnya tidak jatuh di detik yang sama-sama buruk.
+const JEDA_RETRY = [1500, 4000, 9000];
+
+/** Satu siklus utuh: minta presigned URL lalu PUT file-nya. */
+async function sekaliUpload(body, file, contentType) {
   let data;
   try {
     data = await invokeUploadUrl(body);
   } catch (e) {
-    // 401 = access token kedaluwarsa (halaman dibiarkan terbuka lama).
-    // Refresh sesi lalu coba sekali lagi sebelum menyerah.
-    if (e.status !== 401) throw new Error(`Gagal minta upload URL: ${e.message}`);
-    const { error: refreshErr } = await supabase.auth.refreshSession();
-    if (refreshErr) throw new Error('Sesi login sudah habis. Logout lalu login lagi, baru ulangi ganti foto.');
-    try {
-      data = await invokeUploadUrl(body);
-    } catch (e2) {
-      throw new Error(e2.status === 401
-        ? 'Sesi login sudah habis. Logout lalu login lagi, baru ulangi ganti foto.'
-        : `Gagal minta upload URL: ${e2.message}`);
+    // 401 = access token kedaluwarsa (app dibiarkan terbuka lama).
+    if (e.status === 401) {
+      const { error: refreshErr } = await supabase.auth.refreshSession();
+      if (refreshErr) throw fatal('Sesi login sudah habis. Logout lalu login lagi.');
+      data = await invokeUploadUrl(body);        // gagal lagi → dilempar ke retry
+    } else if (e.status >= 400 && e.status < 500) {
+      // Ditolak server (tipe file, photoKey, visitId) — mengulang tak akan menolong.
+      throw fatal(e.message);
+    } else {
+      throw e;
     }
   }
   if (!data?.uploadUrl) throw new Error(data?.error || 'Upload URL kosong dari server');
@@ -69,9 +75,36 @@ async function presignAndPut(scope, payload, file) {
     headers: { 'Content-Type': contentType },
     body: file,
   });
-  if (!res.ok) throw new Error(`Upload ke B2 gagal: ${res.status} ${res.statusText}`);
-
+  if (!res.ok) throw new Error(`Upload ke storage gagal: ${res.status} ${res.statusText}`);
   return data.publicUrl;
+}
+
+/**
+ * Upload dengan percobaan ulang otomatis. Presigned URL diminta ULANG tiap
+ * percobaan (bukan dipakai lagi), supaya URL yang terlanjur kedaluwarsa atau
+ * tanda tangan yang gagal ikut tergantikan.
+ * @param {(percobaanKe:number, total:number)=>void} [onRetry] dipanggil sebelum mengulang
+ */
+async function presignAndPut(scope, payload, file, onRetry) {
+  const contentType = file.type || 'image/jpeg';
+  const body = { scope, ...payload, contentType };
+  const maksimal = JEDA_RETRY.length;
+
+  let terakhir;
+  for (let percobaan = 0; percobaan <= maksimal; percobaan++) {
+    if (percobaan > 0) {
+      onRetry?.(percobaan, maksimal);
+      await tidur(JEDA_RETRY[percobaan - 1]);
+    }
+    try {
+      return await sekaliUpload(body, file, contentType);
+    } catch (e) {
+      if (e.fatal) throw e;
+      terakhir = e;
+      console.warn(`Upload foto gagal (percobaan ${percobaan + 1}/${maksimal + 1}):`, e.message);
+    }
+  }
+  throw new Error(`${terakhir?.message || 'Upload gagal'} — sudah dicoba ${maksimal + 1}x. Cek sinyal lalu ketuk untuk ulangi.`);
 }
 
 /**
@@ -81,7 +114,7 @@ async function presignAndPut(scope, payload, file) {
  * @param {string} photoKey - 'foto-in' | 'foto-out' | 'spanduk-before' | dst
  * @returns {Promise<string>} - public URL (B2/CDN) atau ref IndexedDB (mock)
  */
-export async function uploadVisitPhoto(file, visitId, photoKey) {
+export async function uploadVisitPhoto(file, visitId, photoKey, onRetry) {
   if (MOCK_MODE) {
     // Mock: simpan foto ke IndexedDB (persist antar-reload), return ref 'idb:visitId/key'
     const key = `${visitId}/${photoKey}`;
@@ -94,8 +127,8 @@ export async function uploadVisitPhoto(file, visitId, photoKey) {
     }
   }
 
-  // Production: upload ke Backblaze B2 via presigned URL
-  return presignAndPut('visit', { visitId, photoKey }, file);
+  // Production: upload ke storage via presigned URL (dgn retry otomatis)
+  return presignAndPut('visit', { visitId, photoKey }, file, onRetry);
 }
 
 /**
@@ -106,7 +139,7 @@ export async function uploadVisitPhoto(file, visitId, photoKey) {
  * @param {'in'|'out'} kind
  * @returns {Promise<string>} public URL (atau ref IndexedDB di mock)
  */
-export async function uploadAttendancePhoto(file, mdId, date, kind) {
+export async function uploadAttendancePhoto(file, mdId, date, kind, onRetry) {
   if (MOCK_MODE) {
     const key = `attendance/${mdId}/${date}/${kind}`;
     try {
@@ -117,8 +150,8 @@ export async function uploadAttendancePhoto(file, mdId, date, kind) {
     }
   }
 
-  // Production: upload ke Backblaze B2 (mdId diabaikan; path pakai user.id dari JWT di server)
-  return presignAndPut('attendance', { date, kind }, file);
+  // Production: mdId diabaikan; path pakai user.id dari JWT di server
+  return presignAndPut('attendance', { date, kind }, file, onRetry);
 }
 
 /**
@@ -141,10 +174,10 @@ export const VISIT_PHOTO_MAP = {
  * Upload 1 foto visit (dipakai untuk upload-saat-foto-diambil / eager upload).
  * @returns {Promise<{col: string, url: string}>}
  */
-export async function uploadOneVisitPhoto(file, visitId, uiKey) {
+export async function uploadOneVisitPhoto(file, visitId, uiKey, onRetry) {
   const m = VISIT_PHOTO_MAP[uiKey];
   if (!m) throw new Error('Foto key tak dikenal: ' + uiKey);
-  const url = await uploadVisitPhoto(file, visitId, m.path);
+  const url = await uploadVisitPhoto(file, visitId, m.path, onRetry);
   return { col: m.col, url };
 }
 

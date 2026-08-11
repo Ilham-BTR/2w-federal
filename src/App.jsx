@@ -1541,11 +1541,16 @@ const PhotoTile = ({ label, photo, onChange, required, example, hint }) => {
                 <span className="text-[9px] text-white mt-1.5 font-medium uppercase tracking-wider">Compressing…</span>
               </div>
             )}
-            {photo.status === 'uploading' && (
+            {photo.status === 'uploading' && (photo.retry ? (
+              <div className="absolute inset-x-0 bottom-0 bg-amber-600/90 py-1 flex items-center justify-center gap-1">
+                <Loader2 className="w-3 h-3 text-slate-900 animate-spin" />
+                <span className="text-[9px] text-slate-900 font-semibold">Mengulang {photo.retry}</span>
+              </div>
+            ) : (
               <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-sky-500 flex items-center justify-center shadow-lg" title="Mengupload…">
                 <Loader2 className="w-3 h-3 text-slate-900 animate-spin" />
               </div>
-            )}
+            ))}
             {(photo.status === 'ready' || photo.status === 'uploaded') && (
               <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center shadow-lg">
                 <Check className="w-3 h-3 text-slate-900" strokeWidth={3} />
@@ -2310,9 +2315,11 @@ function AbsenForm({ kind, currentMD, todayStr, onCancel, onDone }) {
       const compressed = await imageCompression(file, FOTO_KOMPRES);
       const cPreview = URL.createObjectURL(compressed);
       setSelfie({ status: 'uploading', preview: cPreview, file: compressed });
+      const tandaiRetry = (ke, total) =>
+        setSelfie(s => (s?.file === compressed ? { ...s, retry: `${ke}/${total}` } : s));
       // Upload-saat-diambil: selfie langsung naik ke storage (path attendance/{userId}/{date}/{kind})
-      api.uploadAttendancePhoto(compressed, currentMD.id, todayStr, kind)
-        .then(url => setSelfie(s => (s?.file === compressed ? { ...s, status: 'uploaded', url } : s)))
+      api.uploadAttendancePhoto(compressed, currentMD.id, todayStr, kind, tandaiRetry)
+        .then(url => setSelfie(s => (s?.file === compressed ? { ...s, status: 'uploaded', url, retry: null } : s)))
         .catch(err => setSelfie(s => (s?.file === compressed ? { ...s, status: 'error', error: err.message } : s)));
     } catch (err) { setSelfie({ status: 'error', preview: null, error: err.message }); }
   };
@@ -2343,7 +2350,9 @@ function AbsenForm({ kind, currentMD, todayStr, onCancel, onDone }) {
           {selfie ? <>
             {selfie.preview && <img src={selfie.preview} alt="selfie" className="absolute inset-0 w-full h-full object-cover" />}
             {selfie.status === 'compressing' && <div className="absolute inset-0 bg-slate-950/70 flex items-center justify-center"><Loader2 className="w-6 h-6 text-white animate-spin" /></div>}
-            {selfie.status === 'uploading' && <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-sky-500 flex items-center justify-center" title="Mengupload…"><Loader2 className="w-3 h-3 text-slate-900 animate-spin" /></div>}
+            {selfie.status === 'uploading' && (selfie.retry
+              ? <div className="absolute inset-x-0 bottom-0 bg-amber-600/90 py-1 flex items-center justify-center gap-1"><Loader2 className="w-3 h-3 text-slate-900 animate-spin" /><span className="text-[10px] text-slate-900 font-semibold">Sinyal lemah — mengulang {selfie.retry}</span></div>
+              : <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-sky-500 flex items-center justify-center" title="Mengupload…"><Loader2 className="w-3 h-3 text-slate-900 animate-spin" /></div>)}
             {(selfie.status === 'ready' || selfie.status === 'uploaded') && <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center"><Check className="w-3 h-3 text-slate-900" strokeWidth={3} /></div>}
             {selfie.status === 'error' && <div className="absolute inset-0 bg-rose-600/30 flex items-center justify-center"><span className="text-[10px] text-rose-100 font-semibold">Gagal upload — ketuk ulangi</span></div>}
           </> : <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 text-slate-600"><Camera className="w-6 h-6" /><span className="text-[10px] font-medium">Ambil Selfie</span></div>}
@@ -3278,7 +3287,12 @@ function VisitForm({ currentMD, bengkels, bengkelsLoading = false, regions, kota
   const setPhoto = (key, val) => {
     if (val?.status === 'ready' && val.file && !val.url) {
       setForm(f => ({ ...f, photos: { ...f.photos, [key]: { ...val, status: 'uploading' } } }));
-      api.uploadOneVisitPhoto(val.file, visitId, key)
+      const tandaiRetry = (ke, total) => setForm(f => {
+        const cur = f.photos[key];
+        if (!cur || cur.file !== val.file) return f;
+        return { ...f, photos: { ...f.photos, [key]: { ...cur, retry: `${ke}/${total}` } } };
+      });
+      api.uploadOneVisitPhoto(val.file, visitId, key, tandaiRetry)
         .then(({ url }) => setForm(f => {
           const cur = f.photos[key];
           if (!cur || cur.file !== val.file) return f;   // sudah diganti/dihapus
