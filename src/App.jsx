@@ -549,8 +549,8 @@ const PHOTO_LABELS = {
   photo_spanduk_jauh:      'Spanduk Jarak Jauh',
   photo_spanduk_sedang:    'Spanduk Jarak Sedang',
   photo_poster:            'Foto Poster',
-  photo_planogram_before:  'Planogram (Before)',
-  photo_planogram_after:   'Planogram (After)',
+  photo_planogram_before:  'Rack Display Oil / Planogram (Before)',
+  photo_planogram_after:   'Rack Display Oil / Planogram (After)',
 };
 
 // Pilihan rekomendasi ukuran spanduk untuk bengkel (diisi MD saat berhasil pasang).
@@ -3380,8 +3380,9 @@ function VisitForm({ currentMD, bengkels, bengkelsLoading = false, regions, kota
 
   // Data PIC & rekomendasi ukuran hanya ditanyakan (dan diwajibkan) saat
   // berhasil pasang — di hasil lain MD memang tak bertemu PIC-nya.
+  // Jawaban planogram wajib dipilih (Ya/Tidak) — fotonya sendiri tetap opsional.
   const dataPicLengkap = !terpasang
-    || (form.ownerName.trim() && form.ownerPhone.trim() && form.spandukSize);
+    || (form.ownerName.trim() && form.ownerPhone.trim() && form.spandukSize && form.planogramAllowed != null);
   // Jarak GPS user ↔ bengkel (kalau dua-duanya ada). Bengkel tanpa koordinat →
   // null → tidak diblokir (mis. visit pertama yang justru mengisi koordinatnya).
   const gpsDistance = (gps.status === 'ready' && selectedBengkel?.lat != null && selectedBengkel?.lng != null)
@@ -3735,10 +3736,10 @@ function VisitForm({ currentMD, bengkels, bengkelsLoading = false, regions, kota
           </div>
 
           <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mt-5 mb-2 pt-4 border-t border-slate-800">
-            Planogram {form.planogramAllowed ? '' : '(opsional)'}
+            Rack Display Oil / Planogram <span className="text-blue-500">*</span>
           </div>
           <div className="mb-3">
-            <div className="text-[11px] text-slate-400 mb-1.5">Bengkel mengizinkan pemasangan planogram?</div>
+            <div className="text-[11px] text-slate-400 mb-1.5">Bengkel mengizinkan pemasangan Rack Display Oil / Planogram?</div>
             <div className="flex gap-2">
               {[['Ya', true], ['Tidak', false]].map(([label, val]) => (
                 <button key={label} type="button"
@@ -3755,11 +3756,16 @@ function VisitForm({ currentMD, bengkels, bengkelsLoading = false, regions, kota
                   }`}>{label}</button>
               ))}
             </div>
+            {form.planogramAllowed == null && (
+              <p className="text-[11px] text-amber-400 mt-1.5 flex items-center gap-1.5">
+                <AlertCircle className="w-3 h-3" />Pilih Ya atau Tidak.
+              </p>
+            )}
           </div>
           {form.planogramAllowed && (
             <div className="grid grid-cols-3 gap-3">
-              <PhotoTile label="Planogram (Before)" hint="Sebelum penataan" photo={form.photos.planogramBefore} onChange={v => setPhoto('planogramBefore', v)} />
-              <PhotoTile label="Planogram (After)" hint="Setelah penataan" photo={form.photos.planogramAfter} onChange={v => setPhoto('planogramAfter', v)} />
+              <PhotoTile label="Rack Display Oil / Planogram (Before)" hint="Sebelum penataan" photo={form.photos.planogramBefore} onChange={v => setPhoto('planogramBefore', v)} />
+              <PhotoTile label="Rack Display Oil / Planogram (After)" hint="Setelah penataan" photo={form.photos.planogramAfter} onChange={v => setPhoto('planogramAfter', v)} />
             </div>
           )}
         </>)}
