@@ -162,12 +162,15 @@ export async function uploadAttendancePhoto(file, mdId, date, kind, onRetry) {
  */
 // Map UI key → DB column name + storage path
 export const VISIT_PHOTO_MAP = {
-  selfie:        { col: 'photo_selfie',         path: 'selfie' },
-  before:        { col: 'photo_before',         path: 'tampak-depan-before' },
-  after:         { col: 'photo_after',          path: 'tampak-depan-after' },
-  spandukJauh:   { col: 'photo_spanduk_jauh',   path: 'spanduk-jauh' },
-  spandukSedang: { col: 'photo_spanduk_sedang', path: 'spanduk-sedang' },
-  poster:        { col: 'photo_poster',         path: 'poster' },
+  selfie:           { col: 'photo_selfie',            path: 'selfie' },
+  before:           { col: 'photo_before',            path: 'tampak-depan-before' },
+  after:            { col: 'photo_after',             path: 'tampak-depan-after' },
+  selfiePic:        { col: 'photo_selfie_pic',        path: 'selfie-pic' },
+  spandukJauh:      { col: 'photo_spanduk_jauh',      path: 'spanduk-jauh' },
+  spandukSedang:    { col: 'photo_spanduk_sedang',    path: 'spanduk-sedang' },
+  poster:           { col: 'photo_poster',            path: 'poster' },
+  planogramBefore:  { col: 'photo_planogram_before',  path: 'planogram-before' },
+  planogramAfter:   { col: 'photo_planogram_after',   path: 'planogram-after' },
 };
 
 /**

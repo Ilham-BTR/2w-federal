@@ -176,7 +176,11 @@ const visitToCSVRow = (v, ctx) => {
     bengkel_name: b?.name || v.bengkel_name || '',
     bengkel_class: b?.workshop_class || '',
     bengkel_alamat: b?.address || '',
+    owner_pic: v.owner_name || '',
+    telp_pic: v.owner_phone || '',
     hasil_visit: v.status,
+    ukuran_spanduk: v.spanduk_size || '',
+    planogram: v.planogram_allowed == null ? '' : (v.planogram_allowed ? 'Diizinkan' : 'Tidak diizinkan'),
     notes: v.remarks || '',
     bengkel_lat: b?.lat ?? '',
     bengkel_lng: b?.lng ?? '',
@@ -538,22 +542,35 @@ const FOTO_KOMPRES = {
 };
 
 const PHOTO_LABELS = {
-  photo_selfie:         'Selfie Depan Bengkel',
-  photo_before:         'Tampak Depan (Before)',
-  photo_after:          'Tampak Depan (After)',
-  photo_spanduk_jauh:   'Spanduk Jarak Jauh',
-  photo_spanduk_sedang: 'Spanduk Jarak Sedang',
-  photo_poster:         'Foto Poster',
+  photo_selfie:            'Selfie Depan Bengkel',
+  photo_before:            'Tampak Depan (Before)',
+  photo_after:             'Tampak Depan (After)',
+  photo_selfie_pic:        'Selfie dengan Owner/PIC',
+  photo_spanduk_jauh:      'Spanduk Jarak Jauh',
+  photo_spanduk_sedang:    'Spanduk Jarak Sedang',
+  photo_poster:            'Foto Poster',
+  photo_planogram_before:  'Planogram (Before)',
+  photo_planogram_after:   'Planogram (After)',
 };
+
+// Pilihan rekomendasi ukuran spanduk untuk bengkel (diisi MD saat berhasil pasang).
+const UKURAN_SPANDUK = [
+  '2x1 meter', '2x0.6 meter', '2x0.8 meter',
+  '3x1 meter', '3x0.6 meter', '3x0.8 meter',
+  '6x1 meter', '9x1 meter',
+];
 const PHOTO_KEYS = Object.keys(PHOTO_LABELS);
 const EXPORT_PHOTO_SKIP = new Set();
 const EXPORT_PHOTO_HEADER = {
-  photo_selfie:         'link_selfie',
-  photo_before:         'link_before',
-  photo_after:          'link_after',
-  photo_spanduk_jauh:   'link_spanduk_jauh',
-  photo_spanduk_sedang: 'link_spanduk_sedang',
-  photo_poster:         'link_poster',
+  photo_selfie:            'link_selfie',
+  photo_before:            'link_before',
+  photo_after:             'link_after',
+  photo_selfie_pic:        'link_selfie_pic',
+  photo_spanduk_jauh:      'link_spanduk_jauh',
+  photo_spanduk_sedang:    'link_spanduk_sedang',
+  photo_poster:            'link_poster',
+  photo_planogram_before:  'link_planogram_before',
+  photo_planogram_after:   'link_planogram_after',
 };
 // Kolom DB foto -> UI key (uploadOneVisitPhoto butuh UI key, mis. 'tampakDepan')
 const PHOTO_COL_TO_UIKEY = Object.fromEntries(
@@ -854,6 +871,37 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
               <div className="min-w-0">
                 <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Alamat Bengkel</div>
                 <p className="text-sm text-slate-300 leading-snug break-words">{bengkel.address}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Data PIC & survei — hanya terisi pada visit "Berhasil Pasang" */}
+          {(visit.owner_name || visit.owner_phone || visit.spanduk_size || visit.planogram_allowed != null) && (
+            <div className="bg-slate-950 border border-slate-800 rounded-xl p-3">
+              <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2 flex items-center gap-1.5">
+                <Users className="w-3 h-3" />Data Owner / PIC
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-slate-500">Nama</div>
+                  <div className="text-sm text-slate-200 break-words">{visit.owner_name || '—'}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-slate-500">No. Telp</div>
+                  {visit.owner_phone
+                    ? <a href={`tel:${visit.owner_phone.replace(/[^\d+]/g, '')}`} className="text-sm text-blue-400 hover:underline">{visit.owner_phone}</a>
+                    : <div className="text-sm text-slate-200">—</div>}
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-slate-500">Rekomendasi Spanduk</div>
+                  <div className="text-sm text-slate-200">{visit.spanduk_size || '—'}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-slate-500">Planogram</div>
+                  <div className={`text-sm font-medium ${visit.planogram_allowed ? 'text-emerald-400' : visit.planogram_allowed === false ? 'text-slate-400' : 'text-slate-500'}`}>
+                    {visit.planogram_allowed == null ? '—' : (visit.planogram_allowed ? 'Diizinkan' : 'Tidak diizinkan')}
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -3176,7 +3224,11 @@ function MDDashboard({ currentMD, visits, bengkels, kotas }) {
 
 function VisitForm({ currentMD, bengkels, bengkelsLoading = false, regions, kotas, distributors, onSubmitted, onNeedAbsen, myRegionIds: initialRegionIds }) {
   const DRAFT_KEY = `visitDraft:${currentMD.id}`;
-  const emptyPhotos = { selfie: null, before: null, after: null, spandukJauh: null, spandukSedang: null, poster: null };
+  const emptyPhotos = {
+    selfie: null, before: null, after: null, selfiePic: null,
+    spandukJauh: null, spandukSedang: null, poster: null,
+    planogramBefore: null, planogramAfter: null,
+  };
   const makeDefaultForm = () => ({
     group: '',
     regionId: currentMD.region_id || '',
@@ -3184,6 +3236,9 @@ function VisitForm({ currentMD, bengkels, bengkelsLoading = false, regions, kota
     bengkelId: '',
     date: localDateStr(),
     status: '', remarks: '',
+    ownerName: '', ownerPhone: '',
+    spandukSize: '',
+    planogramAllowed: null,      // null = belum dijawab
     photos: { ...emptyPhotos },
   });
   // Tanpa draft: form selalu mulai FRESH (draft lama di localStorage ikut dibersihkan).
@@ -3319,9 +3374,14 @@ function VisitForm({ currentMD, bengkels, bengkelsLoading = false, regions, kota
   // wajib tambah tampak depan after. Foto spanduk/banner & poster OPSIONAL.
   const terpasang = form.status === HASIL_TERPASANG;
   const requiredPhotos = ['selfie', 'before'];
-  if (terpasang) requiredPhotos.push('after');
+  if (terpasang) requiredPhotos.push('after', 'selfiePic');
   const requiredDone = requiredPhotos.filter(k => PRESENT.includes(form.photos[k]?.status)).length;
   const hasAllRequiredPhotos = requiredDone === requiredPhotos.length;
+
+  // Data PIC & rekomendasi ukuran hanya ditanyakan (dan diwajibkan) saat
+  // berhasil pasang — di hasil lain MD memang tak bertemu PIC-nya.
+  const dataPicLengkap = !terpasang
+    || (form.ownerName.trim() && form.ownerPhone.trim() && form.spandukSize);
   // Jarak GPS user ↔ bengkel (kalau dua-duanya ada). Bengkel tanpa koordinat →
   // null → tidak diblokir (mis. visit pertama yang justru mengisi koordinatnya).
   const gpsDistance = (gps.status === 'ready' && selectedBengkel?.lat != null && selectedBengkel?.lng != null)
@@ -3332,7 +3392,7 @@ function VisitForm({ currentMD, bengkels, bengkelsLoading = false, regions, kota
 
   // Bengkel terpilih sudah pernah terpasang → kunci submit.
   const bengkelSudahTerpasang = !!form.bengkelId && terpasangIds.has(form.bengkelId);
-  const canSubmit = checkedInToday !== false && form.bengkelId && !bengkelSudahTerpasang && form.status && hasAllRequiredPhotos && !anyCompressing && gps.status === 'ready' && !gpsFar && !submitting;
+  const canSubmit = checkedInToday !== false && form.bengkelId && !bengkelSudahTerpasang && form.status && hasAllRequiredPhotos && dataPicLengkap && !anyCompressing && gps.status === 'ready' && !gpsFar && !submitting;
 
   const handleSubmit = async () => {
     if (submitLock.current || !canSubmit) return;  // guard sinkron, gak nunggu re-render
@@ -3356,6 +3416,12 @@ function VisitForm({ currentMD, bengkels, bengkelsLoading = false, regions, kota
         remarks: form.remarks,
         lat, lng,
         photos: form.photos,
+        // Field survei hanya relevan saat berhasil pasang — hasil lain dikirim
+        // kosong supaya tidak ada sisa isian dari status yang sempat dipilih.
+        ownerName: terpasang ? form.ownerName : '',
+        ownerPhone: terpasang ? form.ownerPhone : '',
+        spandukSize: terpasang ? form.spandukSize : '',
+        planogramAllowed: terpasang ? form.planogramAllowed : null,
         backfillBengkelCoords: bengkelLacksCoords,
       });
 
@@ -3598,18 +3664,54 @@ function VisitForm({ currentMD, bengkels, bengkelsLoading = false, regions, kota
         </Field>
 
         {terpasang && (
-          <p className="text-[11px] text-emerald-400 -mt-1 mb-2">Berhasil Pasang — lengkapi foto After di bagian Dokumentasi Foto di bawah. Foto spanduk & poster opsional.</p>
+          <p className="text-[11px] text-emerald-400 -mt-1 mb-2">Berhasil Pasang — lengkapi data Owner/PIC di bawah, lalu foto After & selfie dengan PIC di Dokumentasi Foto.</p>
         )}
         {form.status && !terpasang && (
           <p className="text-[11px] text-slate-500 -mt-1 mb-2">Hasil visit bukan "Berhasil Pasang" — cukup foto selfie & tampak depan (before), lalu isi notes jika ada.</p>
         )}
       </Section>
 
+      {terpasang && (
+        <Section title="Data Owner / PIC" subtitle="Kontak pemilik atau penanggung jawab bengkel" icon={Users}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field label="Nama Owner / PIC" required>
+              <Input placeholder="Nama pemilik atau PIC…" value={form.ownerName}
+                onChange={e => setForm({ ...form, ownerName: e.target.value })} />
+            </Field>
+            <Field label="No. Telp Owner / PIC" required>
+              <Input type="tel" inputMode="tel" placeholder="08xxxxxxxxxx" value={form.ownerPhone}
+                onChange={e => setForm({ ...form, ownerPhone: e.target.value })} />
+            </Field>
+          </div>
+          {(!form.ownerName.trim() || !form.ownerPhone.trim()) && (
+            <p className="text-[11px] text-amber-400 mt-1.5 flex items-center gap-1.5">
+              <AlertCircle className="w-3 h-3" />Nama dan no. telp Owner/PIC wajib diisi.
+            </p>
+          )}
+
+          <Field label="Rekomendasi Ukuran Spanduk untuk Bengkel Ini" required>
+            <Select value={form.spandukSize} onChange={e => setForm({ ...form, spandukSize: e.target.value })}>
+              <option value="">— Pilih ukuran —</option>
+              {UKURAN_SPANDUK.map(u => <option key={u} value={u}>{u}</option>)}
+            </Select>
+          </Field>
+          {!form.spandukSize && (
+            <p className="text-[11px] text-amber-400 mt-1.5 flex items-center gap-1.5">
+              <AlertCircle className="w-3 h-3" />Pilih rekomendasi ukuran spanduk.
+            </p>
+          )}
+        </Section>
+      )}
+
       <Section title="Dokumentasi Foto"
         subtitle={`${requiredDone}/${requiredPhotos.length} foto wajib · ${photoCount} foto terisi`} icon={Camera}>
         <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Selfie</div>
         <div className="grid grid-cols-3 gap-3">
           <PhotoTile label="Selfie Depan Bengkel" required hint="Selfie dengan latar bengkel terlihat" photo={form.photos.selfie} onChange={v => setPhoto('selfie', v)} />
+          {terpasang && (
+            <PhotoTile label="Selfie dengan Owner/PIC" required hint="Foto bersama pemilik/PIC bengkel"
+              photo={form.photos.selfiePic} onChange={v => setPhoto('selfiePic', v)} />
+          )}
         </div>
 
         <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mt-5 mb-2 pt-4 border-t border-slate-800">Tampak Depan Bengkel</div>
@@ -3631,6 +3733,35 @@ function VisitForm({ currentMD, bengkels, bengkelsLoading = false, regions, kota
           <div className="grid grid-cols-3 gap-3">
             <PhotoTile label="Foto Poster" hint="Opsional — isi jika ada poster" photo={form.photos.poster} onChange={v => setPhoto('poster', v)} />
           </div>
+
+          <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mt-5 mb-2 pt-4 border-t border-slate-800">
+            Planogram {form.planogramAllowed ? '' : '(opsional)'}
+          </div>
+          <div className="mb-3">
+            <div className="text-[11px] text-slate-400 mb-1.5">Bengkel mengizinkan pemasangan planogram?</div>
+            <div className="flex gap-2">
+              {[['Ya', true], ['Tidak', false]].map(([label, val]) => (
+                <button key={label} type="button"
+                  onClick={() => setForm(f => ({
+                    ...f,
+                    planogramAllowed: val,
+                    // Jawab "Tidak" → foto planogram yang terlanjur diisi dibuang.
+                    photos: val ? f.photos : { ...f.photos, planogramBefore: null, planogramAfter: null },
+                  }))}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium border transition ${
+                    form.planogramAllowed === val
+                      ? (val ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-slate-700 border-slate-600 text-white')
+                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                  }`}>{label}</button>
+              ))}
+            </div>
+          </div>
+          {form.planogramAllowed && (
+            <div className="grid grid-cols-3 gap-3">
+              <PhotoTile label="Planogram (Before)" hint="Sebelum penataan" photo={form.photos.planogramBefore} onChange={v => setPhoto('planogramBefore', v)} />
+              <PhotoTile label="Planogram (After)" hint="Setelah penataan" photo={form.photos.planogramAfter} onChange={v => setPhoto('planogramAfter', v)} />
+            </div>
+          )}
         </>)}
       </Section>
 

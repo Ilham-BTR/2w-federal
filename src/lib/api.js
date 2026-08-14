@@ -804,6 +804,11 @@ export async function createVisit(args) {
     remarks: args.remarks || null,
     visit_lat: args.lat,
     visit_lng: args.lng,
+    // Data PIC & survei — hanya terisi saat hasil visit "Berhasil Pasang".
+    owner_name: args.ownerName?.trim() || null,
+    owner_phone: args.ownerPhone?.trim() || null,
+    spanduk_size: args.spandukSize || null,
+    planogram_allowed: args.planogramAllowed ?? null,
     ...photoUrls,
   };
 

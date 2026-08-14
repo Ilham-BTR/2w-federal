@@ -41,6 +41,9 @@ const ALLOWED_PHOTO_KEYS = [
   "spanduk-jauh",
   "spanduk-sedang",
   "poster",
+  "selfie-pic",          // selfie MD bersama Owner/PIC
+  "planogram-before",
+  "planogram-after",
 ];
 
 const ALLOWED_CONTENT_TYPES = ["image/jpeg", "image/png", "image/webp"];
