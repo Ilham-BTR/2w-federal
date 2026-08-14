@@ -553,6 +553,18 @@ const PHOTO_LABELS = {
   photo_planogram_after:   'Rack Display Oil / Planogram (After)',
 };
 
+// Contoh foto acuan dari AA — ditampilkan sebelum MD memotret slot tersebut.
+// File ada di public/contoh (sudah dikecilkan), key = uiKey di form visit.
+const CONTOH_FOTO = {
+  selfie:        '/contoh/selfie.jpg',
+  before:        '/contoh/tampak-depan-before.jpg',
+  after:         '/contoh/tampak-depan-after.jpg',
+  spandukJauh:   '/contoh/spanduk-jauh.jpg',
+  spandukSedang:   '/contoh/spanduk-sedang.jpg',
+  poster:          '/contoh/poster.jpg',
+  planogramAfter:  '/contoh/planogram-after.jpg',
+};
+
 // Pilihan rekomendasi ukuran spanduk untuk bengkel (diisi MD saat berhasil pasang).
 const UKURAN_SPANDUK = [
   '2x1 meter', '2x0.6 meter', '2x0.8 meter',
@@ -3680,8 +3692,10 @@ function VisitForm({ currentMD, bengkels, bengkelsLoading = false, regions, kota
                 onChange={e => setForm({ ...form, ownerName: e.target.value })} />
             </Field>
             <Field label="No. Telp Owner / PIC" required>
-              <Input type="tel" inputMode="tel" placeholder="08xxxxxxxxxx — isi - kalau tidak dapat"
-                value={form.ownerPhone} onChange={e => setForm({ ...form, ownerPhone: e.target.value })} />
+              {/* Hanya angka dan tanda strip — huruf/spasi/simbol lain dibuang saat diketik. */}
+              <Input type="tel" inputMode="numeric" placeholder="08xxxxxxxxxx — isi - kalau tidak dapat"
+                value={form.ownerPhone}
+                onChange={e => setForm({ ...form, ownerPhone: e.target.value.replace(/[^0-9-]/g, '') })} />
               <div className="flex items-center justify-between gap-2 mt-1">
                 <p className="text-[10px] text-slate-500">Tidak dapat nomornya? Isi tanda strip.</p>
                 <button type="button" onClick={() => setForm(f => ({ ...f, ownerPhone: '-' }))}
@@ -3715,7 +3729,7 @@ function VisitForm({ currentMD, bengkels, bengkelsLoading = false, regions, kota
         subtitle={`${requiredDone}/${requiredPhotos.length} foto wajib · ${photoCount} foto terisi`} icon={Camera}>
         <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Selfie</div>
         <div className="grid grid-cols-3 gap-3">
-          <PhotoTile label="Selfie Depan Bengkel" required hint="Selfie dengan latar bengkel terlihat" photo={form.photos.selfie} onChange={v => setPhoto('selfie', v)} />
+          <PhotoTile label="Selfie Depan Bengkel" required example={CONTOH_FOTO.selfie} hint="Selfie dengan latar bengkel terlihat" photo={form.photos.selfie} onChange={v => setPhoto('selfie', v)} />
           {terpasang && (
             <PhotoTile label="Selfie dengan Owner/PIC" required hint="Foto bersama pemilik/PIC bengkel"
               photo={form.photos.selfiePic} onChange={v => setPhoto('selfiePic', v)} />
@@ -3724,22 +3738,22 @@ function VisitForm({ currentMD, bengkels, bengkelsLoading = false, regions, kota
 
         <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mt-5 mb-2 pt-4 border-t border-slate-800">Tampak Depan Bengkel</div>
         <div className="grid grid-cols-3 gap-3">
-          <PhotoTile label="Tampak Depan Full (Before)" required hint="Sebelum pemasangan" photo={form.photos.before} onChange={v => setPhoto('before', v)} />
+          <PhotoTile label="Tampak Depan Full (Before)" required example={CONTOH_FOTO.before} hint="Sebelum pemasangan" photo={form.photos.before} onChange={v => setPhoto('before', v)} />
           {terpasang && (
-            <PhotoTile label="Tampak Depan (After)" required hint="Setelah pemasangan" photo={form.photos.after} onChange={v => setPhoto('after', v)} />
+            <PhotoTile label="Tampak Depan (After)" required example={CONTOH_FOTO.after} hint="Setelah pemasangan" photo={form.photos.after} onChange={v => setPhoto('after', v)} />
           )}
         </div>
 
         {terpasang && (<>
           <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mt-5 mb-2 pt-4 border-t border-slate-800">Spanduk (opsional)</div>
           <div className="grid grid-cols-3 gap-3">
-            <PhotoTile label="Spanduk Jarak Jauh" hint="Opsional — isi jika ada" photo={form.photos.spandukJauh} onChange={v => setPhoto('spandukJauh', v)} />
-            <PhotoTile label="Spanduk Jarak Sedang" hint="Opsional — isi jika ada" photo={form.photos.spandukSedang} onChange={v => setPhoto('spandukSedang', v)} />
+            <PhotoTile label="Spanduk Jarak Jauh" example={CONTOH_FOTO.spandukJauh} hint="Opsional — isi jika ada" photo={form.photos.spandukJauh} onChange={v => setPhoto('spandukJauh', v)} />
+            <PhotoTile label="Spanduk Jarak Sedang" example={CONTOH_FOTO.spandukSedang} hint="Opsional — isi jika ada" photo={form.photos.spandukSedang} onChange={v => setPhoto('spandukSedang', v)} />
           </div>
 
           <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mt-5 mb-2 pt-4 border-t border-slate-800">Poster (opsional)</div>
           <div className="grid grid-cols-3 gap-3">
-            <PhotoTile label="Foto Poster" hint="Opsional — isi jika ada poster" photo={form.photos.poster} onChange={v => setPhoto('poster', v)} />
+            <PhotoTile label="Foto Poster" example={CONTOH_FOTO.poster} hint="Opsional — isi jika ada poster" photo={form.photos.poster} onChange={v => setPhoto('poster', v)} />
           </div>
 
           <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mt-5 mb-2 pt-4 border-t border-slate-800">
@@ -3772,7 +3786,7 @@ function VisitForm({ currentMD, bengkels, bengkelsLoading = false, regions, kota
           {form.planogramAllowed && (
             <div className="grid grid-cols-3 gap-3">
               <PhotoTile label="Rack Display Oil / Planogram (Before)" hint="Sebelum penataan" photo={form.photos.planogramBefore} onChange={v => setPhoto('planogramBefore', v)} />
-              <PhotoTile label="Rack Display Oil / Planogram (After)" hint="Setelah penataan" photo={form.photos.planogramAfter} onChange={v => setPhoto('planogramAfter', v)} />
+              <PhotoTile label="Rack Display Oil / Planogram (After)" example={CONTOH_FOTO.planogramAfter} hint="Setelah penataan" photo={form.photos.planogramAfter} onChange={v => setPhoto('planogramAfter', v)} />
             </div>
           )}
         </>)}
