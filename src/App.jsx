@@ -3073,8 +3073,13 @@ function MDView({ currentMD, refreshKey, welcome, onWelcomeClose }) {
       </div>
 
       {tab === 'absen' && <AbsenTab currentMD={currentMD} />}
-      {tab === 'new' && <VisitForm currentMD={currentMD} bengkels={bengkels} bengkelsLoading={bengkelsLoading} regions={regions} kotas={kotas} distributors={distributors} myRegionIds={myRegionIds}
-        onSubmitted={(opt) => { reloadVisits(); if (!opt?.tetapDiForm) setTab('history'); }} onNeedAbsen={() => setTab('absen')} />}
+      {/* Form visit SELALU ter-mount, cuma disembunyikan saat pindah tab. Kalau
+          dilepas dari layar, isian & foto yang sudah diupload ikut hilang —
+          MD sering kena ini gara-gara tak sengaja menekan tombol kembali HP. */}
+      <div className={tab === 'new' ? '' : 'hidden'}>
+        <VisitForm currentMD={currentMD} bengkels={bengkels} bengkelsLoading={bengkelsLoading} regions={regions} kotas={kotas} distributors={distributors} myRegionIds={myRegionIds}
+          onSubmitted={(opt) => { reloadVisits(); if (!opt?.tetapDiForm) setTab('history'); }} onNeedAbsen={() => setTab('absen')} />
+      </div>
       {tab === 'history' && <VisitHistory visits={visits} bengkels={bengkels} kotas={kotas} distributors={distributors} currentMD={currentMD}
         reqByVisit={reqByVisit} onReqChanged={reloadEditReqs}
         onUpdated={() => { reloadVisits(); reloadEditReqs(); }} />}
@@ -3387,6 +3392,8 @@ function VisitForm({ currentMD, bengkels, bengkelsLoading = false, regions, kota
   const terpasang = form.status === HASIL_TERPASANG;
   const requiredPhotos = ['selfie', 'before'];
   if (terpasang) requiredPhotos.push('after', 'selfiePic');
+  // Bengkel mengizinkan planogram → bukti before & after ikut wajib.
+  if (terpasang && form.planogramAllowed) requiredPhotos.push('planogramBefore', 'planogramAfter');
   const requiredDone = requiredPhotos.filter(k => PRESENT.includes(form.photos[k]?.status)).length;
   const hasAllRequiredPhotos = requiredDone === requiredPhotos.length;
 
@@ -3464,7 +3471,9 @@ function VisitForm({ currentMD, bengkels, bengkelsLoading = false, regions, kota
 
   // Tutup popup lalu siapkan form kosong untuk visit berikutnya — MD biasanya
   // mengisi beberapa bengkel berturut-turut, jadi tak perlu balik ke History.
-  const lanjutVisitBaru = () => {
+  // Kosongkan form untuk visit berikutnya. Wajib dipanggil setelah submit —
+  // komponen ini tidak pernah di-unmount, jadi isian lama tidak hilang sendiri.
+  const kosongkanForm = () => {
     setSubmitted(false);
     setRingkasan(null);
     setError('');
@@ -3472,6 +3481,10 @@ function VisitForm({ currentMD, bengkels, bengkelsLoading = false, regions, kota
     setVisitId(crypto.randomUUID());   // foto visit berikutnya masuk folder sendiri
     setSubmitting(false);
     submitLock.current = false;
+  };
+
+  const lanjutVisitBaru = () => {
+    kosongkanForm();
     onSubmitted({ tetapDiForm: true });   // refresh daftar visit, jangan pindah tab
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -3531,7 +3544,7 @@ function VisitForm({ currentMD, bengkels, bengkelsLoading = false, regions, kota
                 className="py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition flex items-center justify-center gap-1.5">
                 <Plus className="w-4 h-4" />Visit Lagi
               </button>
-              <button onClick={() => { setSubmitted(false); onSubmitted(); }}
+              <button onClick={() => { kosongkanForm(); onSubmitted(); }}
                 className="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold transition flex items-center justify-center gap-1.5">
                 <Activity className="w-4 h-4" />Lihat History
               </button>
@@ -3785,8 +3798,8 @@ function VisitForm({ currentMD, bengkels, bengkelsLoading = false, regions, kota
           </div>
           {form.planogramAllowed && (
             <div className="grid grid-cols-3 gap-3">
-              <PhotoTile label="Rack Display Oil / Planogram (Before)" hint="Sebelum penataan" photo={form.photos.planogramBefore} onChange={v => setPhoto('planogramBefore', v)} />
-              <PhotoTile label="Rack Display Oil / Planogram (After)" example={CONTOH_FOTO.planogramAfter} hint="Setelah penataan" photo={form.photos.planogramAfter} onChange={v => setPhoto('planogramAfter', v)} />
+              <PhotoTile label="Rack Display Oil / Planogram (Before)" required hint="Sebelum penataan" photo={form.photos.planogramBefore} onChange={v => setPhoto('planogramBefore', v)} />
+              <PhotoTile label="Rack Display Oil / Planogram (After)" required example={CONTOH_FOTO.planogramAfter} hint="Setelah penataan" photo={form.photos.planogramAfter} onChange={v => setPhoto('planogramAfter', v)} />
             </div>
           )}
         </>)}
