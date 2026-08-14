@@ -3258,11 +3258,10 @@ function VisitForm({ currentMD, bengkels, bengkelsLoading = false, regions, kota
     planogramAllowed: null,      // null = belum dijawab
     photos: { ...emptyPhotos },
   });
-  // Tanpa draft: form selalu mulai FRESH (draft lama di localStorage ikut dibersihkan).
-  const [form, setForm] = useState(() => {
-    try { localStorage.removeItem(DRAFT_KEY); } catch { /* noop */ }
-    return makeDefaultForm();
-  });
+  // Form selalu MULAI kosong. Draf yang tersimpan tidak pernah dipasang diam-diam
+  // — ditawarkan dulu lewat banner (lihat draftTawaran di bawah).
+  const [form, setForm] = useState(makeDefaultForm);
+  const [draftTawaran, setDraftTawaran] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
@@ -3273,6 +3272,54 @@ function VisitForm({ currentMD, bengkels, bengkelsLoading = false, regions, kota
   const [visitId, setVisitId] = useState(() => crypto.randomUUID());
   // Ringkasan visit yg baru tersimpan — dipakai popup sukses (form sudah dikosongkan).
   const [ringkasan, setRingkasan] = useState(null);
+
+  // ---------------------------------------------------------------------
+  // Draf isian. Bukan untuk menyambung kerja lintas hari, tapi jaring
+  // pengaman kalau Chrome membuang tab di latar belakang (HP RAM kecil):
+  // isian MD ikut hilang padahal dia tidak menekan apa pun.
+  // Foto tidak ikut disimpan — yang disimpan hanya ALAMAT-nya, karena foto
+  // sudah naik ke storage begitu dipotret.
+  // ---------------------------------------------------------------------
+  const DRAF_FIELD = ['group', 'regionId', 'kotaId', 'bengkelId', 'status', 'remarks',
+    'ownerName', 'ownerPhone', 'spandukSize', 'planogramAllowed'];
+  const hapusDraf = () => { try { localStorage.removeItem(DRAFT_KEY); } catch { /* noop */ } };
+
+  useEffect(() => {
+    try {
+      const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null');
+      // Draf hari lain tidak pernah ditawarkan — cegah data kemarin nyangkut.
+      if (!d || d.tanggal !== localDateStr() || !(d.bengkelId || d.status)) { hapusDraf(); return; }
+      setDraftTawaran(d);
+    } catch { hapusDraf(); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (submitted) return;
+    const adaIsi = form.bengkelId || form.status || Object.values(form.photos).some(p => p?.url);
+    if (!adaIsi) return;
+    const timer = setTimeout(() => {
+      const fotoUrl = {};
+      Object.entries(form.photos).forEach(([k, p]) => { if (p?.url) fotoUrl[k] = p.url; });
+      const draf = { tanggal: localDateStr(), visitId, fotoUrl };
+      DRAF_FIELD.forEach(k => { draf[k] = form[k]; });
+      try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draf)); } catch { /* penyimpanan penuh */ }
+    }, 600);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form, visitId, submitted]);
+
+  const lanjutkanDraf = () => {
+    const d = draftTawaran;
+    const photos = { ...emptyPhotos };
+    Object.entries(d.fotoUrl || {}).forEach(([k, url]) => {
+      if (k in photos) photos[k] = { status: 'uploaded', url, preview: url, file: null };
+    });
+    setForm({ ...makeDefaultForm(), ...Object.fromEntries(DRAF_FIELD.map(k => [k, d[k]])), photos });
+    if (d.visitId) setVisitId(d.visitId);   // foto lanjutan tetap satu folder dgn yg sudah naik
+    setDraftTawaran(null);
+  };
+  const buangDraf = () => { hapusDraf(); setDraftTawaran(null); };
   // Bengkel yang SUDAH terpasang (oleh MD mana pun) — tak boleh disubmit lagi.
   const [terpasangIds, setTerpasangIds] = useState(() => new Set());
   useEffect(() => {
@@ -3451,6 +3498,10 @@ function VisitForm({ currentMD, bengkels, bengkelsLoading = false, regions, kota
         status: form.status,
         jumlahFoto: Object.values(form.photos).filter(p => PRESENT.includes(p?.status)).length,
       });
+      // Draf dibuang BEGITU tersimpan, bukan menunggu MD menutup popup — kalau
+      // tab keburu dibuang HP saat popup terbuka, MD jangan sampai ditawari
+      // mengulang visit yang sebenarnya sudah masuk.
+      hapusDraf();
       setSubmitted(true);
       // Getar singkat — MD sering menyimpan sambil berjalan, tak selalu melihat layar.
       try { navigator.vibrate?.(120); } catch { /* tak semua HP mendukung */ }
@@ -3474,6 +3525,7 @@ function VisitForm({ currentMD, bengkels, bengkelsLoading = false, regions, kota
   // Kosongkan form untuk visit berikutnya. Wajib dipanggil setelah submit —
   // komponen ini tidak pernah di-unmount, jadi isian lama tidak hilang sendiri.
   const kosongkanForm = () => {
+    hapusDraf();            // visit sudah tersimpan → draf tak berguna lagi
     setSubmitted(false);
     setRingkasan(null);
     setError('');
@@ -3560,6 +3612,36 @@ function VisitForm({ currentMD, bengkels, bengkelsLoading = false, regions, kota
           <p className="text-xs text-rose-400">{error}</p>
         </div>
       )}
+
+      {draftTawaran && (() => {
+        const b = bengkels.find(x => x.id === draftTawaran.bengkelId);
+        const jml = Object.keys(draftTawaran.fotoUrl || {}).length;
+        return (
+          <div className="mb-4 p-3.5 bg-amber-600/10 border border-amber-600/40 rounded-xl flex items-start gap-3">
+            <div className="w-8 h-8 rounded-full bg-amber-600/20 flex items-center justify-center shrink-0">
+              <FileText className="w-4 h-4 text-amber-400" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-amber-300">Ada isian visit yang belum terkirim</p>
+              <p className="text-xs text-amber-200/80 mt-0.5 break-words">
+                {b ? `${b.code} - ${b.name}` : 'Bengkel belum dipilih'}
+                {draftTawaran.status ? ` · ${draftTawaran.status}` : ''}
+                {jml ? ` · ${jml} foto sudah terupload` : ''}
+              </p>
+              <div className="flex gap-2 mt-2">
+                <button type="button" onClick={lanjutkanDraf}
+                  className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition">
+                  Lanjutkan
+                </button>
+                <button type="button" onClick={buangDraf}
+                  className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition">
+                  Buang
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       <Section title="Info MD & Bengkel" subtitle="Pilih bengkel target visit" icon={Building2}>
         <div className="grid grid-cols-2 gap-3 mb-1">
