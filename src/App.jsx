@@ -3680,13 +3680,20 @@ function VisitForm({ currentMD, bengkels, bengkelsLoading = false, regions, kota
                 onChange={e => setForm({ ...form, ownerName: e.target.value })} />
             </Field>
             <Field label="No. Telp Owner / PIC" required>
-              <Input type="tel" inputMode="tel" placeholder="08xxxxxxxxxx" value={form.ownerPhone}
-                onChange={e => setForm({ ...form, ownerPhone: e.target.value })} />
+              <Input type="tel" inputMode="tel" placeholder="08xxxxxxxxxx — isi - kalau tidak dapat"
+                value={form.ownerPhone} onChange={e => setForm({ ...form, ownerPhone: e.target.value })} />
+              <div className="flex items-center justify-between gap-2 mt-1">
+                <p className="text-[10px] text-slate-500">Tidak dapat nomornya? Isi tanda strip.</p>
+                <button type="button" onClick={() => setForm(f => ({ ...f, ownerPhone: '-' }))}
+                  className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 transition shrink-0">
+                  Isi &quot;-&quot;
+                </button>
+              </div>
             </Field>
           </div>
           {(!form.ownerName.trim() || !form.ownerPhone.trim()) && (
             <p className="text-[11px] text-amber-400 mt-1.5 flex items-center gap-1.5">
-              <AlertCircle className="w-3 h-3" />Nama dan no. telp Owner/PIC wajib diisi.
+              <AlertCircle className="w-3 h-3" />Nama dan no. telp Owner/PIC wajib diisi — telp boleh diisi &quot;-&quot; kalau tidak didapat.
             </p>
           )}
 
