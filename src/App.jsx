@@ -5509,6 +5509,9 @@ function BengkelForm({ kotas, regions, bengkels = [], onSave, initial, onCancel 
     address: initial?.address || '',
     lat: initial?.lat ?? null,
     lng: initial?.lng ?? null,
+    workshop_class: initial?.workshop_class || '',
+    // Bengkel baru default TARGET (samakan dgn default kolom di database).
+    is_target: initial ? initial.is_target !== false : true,
   });
   const [saving, setSaving] = useState(false);
 
@@ -5542,10 +5545,15 @@ function BengkelForm({ kotas, regions, bengkels = [], onSave, initial, onCancel 
         address: form.address.trim() || null,
         lat: form.lat,
         lng: form.lng,
+        workshop_class: form.workshop_class || null,
+        is_target: form.is_target,
       });
       if (!isEdit) {
-        // reset form (pertahankan region biar gampang input banyak bengkel di region sama)
-        setForm(f => ({ region_id: f.region_id, code: '', name: '', kota_id: '', address: '', lat: null, lng: null }));
+        // reset form (pertahankan region & kelas biar gampang input banyak bengkel sejenis)
+        setForm(f => ({
+          region_id: f.region_id, code: '', name: '', kota_id: '', address: '', lat: null, lng: null,
+          workshop_class: f.workshop_class, is_target: f.is_target,
+        }));
       }
     } catch (err) {
       alert('Gagal simpan: ' + err.message);
@@ -5598,6 +5606,37 @@ function BengkelForm({ kotas, regions, bengkels = [], onSave, initial, onCancel 
             <option value="">{form.region_id ? 'Pilih kota…' : 'Pilih region dulu'}</option>
             {filteredKotas.map(k => <option key={k.id} value={k.id}>{k.name}</option>)}
           </Select>
+        </Field>
+      </div>
+
+      {/* Class & status target — sebelumnya hanya bisa diisi lewat impor Excel. */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+        <Field label="AA Workshop Class">
+          <Select value={form.workshop_class} onChange={e => setForm({ ...form, workshop_class: e.target.value })}>
+            <option value="">— Belum ditentukan —</option>
+            <option value="IWS">IWS</option>
+            <option value="FOC">FOC</option>
+          </Select>
+          {!form.workshop_class && (
+            <p className="text-[10px] text-amber-400/80 mt-1">
+              Dikosongkan → bengkel terhitung di # Workshop tapi tidak masuk hitungan IWS/FOC di laporan.
+            </p>
+          )}
+        </Field>
+        <Field label="Masuk Target Program?">
+          <div className="flex gap-2">
+            {[['Ya', true], ['Tidak', false]].map(([label, val]) => (
+              <button key={label} type="button" onClick={() => setForm({ ...form, is_target: val })}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium border transition ${
+                  form.is_target === val
+                    ? (val ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-slate-700 border-slate-600 text-white')
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                }`}>{label}</button>
+            ))}
+          </div>
+          <p className="text-[10px] text-slate-500 mt-1">
+            {form.is_target ? 'Dihitung sebagai target di Laporan Coverage.' : 'Tetap bisa divisit MD, tapi tidak menambah angka target.'}
+          </p>
         </Field>
       </div>
 
