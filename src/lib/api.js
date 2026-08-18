@@ -10,6 +10,7 @@ export { uploadOneVisitPhoto, uploadAttendancePhoto } from './storage';
 import { SEED_REGIONS, SEED_DISTRIBUTORS, SEED_KOTAS, SEED_BENGKELS } from './seedData';
 import { clearPhotos, deletePhotosByVisit } from './photoStore';
 import { startRegistration, startAuthentication } from '@simplewebauthn/browser';
+import { bacaCache, tulisCache, waktuTerbaru, gabung } from './bengkelCache';
 
 // ============================================================
 // MOCK DATA (untuk dev tanpa Supabase) — di-persist ke localStorage
@@ -300,16 +301,53 @@ export async function fetchBengkels(regionId = null) {
   // Kota & region TIDAK ikut di-embed: pemakainya selalu memetakan lewat
   // kota_id ke daftar kotas/regions yang di-fetch terpisah, jadi embed hanya
   // menggandakan payload di 6.000+ baris.
-  if (ids.length) {
-    // inner join kotas dipakai murni sebagai filter region, kolomnya tak dibawa
-    return fetchAllPaged(() =>
-      supabase.from('bengkels')
-        .select('*, kotas!inner(region_id)')
-        .in('kotas.region_id', ids)
-        .order('code')
-    );
+  // inner join kotas dipakai murni sebagai filter region, kolomnya tak dibawa
+  const buatQuery = () => (ids.length
+    ? supabase.from('bengkels').select('*, kotas!inner(region_id)').in('kotas.region_id', ids).order('code')
+    : supabase.from('bengkels').select('*').order('code'));
+
+  const scope = ids.length ? [...ids].sort().join(',') : 'all';
+  const cache = await bacaCache(scope);
+
+  // Belum ada cache → tarik penuh sekali, sisanya nanti cukup delta.
+  if (!cache?.rows?.length || !cache.lastSync) {
+    const rows = await fetchAllPaged(buatQuery);
+    await tulisCache(scope, { rows, lastSync: waktuTerbaru(rows) });
+    return rows;
   }
-  return fetchAllPaged(() => supabase.from('bengkels').select('*').order('code'));
+
+  try {
+    // 1) Ambil HANYA baris yang berubah/baru sejak sinkron terakhir.
+    const perubahan = await fetchAllPaged(() => buatQuery().gt('updated_at', cache.lastSync));
+    const gabungan = gabung(cache.rows, perubahan);
+
+    // 2) Bandingkan jumlah baris di server — satu-satunya cara mendeteksi
+    //    bengkel yang DIHAPUS (baris hilang tak muncul di query perubahan).
+    //    head:true → server balas tanpa body, cuma header jumlah.
+    const qHitung = ids.length
+      ? supabase.from('bengkels').select('id, kotas!inner(region_id)', { count: 'exact', head: true }).in('kotas.region_id', ids)
+      : supabase.from('bengkels').select('id', { count: 'exact', head: true });
+    const { count, error } = await qHitung;
+    if (error) throw error;
+
+    if (count !== gabungan.length) {
+      const rows = await fetchAllPaged(buatQuery);       // cache meleset → samakan penuh
+      await tulisCache(scope, { rows, lastSync: waktuTerbaru(rows) });
+      return rows;
+    }
+
+    if (perubahan.length) {
+      await tulisCache(scope, { rows: gabungan, lastSync: waktuTerbaru(gabungan) || cache.lastSync });
+    }
+    return gabungan;
+  } catch (e) {
+    // Apa pun yang gagal (jaringan, kolom, cache rusak) → jangan sampai MD
+    // kehilangan daftar bengkel. Jatuh balik ke tarikan penuh.
+    console.warn('Sinkron delta bengkel gagal, tarik penuh:', e?.message || e);
+    const rows = await fetchAllPaged(buatQuery);
+    await tulisCache(scope, { rows, lastSync: waktuTerbaru(rows) });
+    return rows;
+  }
 }
 
 export async function fetchMDs() {
