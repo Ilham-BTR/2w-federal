@@ -4183,8 +4183,8 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
   const CATS = ['Ditolak', 'Owner/PIC tidak di tempat', 'Alamat bengkel tidak ditemukan',
     'Bukan bengkel', 'Tidak jual oli Federal'];
   // Semua angka yang dijumlahkan ke subtotal region & grand total
-  const SUM_KEYS = ['target', 'visited', 'unvisited', 'foc', 'focVisited', 'iws', 'iwsVisited',
-    'terpasang', 'spanduk', 'poster', 'notSuccess'];
+  const SUM_KEYS = ['totalDb', 'targetAA', 'targetTambahan', 'target', 'visited', 'unvisited',
+    'foc', 'focVisited', 'iws', 'iwsVisited', 'terpasang', 'spanduk', 'poster', 'notSuccess'];
   const SHORT = {
     'Ditolak': 'Decline',
     'Owner/PIC tidak di tempat': 'Closed',
@@ -4235,10 +4235,17 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
     // Target = jumlah bengkel yang DITANDAI target (is_target). Bengkel di luar
     // program tetap ada di master tapi tidak dihitung sebagai target.
     bengkels.forEach(b => {
-      if (b.is_target === false || !lolosKelas(b)) return;
+      if (!lolosKelas(b)) return;
       const row = ensure(b);
       if (!row) return;
-      row.target++;
+      row.totalDb++;
+      // Master AA membagi tiga: Target AA, Target Tambahan, Non Target.
+      // Non Target ikut Total Database tapi TIDAK masuk Total Target.
+      const st = b.target_status || (b.is_target === false ? 'Non Target' : 'Target AA');
+      if (st === 'Target AA') { row.targetAA++; row.target++; }
+      else if (st === 'Target Tambahan') { row.targetTambahan++; row.target++; }
+      else return;                        // Non Target: berhenti di Total Database
+      // BWS/IWS Target dihitung dari yang masuk Total Target saja.
       if (b.workshop_class === 'FOC') row.foc++;
       else if (b.workshop_class === 'IWS') row.iws++;
     });
@@ -4251,7 +4258,7 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
       row.visited++;
       if (b?.workshop_class === 'FOC') row.focVisited++;
       else if (b?.workshop_class === 'IWS') row.iwsVisited++;
-      if (b?.is_target !== false) row.seen.add(v.bengkel_id);
+      row.seen.add(v.bengkel_id);
       if (v.status === HASIL_TERPASANG) {
         row.terpasang++;
         if (v.photo_spanduk_jauh || v.photo_spanduk_sedang) row.spanduk++;   // bukti spanduk ada
@@ -4312,15 +4319,19 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
 
   // Definisi kolom angka — dipakai header, baris, subtotal, grand total & export.
   const NUM_COLS = [
-    { key: 'target',     label: 'Target',         get: r => r.target,     raw: true, color: 'text-slate-300' },
-    { key: 'visited',    label: 'Visited',        get: r => r.visited,    color: 'text-sky-300' },
-    { key: 'unvisited',  label: 'Unvisited',      get: r => r.unvisited,  color: 'text-slate-400' },
+    { key: 'totalDb',        label: 'Total Database',  get: r => r.totalDb,        raw: true, color: 'text-slate-400' },
+    { key: 'targetAA',       label: 'Target AA',       get: r => r.targetAA,       raw: true, color: 'text-slate-300' },
+    { key: 'targetTambahan', label: 'Target Tambahan', get: r => r.targetTambahan, raw: true, color: 'text-slate-300' },
+    { key: 'target',         label: 'Total Target',    get: r => r.target,         raw: true, color: 'text-slate-200' },
+    { key: 'visited',        label: 'Visited',         get: r => r.visited,        color: 'text-sky-300' },
+    { key: 'unvisited',      label: 'Unvisited',       get: r => r.unvisited,      raw: true, color: 'text-slate-400' },
     // BWS = kelas FOC di master AA (laporan pakai istilah BWS).
     { key: 'foc',        label: 'BWS Target',     get: r => r.foc,        raw: true, color: 'text-amber-300' },
     { key: 'focVisited', label: 'BWS',            get: r => r.focVisited, den: r => r.foc, color: 'text-amber-300' },
     { key: 'iws',        label: 'IWS Target',     get: r => r.iws,        raw: true, color: 'text-sky-300' },
     { key: 'iwsVisited', label: 'IWS',            get: r => r.iwsVisited, den: r => r.iws, color: 'text-sky-300' },
-    { key: 'terpasang',  label: 'Success Deploy', get: r => r.terpasang,  den: r => r.visited, color: 'text-emerald-400' },
+    { key: 'successRate', label: 'Success Rate',   get: r => r.terpasang,  den: r => r.visited, color: 'text-emerald-300' },
+    { key: 'terpasang',   label: 'Success Deploy', get: r => r.terpasang,  den: r => r.target,  color: 'text-emerald-400' },
     { key: 'spanduk',    label: 'Banner',         get: r => r.spanduk,    raw: true, color: 'text-emerald-300' },
     { key: 'poster',     label: 'Poster',         get: r => r.poster,     raw: true, color: 'text-emerald-300' },
     { key: 'notSuccess', label: 'Not Success',    get: r => r.notSuccess, den: r => r.visited, color: 'text-rose-300' },
@@ -4535,9 +4546,11 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
         </div>
       </div>
       <p className="text-[11px] text-slate-500 mt-2">
-        Penyebut persentase: Visited &amp; Unvisited terhadap Target; BWS &amp; IWS terhadap target
-        kelasnya masing-masing; Success Deploy &amp; Not Success terhadap Visited; Decline, Closed,
-        Address Not Found &amp; Non-Workshop terhadap Not Success. Banner &amp; Poster angka saja.
+        Total Target = Target AA + Target Tambahan; Non Target hanya masuk Total Database.
+        Penyebut persentase: Visited terhadap Total Target; BWS &amp; IWS terhadap target kelasnya
+        masing-masing; Success Rate &amp; Not Success terhadap Visited; Success Deploy terhadap
+        Total Target; Decline, Closed, Address Not Found &amp; Non-Workshop terhadap Not Success.
+        Unvisited, Banner &amp; Poster angka saja.
         Unvisited = bengkel target yang belum pernah divisit, sedangkan Visited menghitung jumlah
         visit sehingga bisa lebih dari 1 per bengkel. Not Success sudah termasuk Not Selling Federal.
       </p>
