@@ -350,6 +350,19 @@ export async function fetchBengkels(regionId = null) {
   }
 }
 
+/**
+ * Angka rujukan bengkel master AA yang tidak diimpor ke tabel bengkels
+ * (lihat migrasi 0016) — dipakai Laporan Coverage agar Total Database utuh.
+ */
+export async function fetchRefCounts() {
+  if (MOCK_MODE) return [];
+  const { data, error } = await supabase
+    .from('bengkel_ref_counts')
+    .select('region_id, distributor_id, workshop_class, target_status, jumlah');
+  if (error) { console.warn('fetchRefCounts gagal:', error.message); return []; }
+  return data || [];
+}
+
 export async function fetchMDs() {
   if (MOCK_MODE) return MOCK_DATA.profiles.filter(p => p.role === 'md');
   const { data, error } = await supabase

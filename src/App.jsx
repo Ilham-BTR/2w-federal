@@ -1324,7 +1324,10 @@ const REGION_GROUP_OF = {
   'Jawa Timur': 'Jawa Timur', 'Kalimantan Barat': 'Kalimantan', 'Kalimantan Selatan': 'Kalimantan',
   'Kalimantan Tengah': 'Kalimantan', 'Kalimantan Timur': 'Kalimantan',
   'Kepulauan Bangka Belitung': 'Sumbagsel', 'Kepulauan Riau': 'Sumbagut', 'Lampung': 'Sumbagsel',
-  'Nusa Tenggara Barat': 'Bali-Nusra', 'Riau': 'Sumbagut', 'Sulawesi Selatan': 'Sulawesi',
+  'Nusa Tenggara Barat': 'Bali-Nusra', 'Nusa Tenggara Timur': 'Bali-Nusra',
+  'Gorontalo': 'Sulawesi', 'Sulawesi Barat': 'Sulawesi', 'Sulawesi Utara': 'Sulawesi',
+  'Kalimantan Utara': 'Kalimantan',
+  'Riau': 'Sumbagut', 'Sulawesi Selatan': 'Sulawesi',
   'Sulawesi Tengah': 'Sulawesi', 'Sulawesi Tenggara': 'Sulawesi',
   'Sumatera Selatan': 'Sumbagsel', 'Sumatera Utara': 'Sumbagut',
 };
@@ -1339,8 +1342,10 @@ const STATUS_OPTIONS = [
   'Ditolak',
   'Bukan bengkel',
   'Owner/PIC tidak di tempat',
-  'Tidak jual oli Federal',
 ];
+// Dihapus dari pilihan MD (Agustus 2026) — bengkel yang tak jual oli Federal
+// dicatat sebagai "Ditolak". Nilai enum-nya sengaja dibiarkan ada di database
+// supaya app versi lama yang belum di-refresh tidak gagal saat submit.
 const STATUS_STYLES = {
   [HASIL_TERPASANG]:                { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/30', dot: 'bg-emerald-400' },
   'Alamat bengkel tidak ditemukan': { bg: 'bg-amber-500/10',   text: 'text-amber-400',   border: 'border-amber-500/30',   dot: 'bg-amber-400' },
@@ -4155,7 +4160,7 @@ function LeaderboardTab({ visits, mds, regions }) {
 // LAPORAN COVERAGE — rekap Region → Provinsi/Kota vs jumlah bengkel (target),
 // dipecah per kategori hasil visit. Format mengikuti laporan Excel AA.
 // ============================================================
-function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distributors = [], mode = 'wilayah' }) {
+function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distributors = [], refCounts = [], mode = 'wilayah' }) {
   const byDistributor = mode === 'distributor';
   const distById = useMemo(() => new Map(distributors.map(d => [d.id, d])), [distributors]);
   const [level, setLevel] = useState('provinsi');   // provinsi | kota (mode wilayah)
@@ -4181,7 +4186,7 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
 
   // Rincian "Not Success" — urutan & nama kolom mengikuti laporan Excel AA
   const CATS = ['Ditolak', 'Owner/PIC tidak di tempat', 'Alamat bengkel tidak ditemukan',
-    'Bukan bengkel', 'Tidak jual oli Federal'];
+    'Bukan bengkel'];
   // Semua angka yang dijumlahkan ke subtotal region & grand total
   const SUM_KEYS = ['totalDb', 'targetAA', 'targetTambahan', 'target', 'visited', 'unvisited',
     'foc', 'focVisited', 'iws', 'iwsVisited', 'terpasang', 'spanduk', 'poster', 'notSuccess'];
@@ -4190,7 +4195,6 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
     'Owner/PIC tidak di tempat': 'Closed',
     'Alamat bengkel tidak ditemukan': 'Address Not Found',
     'Bukan bengkel': 'Non-Workshop',
-    'Tidak jual oli Federal': 'Not Selling Federal',
   };
 
   // Agregasi: kunci = provinsi(region_id) atau kota(kota_id)
@@ -4266,6 +4270,34 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
       } else if (row.cats[v.status] != null) { row.cats[v.status]++; row.notSuccess++; }
     });
 
+    // Bengkel master AA yang sengaja tidak diimpor: hanya JUMLAHNYA yang dicatat
+    // (lihat migrasi 0016). Ditambahkan supaya Total Database di laporan utuh
+    // sesuai master, tanpa membebani data yang diunduh MD.
+    // Rincian per kota tidak tersedia, jadi dilewati saat level = kota.
+    if (level === 'provinsi' || byDistributor) {
+      refCounts.forEach(rc => {
+        if (kelas !== 'all' && rc.workshop_class !== kelas) return;
+        const d = distById.get(rc.distributor_id);
+        let key, name, group, regionId = rc.region_id;
+        if (byDistributor) {
+          if (!rc.distributor_id) return;          // tak bisa dikelompokkan tanpa distributor
+          key = `${rc.distributor_id}|${regionId}`;
+          name = regionById.get(regionId)?.name || '—';
+          group = d?.name || '—';
+        } else {
+          key = regionId;
+          name = regionById.get(regionId)?.name || '—';
+          group = groupOfRegion(regionById.get(regionId));
+        }
+        if (!key) return;
+        if (!rows.has(key)) rows.set(key, { key, name, regionId, group, ...blank() });
+        const row = rows.get(key);
+        row.totalDb += rc.jumlah;
+        if (rc.target_status === 'Target AA') { row.targetAA += rc.jumlah; row.target += rc.jumlah; }
+        else if (rc.target_status === 'Target Tambahan') { row.targetTambahan += rc.jumlah; row.target += rc.jumlah; }
+      });
+    }
+
     // Unvisited dihitung dari bengkel target UNIK yang belum pernah divisit,
     // bukan dari selisih jumlah visit (1 bengkel bisa divisit lebih dari sekali).
     rows.forEach(r => { r.unvisited = Math.max(0, r.target - r.seen.size); });
@@ -4292,7 +4324,7 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
     });
     return { groups, grand };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fVisits, bengkels, kotaById, regionById, bengkelById, distById, level, kelas, byDistributor]);
+  }, [fVisits, bengkels, refCounts, kotaById, regionById, bengkelById, distById, level, kelas, byDistributor]);
 
   const pct = (n, t) => (t > 0 ? Math.round((n / t) * 100) : 0);
   const cell = (n, t) => `${n} (${pct(n, t)}%)`;
@@ -4338,8 +4370,7 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
     ...CATS.map(c => ({ key: c, label: SHORT[c] || c, get: r => r.cats[c], den: r => r.notSuccess, cat: true })),
   ];
   const ALL_COLS = [...NUM_COLS, { key: 'mdcover', label: 'MD Cover' }];
-  // Not Selling Federal ikut dihitung di Not Success, kolom rinciannya default disembunyikan.
-  const [hiddenCols, setHiddenCols] = useState(['Tidak jual oli Federal']);
+  const [hiddenCols, setHiddenCols] = useState([]);
   const show = (k) => !hiddenCols.includes(k);
   const toggleCol = (k) => setHiddenCols(h => (h.includes(k) ? h.filter(x => x !== k) : [...h, k]));
   const visibleNumCols = NUM_COLS.filter(c => show(c.key));
@@ -4552,7 +4583,7 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
         Total Target; Decline, Closed, Address Not Found &amp; Non-Workshop terhadap Not Success.
         Unvisited, Banner &amp; Poster angka saja.
         Unvisited = bengkel target yang belum pernah divisit, sedangkan Visited menghitung jumlah
-        visit sehingga bisa lebih dari 1 per bengkel. Not Success sudah termasuk Not Selling Federal.
+        visit sehingga bisa lebih dari 1 per bengkel.
       </p>
     </div>
   );
@@ -4690,6 +4721,7 @@ function AdminView({ profile }) {
   const [bengkelsLoading, setBengkelsLoading] = useState(true);
   const [detailVisitId, setDetailVisitId] = useState(null);
   const [editReqs, setEditReqs] = useState([]);   // permintaan izin edit foto dari MD
+  const [refCounts, setRefCounts] = useState([]); // jumlah bengkel master AA yang tak diimpor
 
   // silent=true → refresh data tanpa memunculkan layar Loading (cegah remount &
   // pindah section di Master Data setiap habis update).
@@ -4708,9 +4740,10 @@ function AdminView({ profile }) {
       api.fetchVisits(), api.fetchAccounts(),
       api.fetchRegions(), api.fetchKotas(), api.fetchDistributors(),
       api.fetchEditRequests().catch(() => []),
-    ]).then(([v, acc, r, k, d, er]) => {
+      api.fetchRefCounts().catch(() => []),
+    ]).then(([v, acc, r, k, d, er, rc]) => {
       setVisits(v); setAccounts(acc); setMds(acc.filter(a => a.role === 'md'));
-      setRegions(r); setKotas(k); setDistributors(d); setEditReqs(er);
+      setRegions(r); setKotas(k); setDistributors(d); setEditReqs(er); setRefCounts(rc);
       setLoading(false);
     }).catch(err => { console.error(err); setLoading(false); });
   };
@@ -4787,8 +4820,8 @@ function AdminView({ profile }) {
       </div>
 
       {tab === 'dashboard' && <DashboardTab visits={sVisits} mds={activeMds} onOpenVisit={openDetail} bengkels={bengkels} kotas={kotas} distributors={distributors} regions={regions} accounts={accounts} />}
-      {tab === 'laporan' && <LaporanTab visits={sVisits} bengkels={bengkels} kotas={kotas} regions={regions} accounts={accounts} distributors={distributors} />}
-      {tab === 'laporan_dist' && <LaporanTab mode="distributor" visits={sVisits} bengkels={bengkels} kotas={kotas} regions={regions} accounts={accounts} distributors={distributors} />}
+      {tab === 'laporan' && <LaporanTab visits={sVisits} bengkels={bengkels} kotas={kotas} regions={regions} accounts={accounts} distributors={distributors} refCounts={refCounts} />}
+      {tab === 'laporan_dist' && <LaporanTab mode="distributor" visits={sVisits} bengkels={bengkels} kotas={kotas} regions={regions} accounts={accounts} distributors={distributors} refCounts={refCounts} />}
       {tab === 'visits' && <VisitsTab visits={sVisits} mds={activeMds} bengkels={bengkels} kotas={kotas} distributors={distributors} regions={regions} onOpenVisit={openDetail} accounts={accounts} />}
       {tab === 'izin' && isSuperAdmin && (
         <IzinEditTab requests={editReqs} visits={visits} bengkels={bengkels} mds={mds}
@@ -5179,7 +5212,6 @@ function DashboardTab({ visits, mds, bengkels, kotas, regions, distributors, onO
           { label: 'Ditolak', value: countStatus('Ditolak'), sub: 'pemasangan ditolak', icon: X, color: 'rose' },
           { label: 'Bukan Bengkel', value: countStatus('Bukan bengkel'), sub: 'data tidak sesuai', icon: Building2, color: 'blue' },
           { label: 'Owner/PIC Tidak di Tempat', value: countStatus('Owner/PIC tidak di tempat'), sub: 'belum diizinkan', icon: User, color: 'sky' },
-          { label: 'Tidak Jual Oli Federal', value: countStatus('Tidak jual oli Federal'), sub: 'bukan penjual Federal', icon: AlertCircle, color: 'red' },
           { label: 'MD Aktif', value: activeMdCount, sub: `dari ${relevantMDs.length} MD · ada visit`, icon: Users, color: 'amber' },
         ].map((k, i) => (
           <div key={i} className="bg-slate-950 border border-slate-800 rounded-xl p-4">
