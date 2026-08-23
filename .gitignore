@@ -35,3 +35,7 @@ ops/backup/backup.log
 .supabase-db-password.txt
 .admin-credentials.txt
 supabase/.temp/
+
+# Rahasia tambahan utk brankas — JANGAN ke repo
+ops/brankas/tambahan/
+*.brankas
