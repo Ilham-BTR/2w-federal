@@ -22,7 +22,6 @@ dist-ssr
 # Artefak non-app (presentasi budget, dsb) — bukan bagian template
 *.pptx
 *.docx
-/scripts/
 
 # Backup tooling — config berisi service_role key & hasil dump (JANGAN ke repo)
 ops/backup/backup.config.json

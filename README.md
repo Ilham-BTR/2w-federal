@@ -50,8 +50,16 @@ Empat langkah: (1) Supabase database, (2) Backblaze B2 + Edge Function, (3) konf
 
 2. **Jalankan schema database:**
    - Dashboard → SQL Editor → New Query
-   - Copy seluruh isi `supabase/setup_fresh.sql` → paste → Run
-   - Cek di Table Editor: harus ada tabel `profiles`, `regions`, `kotas`, `distributors`, `bengkels`, `visits`, `attendances`
+   - Jalankan **seluruh file di `supabase/migrations/` secara berurutan**, dari
+     `0001_setup_fresh.sql` sampai nomor tertinggi. Urutannya wajib dipatuhi —
+     migrasi belakangan mengubah tabel & tipe data yang dibuat migrasi sebelumnya.
+   - Cek di Table Editor: harus ada tabel `profiles`, `regions`, `kotas`, `distributors`,
+     `bengkels`, `visits`, `attendances`, `visit_edit_requests`, `ref_counts`
+
+   > ⚠️ `supabase/setup_fresh.sql` di folder induk adalah **sisa versi lama** dan sudah
+   > tertinggal jauh (belum punya data Owner/PIC, target status, workshop class,
+   > distributor, izin edit foto). Jangan dipakai — `supabase/migrations/` adalah
+   > satu-satunya sumber schema yang benar.
 
 3. **Buat user pertama (admin):**
    - Authentication → Users → Add User → Create new user

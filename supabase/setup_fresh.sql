@@ -1,3 +1,13 @@
+-- ⚠️ FILE INI SUDAH TIDAK DIPAKAI — JANGAN DIJALANKAN
+--
+-- Isinya schema versi awal dan tertinggal jauh dari aplikasi: belum ada data
+-- Owner/PIC, target status, workshop class, distributor, izin edit foto, dan
+-- validasi wajib data PIC. Membangun database dari file ini menghasilkan
+-- struktur yang tidak cocok dengan app dan submit MD akan gagal.
+--
+-- Sumber schema yang benar: jalankan supabase/migrations/ secara berurutan
+-- dari 0001 sampai nomor tertinggi. Disimpan hanya sebagai rujukan sejarah.
+
 -- ============================================================
 -- 2W Federal MD — SETUP DATABASE (sekali jalan untuk project baru)
 -- ============================================================
