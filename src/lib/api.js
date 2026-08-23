@@ -829,6 +829,24 @@ export async function fetchVisits({ mdId, month } = {}) {
 }
 
 /**
+ * Ambil HANYA visit yang berubah sejak waktu tertentu.
+ * Dipakai penyegaran berkala di halaman MD. Menarik ulang seluruh daftar visit
+ * tiap menit menghabiskan puluhan MB egress per MD per hari, padahal yang
+ * ditunggu cuma keputusan admin (hasil cek foto / izin edit) yang jarang datang.
+ * @param {string} mdId
+ * @param {string} sejak - ISO timestamp penyegaran terakhir
+ */
+export async function fetchVisitsSince(mdId, sejak) {
+  if (MOCK_MODE) return [];
+  let q = supabase.from('visit_details').select('*').order('visit_date', { ascending: false });
+  if (mdId) q = q.eq('md_id', mdId);
+  if (sejak) q = q.gt('updated_at', sejak);
+  const { data, error } = await q;
+  if (error) throw error;
+  return data || [];
+}
+
+/**
  * Create visit: upload photos to B2, then insert row.
  * Kalau bengkel belum punya lat/lng di master, dan MD captured GPS,
  * otomatis backfill bengkels.lat/lng via RPC (idempotent).

@@ -2925,6 +2925,7 @@ function MDView({ currentMD, refreshKey, welcome, onWelcomeClose }) {
   const [bengkelsLoading, setBengkelsLoading] = useState(true);
   const [myRegionIds, setMyRegionIds] = useState([]);
   const [editReqs, setEditReqs] = useState([]);   // izin edit foto milik MD ini
+  const sinkronTerakhir = useRef(null);           // patokan penyegaran berkala (lihat segarkanPerubahan)
 
   const reloadEditReqs = async () => {
     setEditReqs(await api.fetchEditRequests(currentMD.id).catch(() => []));
@@ -2963,6 +2964,7 @@ function MDView({ currentMD, refreshKey, welcome, onWelcomeClose }) {
           api.fetchKotas(),
           api.fetchDistributors(),
         ]);
+        sinkronTerakhir.current = new Date().toISOString();
         setVisits(v); setRegions(r); setKotas(k); setDistributors(d);
       } catch (err) { console.error(err); }
       finally { setLoading(false); }
@@ -2971,12 +2973,29 @@ function MDView({ currentMD, refreshKey, welcome, onWelcomeClose }) {
 
   const reloadVisits = async () => {
     const v = await api.fetchVisits({ mdId: currentMD.id });
+    sinkronTerakhir.current = new Date().toISOString();
     setVisits(v);
+  };
+
+  // Penyegaran berkala hanya menarik baris yang BERUBAH sejak penyegaran
+  // terakhir. Menarik seluruh daftar tiap menit sempat memakan ~13 MB per MD
+  // per hari (10 GB sebulan untuk 30 MD) padahal umumnya tak ada perubahan.
+  const segarkanPerubahan = async () => {
+    const sejak = sinkronTerakhir.current;
+    if (!sejak) return reloadVisits();
+    const berubah = await api.fetchVisitsSince(currentMD.id, sejak);
+    sinkronTerakhir.current = new Date().toISOString();
+    if (!berubah.length) return;
+    setVisits(lama => {
+      const baru = new Map(lama.map(v => [v.id, v]));
+      berubah.forEach(v => baru.set(v.id, v));
+      return [...baru.values()].sort((a, b) => b.visit_date.localeCompare(a.visit_date));
+    });
   };
 
   // Keputusan admin (izin edit & hasil pengecekan foto) datang dari sisi lain,
   // jadi ditarik ulang berkala supaya MD tak perlu me-reload app.
-  useAutoRefresh(() => { reloadEditReqs(); reloadVisits().catch(() => {}); });
+  useAutoRefresh(() => { reloadEditReqs(); segarkanPerubahan().catch(() => {}); });
 
   if (loading) return <Loading />;
 
