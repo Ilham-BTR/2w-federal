@@ -3263,6 +3263,26 @@ function MDDashboard({ currentMD, visits, bengkels, kotas }) {
   );
 }
 
+/**
+ * Penanda "MD sedang di tengah proses yang tak boleh diputus" — foto sedang
+ * diunggah atau visit sedang dikirim. Dipakai layar Wajib Perbarui supaya
+ * app tidak di-reload tepat saat data belum sampai ke server.
+ * Isian form sendiri aman: draf menyimpan URL foto yang sudah terunggah,
+ * jadi setelah reload MD ditawari melanjutkan.
+ */
+let kerjaBerjalan = false;
+const pendengarKerja = new Set();
+function setKerjaBerjalan(nilai) {
+  if (nilai === kerjaBerjalan) return;
+  kerjaBerjalan = nilai;
+  pendengarKerja.forEach(f => f(nilai));
+}
+function useKerjaBerjalan() {
+  const [v, setV] = useState(kerjaBerjalan);
+  useEffect(() => { pendengarKerja.add(setV); return () => { pendengarKerja.delete(setV); }; }, []);
+  return v;
+}
+
 function VisitForm({ currentMD, bengkels, bengkelsLoading = false, regions, kotas, distributors, onSubmitted, onNeedAbsen, myRegionIds: initialRegionIds }) {
   const DRAFT_KEY = `visitDraft:${currentMD.id}`;
   const emptyPhotos = {
@@ -3317,6 +3337,14 @@ function VisitForm({ currentMD, bengkels, bengkelsLoading = false, regions, kota
     } catch { hapusDraf(); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Kabari layar Wajib Perbarui saat ada foto yang sedang naik atau visit
+  // sedang dikirim, supaya reload paksa ditunda sampai prosesnya kelar.
+  const adaFotoNaik = Object.values(form.photos).some(p => p?.status === 'uploading');
+  useEffect(() => {
+    setKerjaBerjalan(submitting || adaFotoNaik);
+    return () => setKerjaBerjalan(false);
+  }, [submitting, adaFotoNaik]);
 
   useEffect(() => {
     if (submitted) return;
@@ -7303,20 +7331,74 @@ function useVersiBaru() {
   return adaVersiBaru;
 }
 
-function BannerVersiBaru() {
-  return (
-    <div className="sticky top-0 z-50 bg-amber-500 text-slate-950">
-      <div className="max-w-[1800px] mx-auto px-4 py-2 flex items-center justify-between gap-3 flex-wrap">
-        <div className="text-xs font-semibold flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          Ada versi baru aplikasi. Perbarui dulu supaya data bisa tersimpan.
+/**
+ * Layar Wajib Perbarui — menutup seluruh app dan tidak bisa ditutup.
+ *
+ * Sebelumnya cuma spanduk yang bisa diabaikan, akibatnya ada MD yang berhari-hari
+ * memakai bundle lama: boros egress dan bisa ditolak server saat submit karena
+ * aturan datanya sudah berubah.
+ *
+ * Dua pengaman supaya tak ada kerjaan yang hilang:
+ *   - selama foto sedang naik / visit sedang dikirim, reload ditahan dulu
+ *   - hitung mundur baru berjalan setelah prosesnya selesai
+ * Isian yang belum dikirim tetap aman lewat draf (URL foto ikut tersimpan).
+ */
+function LayarWajibPerbarui() {
+  const sibukMentah = useKerjaBerjalan();
+  const [sisa, setSisa] = useState(30);
+
+  // Pengaman: kalau proses kirim tersangkut (sinyal mati di tengah upload),
+  // penundaan tidak boleh berlaku selamanya — MD justru terkunci di versi lama.
+  const [tungguSibuk, setTungguSibuk] = useState(0);
+  useEffect(() => {
+    if (!sibukMentah) { setTungguSibuk(0); return; }
+    const t = setTimeout(() => setTungguSibuk(n => n + 1), 1000);
+    return () => clearTimeout(t);
+  }, [sibukMentah, tungguSibuk]);
+  const sibuk = sibukMentah && tungguSibuk < 120;   // tunggu maksimal 2 menit
+
+  const perbarui = () => {
+    // Buang cache index.html supaya reload benar-benar mengambil bundle baru.
+    location.replace(location.pathname + '?v=' + Date.now());
+  };
+
+  useEffect(() => {
+    if (sibuk) { setSisa(30); return; }          // tunggu sampai upload/submit kelar
+    if (sisa <= 0) { perbarui(); return; }
+    const t = setTimeout(() => setSisa(s => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [sisa, sibuk]);
+
+  return createPortal(
+    <div className="fixed inset-0 z-[100] bg-slate-950/95 backdrop-blur-sm flex items-center justify-center p-5">
+      <div className="w-full max-w-sm rounded-2xl bg-slate-900 border border-amber-500/40 p-6 text-center">
+        <div className="w-14 h-14 mx-auto rounded-full bg-amber-500/15 flex items-center justify-center mb-4">
+          <AlertCircle className="w-7 h-7 text-amber-400" />
         </div>
-        <button onClick={() => location.reload()}
-          className="px-3 py-1.5 rounded-lg bg-slate-950 text-amber-400 text-xs font-bold hover:bg-slate-800 transition shrink-0">
-          Perbarui Sekarang
-        </button>
+        <h2 className="text-lg font-bold text-white mb-2">Pembaruan Aplikasi</h2>
+        <p className="text-sm text-slate-300 leading-relaxed mb-5">
+          Ada versi baru. Aplikasi harus diperbarui dulu sebelum bisa dipakai lagi.
+          Isian yang belum dikirim tetap tersimpan dan bisa dilanjutkan setelah ini.
+        </p>
+
+        {sibuk ? (
+          <div className="text-xs text-amber-300 font-semibold py-3">
+            Menunggu proses pengiriman selesai… jangan tutup aplikasi.
+          </div>
+        ) : (
+          <>
+            <button onClick={perbarui}
+              className="w-full py-3 rounded-xl bg-amber-500 text-slate-950 font-bold hover:bg-amber-400 transition">
+              Perbarui Sekarang
+            </button>
+            <div className="text-[11px] text-slate-500 mt-3">
+              Otomatis diperbarui dalam {sisa} detik
+            </div>
+          </>
+        )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -7352,7 +7434,7 @@ export default function App() {
         h1, h2, h3, .font-display { font-family: 'Archivo', sans-serif; letter-spacing: -0.02em; }
       `}</style>
 
-      {adaVersiBaru && <BannerVersiBaru />}
+      {adaVersiBaru && <LayarWajibPerbarui />}
 
       {bootstrapping ? <Loading /> :
        !profile ? <LoginScreen onLogin={handleLogin} /> :
