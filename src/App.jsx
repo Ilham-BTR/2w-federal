@@ -6706,15 +6706,22 @@ function MasterTab({ regions, kotas, distributors, bengkels, mds, accounts = [],
   // Bisa cari beberapa data sekaligus — pisahkan dengan koma / titik koma / baris baru.
   // Item cocok kalau mengandung SALAH SATU kata kunci (OR).
   const searchTerms = search.trim().toLowerCase().split(/[,;\n]+/).map(t => t.trim()).filter(Boolean);
-  const kotaRegionOf = (kotaId) => kotas.find(k => k.id === kotaId)?.region_id;
+  // Peta dibangun sekali, bukan dicari ulang untuk tiap baris. Dulu tiap
+  // bengkel memanggil kotas.find() (dan regions.find() saat filter grup aktif),
+  // jadi 7.613 bengkel x 187 kota = ~100 ms tiap ketikan di kotak cari.
+  const regionOfKota = useMemo(() => new Map(kotas.map(k => [k.id, k.region_id])), [kotas]);
+  const grupKota = useMemo(() => {
+    const regById = new Map(regions.map(r => [r.id, r]));
+    return new Map(kotas.map(k => [k.id, groupOfRegion(regById.get(k.region_id))]));
+  }, [kotas, regions]);
   const filteredItems = current.items.filter(it => {
     // Filter region/kota (khusus list bengkel)
     if (section === 'bengkels') {
       if (filterClass && it.workshop_class !== filterClass) return false;
       if (filterTarget === 'target' && it.is_target === false) return false;
       if (filterTarget === 'non' && it.is_target !== false) return false;
-      if (filterGroup && groupOfRegion(regions.find(r => r.id === kotaRegionOf(it.kota_id))) !== filterGroup) return false;
-      if (filterRegion && kotaRegionOf(it.kota_id) !== filterRegion) return false;
+      if (filterGroup && grupKota.get(it.kota_id) !== filterGroup) return false;
+      if (filterRegion && regionOfKota.get(it.kota_id) !== filterRegion) return false;
       if (filterKota && it.kota_id !== filterKota) return false;
     }
     if (searchTerms.length) {
