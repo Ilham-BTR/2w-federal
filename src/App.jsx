@@ -159,7 +159,7 @@ const visitToCSVRow = (v, ctx) => {
   const k = b ? ctx.kotas.find(x => x.id === b.kota_id) : null;
   const r = k ? ctx.regions.find(x => x.id === k.region_id) : null;
   const md = ctx.mds.find(x => x.id === v.md_id);
-  const photoCount = PHOTO_KEYS.filter(key => v[key]).length;
+  const photoCount = v.photo_count ?? PHOTO_KEYS.filter(key => v[key]).length;
   return {
     visit_id: v.id,
     tanggal: excelDateSerial(v.visit_date),
@@ -620,6 +620,17 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
   const [lightboxIdx, setLightboxIdx] = useState(null);
   // Pengecekan admin/AA: tiap foto dinilai Sesuai/Tidak, 1 remarks untuk seluruh visit.
   const [checks, setChecks] = useState(() => visit.photo_checks || {});
+  // Foto & photo_checks tak lagi ikut di tarikan daftar (hemat egress). Ditarik
+  // saat modal dibuka lalu disuntik lewat urlFoto; checks diisi ulang dari sini.
+  const [fotoVisit, setFotoVisit] = useState(() => (visit.photo_selfie !== undefined ? visit : null));
+  useEffect(() => {
+    let batal = false;
+    if (visit.photo_selfie !== undefined) return;   // sudah lengkap (mis. mock)
+    api.fetchVisitPhotos(visit.id)
+      .then(d => { if (batal) return; setFotoVisit(d); setChecks(d.photo_checks || {}); })
+      .catch(() => { if (!batal) setFotoVisit({}); });
+    return () => { batal = true; };
+  }, [visit.id]);   // eslint-disable-line react-hooks/exhaustive-deps
   const [checkRemarks, setCheckRemarks] = useState(visit.check_remarks || '');
   const [savingCheck, setSavingCheck] = useState(false);
   const [checkSaved, setCheckSaved] = useState(false);
@@ -781,7 +792,7 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
   // Slot yang relevan mengikuti hasil visit: selain "Berhasil Pasang" cukup
   // selfie + tampak depan (before). Slot yang terlanjur berisi tetap ditampilkan
   // supaya foto lama tidak hilang begitu saja saat hasil visit diubah.
-  const urlFoto = (k) => (k in photoOverrides ? photoOverrides[k] : visit[k]);
+  const urlFoto = (k) => (k in photoOverrides ? photoOverrides[k] : (fotoVisit ? fotoVisit[k] : undefined));
   const SLOT_DASAR = ['photo_selfie', 'photo_before'];
   const photoSlots = PHOTO_KEYS
     .filter(k => statusLocal === HASIL_TERPASANG || SLOT_DASAR.includes(k) || urlFoto(k))
@@ -1089,9 +1100,9 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
                               checks[p.key] === 'bad' ? 'bg-rose-600 border-rose-600 text-white' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-rose-400'
                             }`}><X className="w-3 h-3" />Tidak</button>
                         </div>
-                      ) : p.url && visit.photo_checks?.[p.key] && (
-                        <div className={`mt-1.5 text-[10px] font-semibold flex items-center gap-1 ${visit.photo_checks[p.key] === 'ok' ? 'text-emerald-400' : 'text-rose-400'}`}>
-                          {visit.photo_checks[p.key] === 'ok' ? <><Check className="w-3 h-3" />Sesuai</> : <><X className="w-3 h-3" />Tidak Sesuai</>}
+                      ) : p.url && fotoVisit?.photo_checks?.[p.key] && (
+                        <div className={`mt-1.5 text-[10px] font-semibold flex items-center gap-1 ${fotoVisit.photo_checks[p.key] === 'ok' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {fotoVisit.photo_checks[p.key] === 'ok' ? <><Check className="w-3 h-3" />Sesuai</> : <><X className="w-3 h-3" />Tidak Sesuai</>}
                         </div>
                       )}
                     </div>
@@ -1181,7 +1192,7 @@ function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDe
               </div>
               <div className={`text-sm font-semibold ${visit.check_status === 'Sesuai' ? 'text-emerald-400' : 'text-rose-400'}`}>{visit.check_status}</div>
               {(() => {
-                const bad = Object.entries(visit.photo_checks || {}).filter(([, s]) => s === 'bad').map(([col]) => PHOTO_LABELS[col] || col);
+                const bad = Object.entries(fotoVisit?.photo_checks || {}).filter(([, s]) => s === 'bad').map(([col]) => PHOTO_LABELS[col] || col);
                 if (!bad.length) return null;
                 return (
                   <div className="mt-2 p-2.5 bg-rose-600/10 border border-rose-600/30 rounded-lg">
@@ -3696,7 +3707,7 @@ function VisitHistory({ visits, bengkels, kotas, distributors, currentMD, onUpda
         const b = findBengkel(v.bengkel_id);
         const k = b ? findKota(b.kota_id) : null;
         const d = findDist(v.distributor_id);
-        const photoCount = PHOTO_KEYS.filter(key => v[key]).length;
+        const photoCount = v.photo_count ?? PHOTO_KEYS.filter(key => v[key]).length;
         return (
           <div key={v.id} onClick={() => setDetailId(v.id)}
             className="bg-slate-950 border border-slate-800 rounded-xl p-4 hover:border-slate-700 transition cursor-pointer">
@@ -4126,7 +4137,8 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
 
     // ---------- Sheet 2: Raw Data (semua visit sesuai filter) ----------
     const ctx = { bengkels, kotas, regions, mds: (accounts || []).filter(a => a.role === 'md'), accounts };
-    const raw = fVisits.map(v => visitToCSVRow(v, ctx));
+    const fVisitsFoto = await api.mergeVisitPhotos(fVisits);
+    const raw = fVisitsFoto.map(v => visitToCSVRow(v, ctx));
     const ws2 = XLSX.utils.json_to_sheet(raw.length ? raw : [{ info: 'Tidak ada visit pada filter ini' }], { cellDates: true });
     if (raw.length) {
       const cols = Object.keys(raw[0]);
@@ -4639,7 +4651,9 @@ function VisitsTab({ visits, mds, bengkels, kotas, distributors, regions, onOpen
 
   const handleExport = async () => {
     const ctx = { bengkels, kotas, regions, distributors, mds, accounts };
-    await exportVisitsXlsx(filtered, ctx, `visits_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    // Foto tak ikut di daftar; tarik URL-nya untuk baris terfilter sebelum export.
+    const withFoto = await api.mergeVisitPhotos(filtered);
+    await exportVisitsXlsx(withFoto, ctx, `visits_${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
   return (
@@ -4709,7 +4723,7 @@ function VisitsTab({ visits, mds, bengkels, kotas, distributors, regions, onOpen
             const k = b ? findKota(b.kota_id) : null;
             const r = k ? findRegion(k.region_id) : null;
             const md = findMD(v.md_id);
-            const photoCount = PHOTO_KEYS.filter(key => v[key]).length;
+            const photoCount = v.photo_count ?? PHOTO_KEYS.filter(key => v[key]).length;
             return (
               <button key={v.id} onClick={() => onOpenVisit(v.id)}
                 className="w-full text-left bg-slate-950 hover:bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-lg px-3 py-2 transition group flex items-center gap-3">
@@ -4860,7 +4874,8 @@ function DashboardTab({ visits, mds, bengkels, kotas, regions, distributors, onO
   const handleExport = async () => {
     const ctx = { bengkels, kotas, regions, distributors, mds, accounts };
     const fname = `visits_${filters.month}_${new Date().toISOString().slice(0, 10)}.xlsx`;
-    await exportVisitsXlsx(filteredVisits, ctx, fname);
+    const withFoto = await api.mergeVisitPhotos(filteredVisits);
+    await exportVisitsXlsx(withFoto, ctx, fname);
   };
 
   // Recent 5 visits dari filter
@@ -4986,7 +5001,7 @@ function DashboardTab({ visits, mds, bengkels, kotas, regions, distributors, onO
             {recentVisits.map(v => {
               const b = bengkels.find(x => x.id === v.bengkel_id);
               const md = mds.find(m => m.id === v.md_id);
-              const photoCount = PHOTO_KEYS.filter(key => v[key]).length;
+              const photoCount = v.photo_count ?? PHOTO_KEYS.filter(key => v[key]).length;
               return (
                 <button key={v.id} onClick={() => onOpenVisit?.(v.id)}
                   className="w-full text-left flex items-center gap-3 p-3 rounded-lg bg-slate-950 border border-slate-800 hover:border-slate-700 transition group">

@@ -700,6 +700,54 @@ export async function deleteMaster(table, id) {
 // ============================================================
 // VISITS
 // ============================================================
+// Kolom daftar visit TANPA 9 URL foto (+ photo_checks). URL foto itu string
+// panjang; menariknya untuk ribuan baris = ~1,87 MB tiap halaman dibuka,
+// padahal daftar cuma butuh JUMLAH foto (kolom photo_count di view). Foto
+// aslinya ditarik belakangan lewat fetchVisitPhotos saat satu visit dibuka.
+const KOLOM_DAFTAR = [
+  'id','md_id','bengkel_id','visit_date','status','remarks','visit_lat','visit_lng',
+  'created_at','updated_at','check_status','check_remarks','checked_by','checked_at',
+  'owner_name','owner_phone','spanduk_size','planogram_allowed',
+  'md_name','md_email','bengkel_code','bengkel_name','kota_name','region_name',
+  'checked_by_name','photo_count',
+].join(',');
+
+// Kolom foto (dibutuhkan modal detail & export), ditarik terpisah & sesuai kebutuhan.
+const KOLOM_FOTO = [
+  'photo_selfie','photo_before','photo_after','photo_spanduk_jauh','photo_spanduk_sedang',
+  'photo_poster','photo_selfie_pic','photo_planogram_before','photo_planogram_after','photo_checks',
+].join(',');
+
+// Ambil kolom foto 1 visit — dipanggil saat modal detail dibuka.
+export async function fetchVisitPhotos(visitId) {
+  if (MOCK_MODE) {
+    const v = MOCK_DATA.visits.find(x => x.id === visitId) || {};
+    const out = {};
+    KOLOM_FOTO.split(',').forEach(k => { out[k] = v[k] ?? null; });
+    return out;
+  }
+  const { data, error } = await supabase.from('visit_details')
+    .select('id,' + KOLOM_FOTO).eq('id', visitId).single();
+  if (error) throw error;
+  return data || {};
+}
+
+// Tempelkan kolom foto ke sekumpulan visit (untuk export Excel yang butuh URL).
+// Dipanggil hanya saat user menekan Export — jarang, jadi payload besar OK.
+export async function mergeVisitPhotos(visits) {
+  if (MOCK_MODE || !visits?.length) return visits;
+  const ids = visits.map(v => v.id);
+  const byId = new Map();
+  const CH = 300;
+  for (let i = 0; i < ids.length; i += CH) {
+    const { data, error } = await supabase.from('visit_details')
+      .select('id,' + KOLOM_FOTO).in('id', ids.slice(i, i + CH));
+    if (error) throw error;
+    (data || []).forEach(r => byId.set(r.id, r));
+  }
+  return visits.map(v => ({ ...v, ...(byId.get(v.id) || {}) }));
+}
+
 export async function fetchVisits({ mdId, month } = {}) {
   if (MOCK_MODE) {
     let v = [...MOCK_DATA.visits];
@@ -711,7 +759,7 @@ export async function fetchVisits({ mdId, month } = {}) {
   const buildQuery = () => {
     let query = supabase
       .from('visit_details')
-      .select('*')
+      .select(KOLOM_DAFTAR)
       .order('visit_date', { ascending: false });
     if (mdId) query = query.eq('md_id', mdId);
     if (month) {
@@ -736,7 +784,7 @@ export async function fetchVisits({ mdId, month } = {}) {
  */
 export async function fetchVisitsSince(mdId, sejak) {
   if (MOCK_MODE) return [];
-  let q = supabase.from('visit_details').select('*').order('visit_date', { ascending: false });
+  let q = supabase.from('visit_details').select(KOLOM_DAFTAR).order('visit_date', { ascending: false });
   if (mdId) q = q.eq('md_id', mdId);
   if (sejak) q = q.gt('updated_at', sejak);
   const { data, error } = await q;
