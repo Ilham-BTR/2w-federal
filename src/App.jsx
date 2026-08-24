@@ -33,6 +33,7 @@ import {
 } from './lib/format';
 import {
   StatusBadge, Section, Field, Input, Select, Textarea, SearchableSelect, Button, formatSize,
+  StoredImage, DateRangeRow, OnSiteBadge, CheckBadge, Loading,
 } from './components/ui';
 
 // Custom pin marker factory (inline SVG via divIcon — no asset path issues)
@@ -476,24 +477,6 @@ const BengkelPickerMap = ({ lat, lng, onChange }) => {
 const isPlaceholderPhoto = (url) => !url || url === 'mock';
 
 // Render foto yang otomatis resolve ref IndexedDB → blob URL
-function StoredImage({ src, alt, className, onClick }) {
-  const [resolved, setResolved] = useState(src?.startsWith('idb:') ? null : src);
-  useEffect(() => {
-    let active = true;
-    if (src?.startsWith('idb:')) {
-      setResolved(null);
-      getPhotoURL(src.slice(4)).then(u => { if (active) setResolved(u); });
-    } else {
-      setResolved(src);
-    }
-    return () => { active = false; };
-  }, [src]);
-
-  if (!resolved) {
-    return <div className={`flex items-center justify-center bg-slate-900 ${className || ''}`}><Loader2 className="w-5 h-5 text-slate-600 animate-spin" /></div>;
-  }
-  return <img src={resolved} alt={alt} className={className} onClick={onClick} />;
-}
 
 // Setelan kompresi foto — dipakai SEMUA jalur upload (foto visit MD, selfie
 // absen, dan ganti/tambah foto oleh admin) supaya kualitasnya seragam.
@@ -1795,23 +1778,6 @@ function AbsenForm({ kind, currentMD, todayStr, onCancel, onDone }) {
 
 // Rekap absen semua MD untuk admin (per tanggal)
 // Baris filter rentang tanggal (Dari–Sampai + Reset) — dipakai di beberapa tab admin
-function DateRangeRow({ dari, sampai, onDari, onSampai, onReset, className = '' }) {
-  return (
-    <div className={`flex items-center gap-2 text-xs text-slate-500 ${className}`}>
-      <span className="flex items-center gap-1.5 shrink-0">
-        <CalendarDays className="w-3.5 h-3.5" /><span className="hidden sm:inline">Rentang tanggal:</span>
-      </span>
-      <input type="date" value={dari} onChange={e => onDari(e.target.value)}
-        className="flex-1 min-w-0 bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-600/50 [color-scheme:dark]" />
-      <span className="text-slate-600 shrink-0">–</span>
-      <input type="date" value={sampai} onChange={e => onSampai(e.target.value)}
-        className="flex-1 min-w-0 bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-600/50 [color-scheme:dark]" />
-      {(dari || sampai) && (
-        <button onClick={onReset} className="text-blue-400 hover:text-blue-300 font-medium shrink-0">Reset</button>
-      )}
-    </div>
-  );
-}
 
 function AdminAbsenTab({ mds, allowedMdIds, isSuperAdmin, regions = [] }) {
   const monthsList = useMemo(() => {
@@ -4234,26 +4200,8 @@ function AdminView({ profile }) {
 // ============================================================
 
 // Badge on-site: hitung jarak visit_lat/lng ↔ koordinat bengkel (dari data yang ada)
-function OnSiteBadge({ bengkel, visit }) {
-  if (visit.visit_lat == null || visit.visit_lng == null || bengkel?.lat == null || bengkel?.lng == null) return null;
-  const d = haversineMeters(bengkel.lat, bengkel.lng, visit.visit_lat, visit.visit_lng);
-  if (d < 100) return <span className="text-[10px] text-emerald-400 flex items-center gap-0.5" title={`${formatDistance(d)} dari bengkel`}><MapPin className="w-2.5 h-2.5" />on-site</span>;
-  if (d > 500) return <span className="text-[10px] text-rose-400 flex items-center gap-0.5" title={`${formatDistance(d)} dari bengkel`}><AlertCircle className="w-2.5 h-2.5" />{formatDistance(d)}</span>;
-  return null; // 100–500m: netral, tidak ditampilkan agar tidak ramai
-}
 
 // Badge status pengecekan admin — dipakai di daftar visit (admin) & history MD.
-function CheckBadge({ visit }) {
-  if (!visit.check_status) {
-    return <span className="text-[10px] text-slate-500 flex items-center gap-0.5" title="Belum dicek admin"><Shield className="w-2.5 h-2.5" />belum dicek</span>;
-  }
-  const ok = visit.check_status === 'Sesuai';
-  return (
-    <span className={`text-[10px] flex items-center gap-0.5 ${ok ? 'text-emerald-400' : 'text-rose-400'}`} title={visit.check_remarks || visit.check_status}>
-      {ok ? <Check className="w-2.5 h-2.5" /> : <X className="w-2.5 h-2.5" />}{visit.check_status.toLowerCase()}
-    </span>
-  );
-}
 
 function VisitsTab({ visits, mds, bengkels, kotas, distributors, regions, onOpenVisit, accounts = [] }) {
   const [filters, setFilters] = useState({
@@ -6613,13 +6561,6 @@ function MasterTab({ regions, kotas, distributors, bengkels, mds, accounts = [],
 // SHARED
 // ============================================================
 
-function Loading() {
-  return (
-    <div className="flex items-center justify-center py-20">
-      <Loader2 className="w-6 h-6 text-slate-500 animate-spin" />
-    </div>
-  );
-}
 
 // ============================================================
 // ROOT APP
