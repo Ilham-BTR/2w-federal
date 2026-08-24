@@ -39,3 +39,6 @@ supabase/.temp/
 # Rahasia tambahan utk brankas — JANGAN ke repo
 ops/brankas/tambahan/
 *.brankas
+
+# Output graphify (turunan, bisa di-generate ulang)
+graphify-out/
