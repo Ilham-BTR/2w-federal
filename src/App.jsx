@@ -2725,8 +2725,7 @@ function MDView({ currentMD, refreshKey, welcome, onWelcomeClose }) {
       {(() => {
         const perlu = visits.filter(v => v.check_status === 'Tidak Sesuai');
         if (!perlu.length) return null;
-        const totalFoto = perlu.reduce(
-          (s, v) => s + Object.values(v.photo_checks || {}).filter(x => x === 'bad').length, 0);
+        const totalFoto = perlu.reduce((s, v) => s + (v.bad_photo_count || 0), 0);
         return (
           <div className="mb-4 p-3.5 bg-rose-600/10 border border-rose-600/40 rounded-xl flex items-start gap-3">
             <div className="w-8 h-8 rounded-full bg-rose-600/20 flex items-center justify-center shrink-0">
@@ -3977,8 +3976,8 @@ function LaporanTab({ visits, bengkels, kotas, regions, accounts = [], distribut
       row.seen.add(v.bengkel_id);
       if (v.status === HASIL_TERPASANG) {
         row.terpasang++;
-        if (v.photo_spanduk_jauh || v.photo_spanduk_sedang) row.spanduk++;   // bukti spanduk ada
-        if (v.photo_poster) row.poster++;                                     // poster ikut terpasang
+        if (v.has_spanduk) row.spanduk++;   // bukti spanduk ada (kolom ringkas dari view)
+        if (v.has_poster) row.poster++;     // poster ikut terpasang
       } else if (row.cats[v.status] != null) { row.cats[v.status]++; row.notSuccess++; }
     });
 

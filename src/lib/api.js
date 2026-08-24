@@ -709,7 +709,7 @@ const KOLOM_DAFTAR = [
   'created_at','updated_at','check_status','check_remarks','checked_by','checked_at',
   'owner_name','owner_phone','spanduk_size','planogram_allowed',
   'md_name','md_email','bengkel_code','bengkel_name','kota_name','region_name',
-  'checked_by_name','photo_count',
+  'checked_by_name','photo_count','has_spanduk','has_poster','bad_photo_count',
 ].join(',');
 
 // Kolom foto (dibutuhkan modal detail & export), ditarik terpisah & sesuai kebutuhan.
