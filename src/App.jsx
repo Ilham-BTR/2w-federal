@@ -21,6 +21,12 @@ import L from 'leaflet';
 import { MOCK_MODE } from './lib/supabase';
 import * as api from './lib/api';
 import { getPhotoURL } from './lib/photoStore';
+import {
+  FOTO_KOMPRES, PHOTO_LABELS, PHOTO_KEYS, CONTOH_FOTO, UKURAN_SPANDUK,
+  EXPORT_PHOTO_SKIP, EXPORT_PHOTO_HEADER, PHOTO_COL_TO_UIKEY, KPI_ICON_COLOR,
+  REGION_GROUP_OF, groupOfRegion, HASIL_TERPASANG, STATUS_OPTIONS, STATUS_STYLES,
+  COLUMN_ALIASES,
+} from './lib/constants';
 
 // Custom pin marker factory (inline SVG via divIcon — no asset path issues)
 const makePinIcon = (color = '#2563eb', pulse = true) => L.divIcon({
@@ -530,68 +536,6 @@ function StoredImage({ src, alt, className, onClick }) {
 // FHD 1920px, plafon 800KB. Plafon sengaja longgar: kalau terlalu ketat,
 // library menurunkan kualitas JPEG sampai foto beresolusi tinggi malah
 // terlihat berblok. Foto bengkel biasanya mendarat di 450-650KB.
-const FOTO_KOMPRES = {
-  maxSizeMB: 0.8,
-  maxWidthOrHeight: 1920,
-  useWebWorker: true,
-  fileType: 'image/jpeg',
-  initialQuality: 0.85,
-};
-
-const PHOTO_LABELS = {
-  photo_selfie:            'Selfie Depan Bengkel',
-  photo_before:            'Tampak Depan (Before)',
-  photo_after:             'Tampak Depan (After)',
-  photo_selfie_pic:        'Selfie dengan Owner/PIC',
-  photo_spanduk_jauh:      'Spanduk Jarak Jauh',
-  photo_spanduk_sedang:    'Spanduk Jarak Sedang',
-  photo_poster:            'Foto Poster',
-  photo_planogram_before:  'Rack Display Oil / Planogram (Before)',
-  photo_planogram_after:   'Rack Display Oil / Planogram (After)',
-};
-
-// Contoh foto acuan dari AA — ditampilkan sebelum MD memotret slot tersebut.
-// File ada di public/contoh (sudah dikecilkan), key = uiKey di form visit.
-const CONTOH_FOTO = {
-  selfie:        '/contoh/selfie.jpg',
-  before:        '/contoh/tampak-depan-before.jpg',
-  after:         '/contoh/tampak-depan-after.jpg',
-  spandukJauh:   '/contoh/spanduk-jauh.jpg',
-  spandukSedang:   '/contoh/spanduk-sedang.jpg',
-  poster:          '/contoh/poster.jpg',
-  planogramAfter:  '/contoh/planogram-after.jpg',
-};
-
-// Pilihan rekomendasi ukuran spanduk untuk bengkel (diisi MD saat berhasil pasang).
-const UKURAN_SPANDUK = [
-  '2x1 meter', '2x0.6 meter', '2x0.8 meter',
-  '3x1 meter', '3x0.6 meter', '3x0.8 meter',
-  '6x1 meter', '9x1 meter',
-];
-const PHOTO_KEYS = Object.keys(PHOTO_LABELS);
-const EXPORT_PHOTO_SKIP = new Set();
-const EXPORT_PHOTO_HEADER = {
-  photo_selfie:            'link_selfie',
-  photo_before:            'link_before',
-  photo_after:             'link_after',
-  photo_selfie_pic:        'link_selfie_pic',
-  photo_spanduk_jauh:      'link_spanduk_jauh',
-  photo_spanduk_sedang:    'link_spanduk_sedang',
-  photo_poster:            'link_poster',
-  photo_planogram_before:  'link_planogram_before',
-  photo_planogram_after:   'link_planogram_after',
-};
-// Kolom DB foto -> UI key (uploadOneVisitPhoto butuh UI key, mis. 'tampakDepan')
-const PHOTO_COL_TO_UIKEY = Object.fromEntries(
-  Object.entries(VISIT_PHOTO_MAP).map(([uiKey, m]) => [m.col, uiKey])
-);
-// Warna ikon kartu KPI -> class LITERAL. Tailwind hanya generate class yang
-// muncul utuh di source; `text-${x}-500` dinamis TIDAK ke-generate (mis. sky/amber
-// jadi tak berwarna). Simpan literal di sini supaya semua warna kartu benar muncul.
-const KPI_ICON_COLOR = {
-  red: 'text-blue-500', emerald: 'text-emerald-500', sky: 'text-sky-500',
-  blue: 'text-blue-500', amber: 'text-amber-500', rose: 'text-rose-500',
-};
 
 function VisitDetailModal({ visit, bengkel, kota, distributor, md, onClose, onDeleted, canEdit = false, onUpdated, bengkels = [], distributors = [], canCheck = false, checkerId = null, canEditRemarks = false, editRequest = null, onRequestEdit = null }) {
   // MD boleh mengubah foto visit ini kalau super admin sudah memberi izin dan
@@ -1323,45 +1267,6 @@ const InfoCell = ({ icon: Icon, label, value }) => (
 // UI PRIMITIVES
 // ============================================================
 
-// Hierarki wilayah: REGION (7 grup besar) -> Provinsi (tabel regions) -> Kota -> Bengkel.
-// Mapping statis dari master db 2 W.xlsx (kolom Region per provinsi).
-const REGION_GROUP_OF = {
-  'Aceh': 'Sumbagut', 'Bali': 'Bali-Nusra', 'Banten': 'Jabodetabek-Banten',
-  'Bengkulu': 'Sumbagsel', 'Di Yogyakarta': 'Jateng-DIY', 'Dki Jakarta': 'Jabodetabek-Banten',
-  'Jambi': 'Sumbagsel', 'Jawa Barat': 'Jabodetabek-Banten', 'Jawa Tengah': 'Jateng-DIY',
-  'Jawa Timur': 'Jawa Timur', 'Kalimantan Barat': 'Kalimantan', 'Kalimantan Selatan': 'Kalimantan',
-  'Kalimantan Tengah': 'Kalimantan', 'Kalimantan Timur': 'Kalimantan',
-  'Kepulauan Bangka Belitung': 'Sumbagsel', 'Kepulauan Riau': 'Sumbagut', 'Lampung': 'Sumbagsel',
-  'Nusa Tenggara Barat': 'Bali-Nusra', 'Nusa Tenggara Timur': 'Bali-Nusra',
-  'Gorontalo': 'Sulawesi', 'Sulawesi Barat': 'Sulawesi', 'Sulawesi Utara': 'Sulawesi',
-  'Kalimantan Utara': 'Kalimantan',
-  'Riau': 'Sumbagut', 'Sulawesi Selatan': 'Sulawesi',
-  'Sulawesi Tengah': 'Sulawesi', 'Sulawesi Tenggara': 'Sulawesi',
-  'Sumatera Selatan': 'Sumbagsel', 'Sumatera Utara': 'Sumbagut',
-};
-const groupOfRegion = (r) => REGION_GROUP_OF[r?.name] || 'Lainnya';
-
-// Hasil visit 2W Federal — 1 tingkat. "Berhasil Pasang" membuka foto lanjutan (after/spanduk/poster).
-// Nilai ini = label enum visit_status di database (lihat migrasi 0012).
-const HASIL_TERPASANG = 'Berhasil Pasang';
-const STATUS_OPTIONS = [
-  HASIL_TERPASANG,
-  'Alamat bengkel tidak ditemukan',
-  'Ditolak',
-  'Bukan bengkel',
-  'Owner/PIC tidak di tempat',
-];
-// Dihapus dari pilihan MD (Agustus 2026) — bengkel yang tak jual oli Federal
-// dicatat sebagai "Ditolak". Nilai enum-nya sengaja dibiarkan ada di database
-// supaya app versi lama yang belum di-refresh tidak gagal saat submit.
-const STATUS_STYLES = {
-  [HASIL_TERPASANG]:                { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/30', dot: 'bg-emerald-400' },
-  'Alamat bengkel tidak ditemukan': { bg: 'bg-amber-500/10',   text: 'text-amber-400',   border: 'border-amber-500/30',   dot: 'bg-amber-400' },
-  'Ditolak':                        { bg: 'bg-rose-500/10',    text: 'text-rose-400',    border: 'border-rose-500/30',    dot: 'bg-rose-400' },
-  'Bukan bengkel':                  { bg: 'bg-slate-500/10',    text: 'text-slate-400',    border: 'border-slate-500/30',    dot: 'bg-slate-400' },
-  'Owner/PIC tidak di tempat':      { bg: 'bg-sky-500/10',     text: 'text-sky-400',     border: 'border-sky-500/30',     dot: 'bg-sky-400' },
-  'Tidak jual oli Federal':         { bg: 'bg-orange-500/10',  text: 'text-orange-400',  border: 'border-orange-500/30',  dot: 'bg-orange-400' },
-};
 
 const StatusBadge = ({ status }) => {
   const s = STATUS_STYLES[status] || STATUS_STYLES[HASIL_TERPASANG];
@@ -5560,15 +5465,6 @@ function MDForm({ regions, onSave, initial, onCancel }) {
 // ============================================================
 
 // Normalisasi header column dari Excel
-const COLUMN_ALIASES = {
-  code: ['code', 'kode', 'kode bengkel', 'kode_bengkel'],
-  name: ['name', 'nama', 'nama bengkel', 'nama_bengkel', 'bengkel'],
-  kota: ['kota', 'city', 'nama kota', 'nama_kota'],
-  region: ['region', 'nama region', 'wilayah'],
-  lat: ['lat', 'latitude', 'lintang'],
-  lng: ['lng', 'lon', 'long', 'longitude', 'bujur'],
-  address: ['address', 'alamat'],
-};
 
 // Match raw header ke field kanonik
 const normalizeColumn = (header) => {
