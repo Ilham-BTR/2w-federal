@@ -11,7 +11,7 @@ import {
   Filter, Plus, ChevronRight, ChevronLeft, LayoutDashboard, ClipboardList,
   Map as MapIcon, Database, Target, Activity, Trash2,
   Users, Briefcase, Globe, ChevronDown, LogOut, Shield,
-  Lock, Mail, Eye, EyeOff, AlertCircle, Fingerprint, Loader2,
+  Lock, Mail, Eye, EyeOff, AlertCircle, Loader2,
   Navigation, Phone, FileText, Download, Search, Upload, FileSpreadsheet,
   LogIn, Clock, CalendarDays, Trophy, Power, MessageCircle, Pencil
 } from 'lucide-react';
@@ -21,9 +21,6 @@ import L from 'leaflet';
 import { MOCK_MODE } from './lib/supabase';
 import * as api from './lib/api';
 import { getPhotoURL } from './lib/photoStore';
-
-// Saklar fitur passkey/biometrik. Set true untuk menghidupkan kembali login biometrik.
-const PASSKEY_ENABLED = false;
 
 // Custom pin marker factory (inline SVG via divIcon — no asset path issues)
 const makePinIcon = (color = '#2563eb', pulse = true) => L.divIcon({
@@ -1675,15 +1672,6 @@ function LoginScreen({ onLogin }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
-  const [bioSupported, setBioSupported] = useState(false);
-  const [bioBusy, setBioBusy] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    api.isPasskeySupported().then(ok => { if (!cancelled) setBioSupported(ok); });
-    return () => { cancelled = true; };
-  }, []);
-
   const handleSubmit = async () => {
     setError(''); setLoading(true);
     try {
@@ -1692,18 +1680,6 @@ function LoginScreen({ onLogin }) {
     } catch (err) {
       setError(err.message || 'Login gagal');
       setLoading(false);
-    }
-  };
-
-  // Login pakai passkey (biometrik) — discoverable, tidak perlu ketik email
-  const handlePasskeyLogin = async () => {
-    setError(''); setBioBusy(true);
-    try {
-      const profile = await api.loginWithPasskey();
-      onLogin(profile);
-    } catch (err) {
-      setError(err.message || 'Login passkey gagal');
-      setBioBusy(false);
     }
   };
 
@@ -1782,21 +1758,6 @@ function LoginScreen({ onLogin }) {
             {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Memverifikasi…</> : <>Sign In<ChevronRight className="w-4 h-4" /></>}
           </Button>
 
-          {PASSKEY_ENABLED && bioSupported && (
-            <div className="mt-4 pt-4 border-t border-slate-800">
-              <button
-                type="button"
-                onClick={handlePasskeyLogin}
-                disabled={bioBusy || loading}
-                className="w-full flex items-center justify-center gap-2 py-2 text-xs text-slate-400 hover:text-slate-200 transition disabled:opacity-50 disabled:cursor-not-allowed">
-                {bioBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Fingerprint className="w-4 h-4" />}
-                Masuk dengan biometrik / passkey
-              </button>
-              <p className="text-center text-[10px] text-slate-600 mt-1.5">
-                Aktifkan dulu dari dalam app setelah login pertama.
-              </p>
-            </div>
-          )}
         </div>
 
         {MOCK_MODE && (
@@ -1884,312 +1845,6 @@ function ForgotPasswordScreen({ onBack }) {
               </Button>
             </>
           )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ============================================================
-// MD VIEW — Form & History
-// ============================================================
-
-// Kelola passkey: lihat perangkat terdaftar, tambah passkey di HP ini, hapus perangkat
-function PasskeyManagerModal({ onClose }) {
-  useBackDismiss(true, onClose);
-  const [items, setItems] = useState(null); // null = loading
-  const [supported, setSupported] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [okMsg, setOkMsg] = useState('');
-
-  const reload = async () => {
-    try {
-      const list = await api.listPasskeys();
-      setItems(list);
-    } catch (err) {
-      setError(err.message || 'Gagal memuat passkey');
-      setItems([]);
-    }
-  };
-
-  useEffect(() => {
-    api.isPasskeySupported().then(setSupported);
-    reload();
-    __lockBodyScroll();
-    return __unlockBodyScroll;
-  }, []);
-
-  const fmt = (s) => s ? new Date(s).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
-  const shortLabel = (lbl) => {
-    if (!lbl) return 'Perangkat';
-    if (/iphone|ipad/i.test(lbl)) return 'iPhone / iPad';
-    if (/android/i.test(lbl)) return 'Android';
-    if (/macintosh|mac os/i.test(lbl)) return 'Mac';
-    if (/windows/i.test(lbl)) return 'Windows';
-    return lbl.slice(0, 40);
-  };
-
-  const handleAdd = async () => {
-    setBusy(true); setError(''); setOkMsg('');
-    try {
-      await api.enablePasskey();
-      setOkMsg('Passkey baru ditambahkan.');
-      localStorage.setItem(PK_DISMISS_KEY, '1');
-      await reload();
-    } catch (err) {
-      setError(err.message || 'Gagal menambah passkey');
-    }
-    setBusy(false);
-  };
-
-  const handleDelete = async (id) => {
-    if (!confirm('Hapus passkey perangkat ini? Login biometrik di perangkat tsb tidak akan berfungsi lagi.')) return;
-    setBusy(true); setError(''); setOkMsg('');
-    try {
-      await api.deletePasskey(id);
-      await reload();
-    } catch (err) {
-      setError(err.message || 'Gagal menghapus passkey');
-    }
-    setBusy(false);
-  };
-
-  return (
-    <div className="fixed inset-0 z-[2000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <Fingerprint className="w-5 h-5 text-blue-400" />
-            <h2 className="text-lg font-bold text-slate-100 font-display">Kelola Passkey</h2>
-          </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-slate-800 text-slate-400 hover:text-slate-100 flex items-center justify-center transition">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="p-5 space-y-4">
-          <p className="text-xs text-slate-500">
-            Passkey = login biometrik tanpa password. Tiap perangkat punya passkey sendiri; password tidak pernah disimpan.
-          </p>
-
-          {error && (
-            <div className="p-2.5 bg-rose-600/10 border border-rose-600/30 rounded-lg text-xs text-rose-400 flex items-start gap-2">
-              <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />{error}
-            </div>
-          )}
-          {okMsg && (
-            <div className="p-2.5 bg-emerald-600/10 border border-emerald-600/30 rounded-lg text-xs text-emerald-400 flex items-center gap-2">
-              <Check className="w-3.5 h-3.5 shrink-0" />{okMsg}
-            </div>
-          )}
-
-          {/* Daftar perangkat */}
-          {items === null ? (
-            <div className="flex items-center justify-center py-8 text-slate-500 text-sm gap-2">
-              <Loader2 className="w-4 h-4 animate-spin" />Memuat…
-            </div>
-          ) : items.length === 0 ? (
-            <div className="text-center py-6 text-sm text-slate-500">Belum ada passkey terdaftar.</div>
-          ) : (
-            <div className="space-y-2">
-              {items.map(p => (
-                <div key={p.id} className="flex items-center gap-3 p-3 rounded-xl bg-slate-950 border border-slate-800">
-                  <Fingerprint className="w-4 h-4 text-slate-500 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-slate-200 truncate">{shortLabel(p.device_label)}</div>
-                    <div className="text-[10px] text-slate-500">Dibuat {fmt(p.created_at)} · Dipakai {fmt(p.last_used_at)}</div>
-                  </div>
-                  <button onClick={() => handleDelete(p.id)} disabled={busy}
-                    className="w-8 h-8 rounded-md hover:bg-rose-600/10 hover:text-rose-400 text-slate-500 flex items-center justify-center transition disabled:opacity-50">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Tambah passkey di perangkat ini */}
-          {supported ? (
-            <Button variant="primary" onClick={handleAdd} disabled={busy} className="w-full">
-              {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-              Tambah passkey di perangkat ini
-            </Button>
-          ) : (
-            <p className="text-[11px] text-slate-600 text-center">
-              Perangkat ini tidak mendukung biometrik / passkey (atau bukan HTTPS).
-            </p>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Popup ringkasan target — muncul sekali tiap MD login
-function MDWelcomeModal({ currentMD, visits, onClose, onGoProgress }) {
-  useBackDismiss(true, onClose);
-  const todayStr = localDateStr();
-  const month = todayStr.slice(0, 7);
-  const [yy, mm] = month.split('-').map(Number);
-  const lastDay = new Date(yy, mm, 0).getDate();
-  const todayDay = Number(todayStr.slice(8, 10));
-  const daysLeft = Math.max(lastDay - todayDay + 1, 0); // termasuk hari ini
-
-  const monthVisits = visits.filter(v => v.visit_date.startsWith(month));
-  const monthlyTarget = currentMD.monthly_target || 30;
-  const done = monthVisits.length;
-  const achievement = monthlyTarget > 0 ? Math.round((done / monthlyTarget) * 100) : 0;
-  const sisaTarget = Math.max(monthlyTarget - done, 0);
-  const todayCount = visits.filter(v => v.visit_date === todayStr).length;
-  const perDayNeeded = daysLeft > 0 ? Math.ceil(sisaTarget / daysLeft) : sisaTarget;
-  const tercapai = sisaTarget === 0;
-
-  const tglLabel = new Date(todayStr).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-
-  useEffect(() => {
-    __lockBodyScroll();
-    return __unlockBodyScroll;
-  }, []);
-
-  return (
-    <div className="fixed inset-0 z-[2000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
-      <div
-        className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden animate-[fadeIn_0.2s_ease-out]"
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="relative px-5 pt-5 pb-4 bg-gradient-to-br from-blue-600/20 to-slate-900 border-b border-slate-800">
-          <button onClick={onClose} className="absolute top-3 right-3 w-8 h-8 rounded-full hover:bg-slate-800 text-slate-400 hover:text-slate-100 flex items-center justify-center transition">
-            <X className="w-4 h-4" />
-          </button>
-          <div className="text-xs text-slate-400 uppercase tracking-wider">{tglLabel}</div>
-          <h2 className="text-xl font-bold text-slate-100 font-display mt-1">Halo, {currentMD.full_name.split(' ')[0]} 👋</h2>
-          <p className="text-sm text-slate-400 mt-0.5">
-            {tercapai
-              ? 'Target bulan ini sudah tercapai. Mantap! 🎉'
-              : `Sisa ${daysLeft} hari untuk kejar target bulan ini.`}
-          </p>
-        </div>
-
-        {/* Stat grid */}
-        <div className="p-5 space-y-4">
-          <div className="grid grid-cols-3 gap-2.5">
-            <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 text-center">
-              <div className="text-2xl font-bold text-slate-100">{daysLeft}</div>
-              <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">Sisa Hari</div>
-            </div>
-            <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 text-center">
-              <div className="text-2xl font-bold text-slate-100">{done}<span className="text-sm text-slate-500">/{monthlyTarget}</span></div>
-              <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">Visit</div>
-            </div>
-            <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 text-center">
-              <div className={`text-2xl font-bold ${achievement >= 80 ? 'text-emerald-400' : achievement >= 50 ? 'text-amber-400' : 'text-rose-400'}`}>{achievement}%</div>
-              <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">Achievement</div>
-            </div>
-          </div>
-
-          {/* Progress bar */}
-          <div>
-            <div className="h-2.5 bg-slate-800/60 rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all ${achievement >= 80 ? 'bg-emerald-500' : achievement >= 50 ? 'bg-amber-500' : 'bg-rose-500'}`}
-                style={{ width: `${Math.min(achievement, 100)}%` }}
-              />
-            </div>
-          </div>
-
-          {/* Yang belum terlaksana */}
-          {tercapai ? (
-            <div className="flex items-center gap-2.5 p-3 rounded-xl bg-emerald-600/10 border border-emerald-600/20">
-              <Check className="w-5 h-5 text-emerald-400 shrink-0" />
-              <span className="text-sm text-emerald-300">Semua target sudah terpenuhi. Visit tambahan dihitung sebagai bonus.</span>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800">
-                <span className="text-sm text-slate-400 flex items-center gap-2"><Target className="w-4 h-4 text-amber-400" />Belum terlaksana</span>
-                <span className="text-sm font-semibold text-slate-100">{sisaTarget} visit</span>
-              </div>
-              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800">
-                <span className="text-sm text-slate-400 flex items-center gap-2"><Activity className="w-4 h-4 text-blue-400" />Perlu per hari</span>
-                <span className="text-sm font-semibold text-slate-100">±{perDayNeeded} visit/hari</span>
-              </div>
-              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800">
-                <span className="text-sm text-slate-400 flex items-center gap-2"><Check className="w-4 h-4 text-sky-400" />Visit hari ini</span>
-                <span className="text-sm font-semibold text-slate-100">{todayCount}</span>
-              </div>
-            </div>
-          )}
-
-          {/* CTA */}
-          <div className="flex gap-2 pt-1">
-            <Button variant="secondary" onClick={onGoProgress} className="flex-1">
-              <LayoutDashboard className="w-4 h-4" />Lihat Progres
-            </Button>
-            <Button variant="primary" onClick={onClose} className="flex-1">
-              <ClipboardList className="w-4 h-4" />Mulai Visit
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Banner ajakan aktifkan passkey (muncul setelah login, hilang setelah enroll/ditutup)
-const PK_DISMISS_KEY = 'federal2w_pk_dismissed';
-function PasskeyEnrollBanner() {
-  const [show, setShow] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState('');
-
-  useEffect(() => {
-    let cancelled = false;
-    if (!PASSKEY_ENABLED) return;
-    if (localStorage.getItem(PK_DISMISS_KEY) === '1') return;
-    api.isPasskeySupported().then(ok => { if (!cancelled && ok) setShow(true); });
-    return () => { cancelled = true; };
-  }, []);
-
-  if (!show) return null;
-
-  const dismiss = () => { localStorage.setItem(PK_DISMISS_KEY, '1'); setShow(false); };
-
-  const enroll = async () => {
-    setBusy(true); setMsg('');
-    try {
-      await api.enablePasskey();
-      localStorage.setItem(PK_DISMISS_KEY, '1');
-      setMsg('ok');
-      setTimeout(() => setShow(false), 1500);
-    } catch (err) {
-      setMsg(err.message || 'Gagal mengaktifkan passkey');
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div className="mb-4 rounded-xl border border-blue-600/30 bg-blue-600/10 p-3.5">
-      <div className="flex items-start gap-3">
-        <Fingerprint className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
-        <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-slate-100">Login lebih cepat dengan biometrik</div>
-          <div className="text-xs text-slate-400 mt-0.5">
-            Aktifkan passkey di HP ini supaya lain kali cukup sidik jari / Face ID — tanpa ketik password.
-          </div>
-          {msg === 'ok'
-            ? <div className="text-xs text-emerald-400 mt-2 flex items-center gap-1.5"><Check className="w-3.5 h-3.5" />Passkey aktif! Lain kali tinggal pakai biometrik.</div>
-            : msg
-              ? <div className="text-xs text-rose-400 mt-2">{msg}</div>
-              : null}
-          <div className="flex gap-2 mt-2.5">
-            <Button variant="primary" size="sm" onClick={enroll} disabled={busy}>
-              {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Fingerprint className="w-3.5 h-3.5" />}
-              Aktifkan
-            </Button>
-            <Button variant="ghost" size="sm" onClick={dismiss} disabled={busy}>Nanti saja</Button>
-          </div>
         </div>
       </div>
     </div>
@@ -3001,7 +2656,6 @@ function MDView({ currentMD, refreshKey, welcome, onWelcomeClose }) {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <PasskeyEnrollBanner />
 
       {/* Notifikasi: keputusan super admin atas permintaan izin edit foto */}
       {(() => {
@@ -7414,7 +7068,6 @@ export default function App() {
   const [profile, setProfile] = useState(null);
   const [bootstrapping, setBootstrapping] = useState(true);
   const [welcome, setWelcome] = useState(false); // popup ringkasan saat MD baru login
-  const [passkeyOpen, setPasskeyOpen] = useState(false);
 
   useEffect(() => {
     api.getCurrentProfile().then(p => {
@@ -7463,12 +7116,6 @@ export default function App() {
                 </div>
                 <span>{profile.full_name}</span>
               </div>
-              {PASSKEY_ENABLED && !MOCK_MODE && (
-                <button onClick={() => setPasskeyOpen(true)} title="Kelola passkey"
-                  className="text-slate-500 hover:text-slate-200 transition flex items-center gap-1 px-2 py-1">
-                  <Fingerprint className="w-3.5 h-3.5" /><span className="hidden sm:inline">Passkey</span>
-                </button>
-              )}
               <button onClick={handleLogout} className="text-slate-500 hover:text-rose-400 transition flex items-center gap-1 px-2 py-1">
                 <LogOut className="w-3.5 h-3.5" /><span className="hidden sm:inline">Logout</span>
               </button>
@@ -7481,7 +7128,6 @@ export default function App() {
           )}
         </header>
 
-        {passkeyOpen && <PasskeyManagerModal onClose={() => setPasskeyOpen(false)} />}
 
         <main className="px-4 py-6">
           {profile.role === 'md'

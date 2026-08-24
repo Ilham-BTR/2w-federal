@@ -9,7 +9,6 @@ import { uploadAllVisitPhotos, uploadAttendancePhoto } from './storage';
 export { uploadOneVisitPhoto, uploadAttendancePhoto } from './storage';
 import { SEED_REGIONS, SEED_DISTRIBUTORS, SEED_KOTAS, SEED_BENGKELS } from './seedData';
 import { clearPhotos, deletePhotosByVisit } from './photoStore';
-import { startRegistration, startAuthentication } from '@simplewebauthn/browser';
 import { bacaCache, tulisCache, waktuTerbaru, gabung } from './bengkelCache';
 
 // ============================================================
@@ -129,107 +128,6 @@ export async function getCurrentProfile() {
     .select('*, region:regions!region_id(*)')
     .eq('id', user.id)
     .single();
-  return profile;
-}
-
-// ============================================================
-// PASSKEY / WEBAUTHN (login biometrik server-side, tanpa simpan password)
-// ============================================================
-
-// Cek perangkat punya platform authenticator (fingerprint/Face ID) & mode produksi
-export async function isPasskeySupported() {
-  if (MOCK_MODE) return false;
-  if (typeof window === 'undefined' || !window.PublicKeyCredential) return false;
-  try {
-    return await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-  } catch {
-    return false;
-  }
-}
-
-// Daftar passkey milik user yang sedang login (untuk tampil/hapus)
-export async function listPasskeys() {
-  if (MOCK_MODE) return [];
-  const { data, error } = await supabase
-    .from('webauthn_credentials')
-    .select('id, device_label, created_at, last_used_at')
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return data || [];
-}
-
-// Hapus 1 passkey milik sendiri ("Lupakan passkey")
-export async function deletePasskey(id) {
-  if (MOCK_MODE) return;
-  const { error } = await supabase.from('webauthn_credentials').delete().eq('id', id);
-  if (error) throw error;
-}
-
-// Aktifkan passkey di perangkat ini (user HARUS sudah login)
-export async function enablePasskey(label) {
-  if (MOCK_MODE) throw new Error('Passkey hanya tersedia di mode Supabase (produksi)');
-
-  const { data: opts, error: e1 } = await supabase.functions.invoke('webauthn', {
-    body: { action: 'reg-options' },
-  });
-  if (e1) throw new Error(e1.message || 'Gagal minta opsi registrasi');
-  if (opts?.error) throw new Error(opts.error);
-
-  let attResp;
-  try {
-    attResp = await startRegistration({ optionsJSON: opts });
-  } catch (err) {
-    if (err?.name === 'InvalidStateError') throw new Error('Passkey sudah terdaftar di perangkat ini.');
-    if (err?.name === 'NotAllowedError') throw new Error('Pendaftaran biometrik dibatalkan.');
-    throw err;
-  }
-
-  const { data: res, error: e2 } = await supabase.functions.invoke('webauthn', {
-    body: { action: 'reg-verify', response: attResp, label: label || navigator.userAgent.slice(0, 80) },
-  });
-  if (e2) throw new Error(e2.message || 'Verifikasi gagal');
-  if (res?.error) throw new Error(res.error);
-  return res; // { verified: true }
-}
-
-// Login pakai passkey (discoverable — tidak perlu ketik email). Return profile.
-export async function loginWithPasskey() {
-  if (MOCK_MODE) throw new Error('Passkey hanya tersedia di mode Supabase (produksi)');
-
-  const { data: opts, error: e1 } = await supabase.functions.invoke('webauthn', {
-    body: { action: 'auth-options' },
-  });
-  if (e1) throw new Error(e1.message || 'Gagal minta opsi login');
-  if (opts?.error) throw new Error(opts.error);
-
-  let asr;
-  try {
-    asr = await startAuthentication({ optionsJSON: opts });
-  } catch (err) {
-    if (err?.name === 'NotAllowedError') throw new Error('Verifikasi biometrik dibatalkan / tidak ada passkey.');
-    throw err;
-  }
-
-  const { data: res, error: e2 } = await supabase.functions.invoke('webauthn', {
-    body: { action: 'auth-verify', response: asr },
-  });
-  if (e2) throw new Error(e2.message || 'Verifikasi gagal');
-  if (res?.error) throw new Error(res.error);
-  if (!res?.token_hash) throw new Error('Token sesi tidak diterima');
-
-  // Tukar token jadi sesi Supabase asli (tanpa password)
-  const { data: sess, error: e3 } = await supabase.auth.verifyOtp({
-    token_hash: res.token_hash,
-    type: 'magiclink',
-  });
-  if (e3) throw e3;
-
-  const { data: profile, error: pErr } = await supabase
-    .from('profiles')
-    .select('*, region:regions!region_id(*)')
-    .eq('id', sess.user.id)
-    .single();
-  if (pErr) throw pErr;
   return profile;
 }
 
