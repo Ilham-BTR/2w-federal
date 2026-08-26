@@ -134,25 +134,47 @@ export async function getCurrentProfile() {
 // ============================================================
 // MASTER DATA
 // ============================================================
+// Cache master di localStorage. Data kota/region/distributor nyaris tak berubah;
+// menariknya tiap buka app ~167 MB/bln egress sia-sia (100 MD). TTL statis 24 jam.
+// ponytail: master baru (kota/distributor) telat maks 24 jam di HP MD; turunkan
+// TTL atau hapus key 'fed_cache_*' kalau butuh langsung.
+async function cacheLokal(key, ttlMs, ambil) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) { const { t, data } = JSON.parse(raw); if (Date.now() - t < ttlMs) return data; }
+  } catch { /* cache rusak -> ambil ulang */ }
+  const data = await ambil();
+  try { localStorage.setItem(key, JSON.stringify({ t: Date.now(), data })); } catch { /* penuh */ }
+  return data;
+}
+const HARI = 86400000;
+const bustCache = (table) => { try { localStorage.removeItem('fed_cache_' + table); } catch { /* noop */ } };
+
 export async function fetchRegions() {
   if (MOCK_MODE) return [...MOCK_DATA.regions];
-  const { data, error } = await supabase.from('regions').select('*').order('name');
-  if (error) throw error;
-  return data;
+  return cacheLokal('fed_cache_regions', HARI, async () => {
+    const { data, error } = await supabase.from('regions').select('*').order('name');
+    if (error) throw error;
+    return data;
+  });
 }
 
 export async function fetchKotas() {
   if (MOCK_MODE) return [...MOCK_DATA.kotas];
-  const { data, error } = await supabase.from('kotas').select('*, region:regions!region_id(*)').order('name');
-  if (error) throw error;
-  return data;
+  return cacheLokal('fed_cache_kotas', HARI, async () => {
+    const { data, error } = await supabase.from('kotas').select('*, region:regions!region_id(*)').order('name');
+    if (error) throw error;
+    return data;
+  });
 }
 
 export async function fetchDistributors() {
   if (MOCK_MODE) return [...MOCK_DATA.distributors];
-  const { data, error } = await supabase.from('distributors').select('*, region:regions!region_id(*)').order('name');
-  if (error) throw error;
-  return data;
+  return cacheLokal('fed_cache_distributors', HARI, async () => {
+    const { data, error } = await supabase.from('distributors').select('*, region:regions!region_id(*)').order('name');
+    if (error) throw error;
+    return data;
+  });
 }
 
 // Ambil SEMUA baris — PostgREST membatasi ~1000 baris/request, jadi paginasi
@@ -352,9 +374,14 @@ export async function fetchTerpasangBengkelIds() {
   if (MOCK_MODE) {
     return new Set(MOCK_DATA.visits.filter(v => v.status === 'Berhasil Pasang').map(v => v.bengkel_id));
   }
-  const { data, error } = await supabase.from('bengkels_terpasang').select('bengkel_id');
-  if (error) { console.warn('fetchTerpasangBengkelIds gagal:', error.message); return new Set(); }
-  return new Set((data || []).map(r => r.bengkel_id));
+  // Cache 30 mnt: daftar terpasang berubah pelan & server punya guard anti-dobel
+  // (unique index), jadi sedikit basi aman. Hemat ~272 MB/bln (21 KB tiap buka).
+  const ids = await cacheLokal('fed_cache_terpasang', 1800000, async () => {
+    const { data, error } = await supabase.from('bengkels_terpasang').select('bengkel_id');
+    if (error) { console.warn('fetchTerpasangBengkelIds gagal:', error.message); return []; }
+    return (data || []).map(r => r.bengkel_id);
+  });
+  return new Set(ids);
 }
 
 /**
@@ -488,6 +515,7 @@ export async function addMaster(table, payload) {
   }
   const { data, error } = await supabase.from(table).insert(payload).select().single();
   if (error) throw error;
+  bustCache(table);
   return data;
 }
 
@@ -684,6 +712,7 @@ export async function updateMaster(table, id, patch) {
   }
   const { data, error } = await supabase.from(table).update(patch).eq('id', id).select().single();
   if (error) throw error;
+  bustCache(table);
   return data;
 }
 
@@ -695,6 +724,7 @@ export async function deleteMaster(table, id) {
   }
   const { error } = await supabase.from(table).delete().eq('id', id);
   if (error) throw error;
+  bustCache(table);
 }
 
 // ============================================================
