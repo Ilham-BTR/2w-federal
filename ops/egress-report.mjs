@@ -47,6 +47,42 @@ function wireBytes(path) {
 const kb = (b) => (b / 1024).toFixed(1);
 const mb = (b) => (b / 1024 / 1024).toFixed(1);
 
+function getJson(path) {
+  return new Promise((resolve, reject) => {
+    https.get(BASE + path, { headers: { apikey: KEY, Authorization: 'Bearer ' + KEY } }, (r) => {
+      let s = ''; r.on('data', (c) => s += c); r.on('end', () => resolve(JSON.parse(s || '[]'))); r.on('error', reject);
+    }).on('error', reject);
+  });
+}
+const tableOf = (p) => p.split('?')[0].replace('/rest/v1/', '');
+
+// --live: gabungkan HITUNGAN panggilan nyata hari ini (egress_log) dengan
+// ukuran terukur -> estimasi egress live per-endpoint.
+if (process.argv.includes('--live')) {
+  const size = {};
+  for (const q of QUERIES) { const b = await wireBytes(q.path); if (b != null) size[tableOf(q.path)] = b; }
+  const today = new Date().toISOString().slice(0, 10);
+  const log = await getJson(`/rest/v1/egress_log?day=eq.${today}&order=reqs.desc`);
+  if (!log.length) {
+    console.log('\nBelum ada data egress_log hari ini. Data masuk saat MD menutup/pindah tab app.\n');
+    process.exit(0);
+  }
+  console.log(`\nEGRESS LIVE — ${today} (panggilan nyata x ukuran terukur)\n`);
+  console.log('  ' + 'endpoint'.padEnd(30) + 'panggilan'.padStart(10) + 'ukuran'.padStart(9) + 'est egress'.padStart(13));
+  console.log('  ' + '-'.repeat(62));
+  let tot = 0;
+  for (const r of log) {
+    const b = size[r.path] ?? 0;
+    const est = b * r.reqs; tot += est;
+    const estStr = est > 1024 * 1024 ? mb(est) + ' MB' : kb(est) + ' KB';
+    console.log('  ' + r.path.padEnd(30) + String(r.reqs).padStart(10) + (b ? kb(b) + 'KB' : '?').padStart(9) + estStr.padStart(13));
+  }
+  console.log('  ' + '-'.repeat(62));
+  console.log('  ' + 'TOTAL est egress hari ini'.padEnd(40) + (mb(tot) + ' MB').padStart(21));
+  console.log('  (ukuran "?" = endpoint tak ada di daftar QUERIES; est-nya 0)\n');
+  process.exit(0);
+}
+
 const rows = [];
 for (const q of QUERIES) {
   const bytes = await wireBytes(q.path);
