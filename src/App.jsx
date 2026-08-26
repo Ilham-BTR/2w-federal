@@ -3986,8 +3986,26 @@ function AdminView({ profile }) {
     ]).then(([v, acc, r, k, d, er, rc]) => {
       setVisits(v); setAccounts(acc); setMds(acc.filter(a => a.role === 'md'));
       setRegions(r); setKotas(k); setDistributors(d); setEditReqs(er); setRefCounts(rc);
+      sinkronVisit.current = new Date().toISOString();
       setLoading(false);
     }).catch(err => { console.error(err); setLoading(false); });
+  };
+
+  // Setelah aksi ke SATU visit (cek foto, edit remarks), tarik hanya yang
+  // BERUBAH — bukan loadAll yang menyeret ulang 3584 visit + 6357 bengkel tiap
+  // kali. Admin cek 63 bengkel dulu = 63x tarik penuh (lonjakan egress).
+  const sinkronVisit = useRef(null);
+  const segarkanVisits = async () => {
+    const sejak = sinkronVisit.current;
+    if (!sejak) return loadAll(true);
+    const berubah = await api.fetchVisitsSince(undefined, sejak);
+    sinkronVisit.current = new Date().toISOString();
+    if (!berubah.length) return;
+    setVisits(lama => {
+      const baru = new Map(lama.map(v => [v.id, v]));
+      berubah.forEach(v => baru.set(v.id, v));
+      return [...baru.values()].sort((a, b) => b.visit_date.localeCompare(a.visit_date));
+    });
   };
 
   useEffect(() => { loadAll(); }, []);
@@ -4085,7 +4103,7 @@ function AdminView({ profile }) {
           canEdit={isSuperAdmin}
           canCheck={!isTL}
           checkerId={profile?.id}
-          onUpdated={() => loadAll(true)}
+          onUpdated={() => segarkanVisits()}
           bengkels={bengkels}
           distributors={distributors}
         />
