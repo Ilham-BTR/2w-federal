@@ -1,0 +1,36 @@
+# Deploy otomatis ke Cloudflare Pages setiap push ke main.
+# Dipasang karena webhook Git integration Pages mati (deploy Git terakhir 2026-08-27).
+# Secrets yang harus ada di repo GitHub:
+#   CLOUDFLARE_API_TOKEN   -> token dengan izin "Cloudflare Pages: Edit"
+#   VITE_SUPABASE_URL      -> URL project Supabase
+#   VITE_SUPABASE_ANON_KEY -> anon key Supabase
+# Account ID di-hardcode (bukan informasi rahasia, tampil di URL dashboard).
+name: Deploy to Cloudflare Pages
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: 6230d5b0d8a1e8194439fd832d9e3c03
+          command: pages deploy dist --branch main
