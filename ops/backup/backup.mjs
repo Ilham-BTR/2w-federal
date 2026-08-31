@@ -72,7 +72,10 @@ async function dumpAuthUsers() {
   return users;
 }
 
-try {
+// Retry: mis. run 04:10 pagi (PC baru bangun, network belum siap) → coba lagi nanti.
+const TRIES = 3, DELAY_MS = 5 * 60_000;
+
+async function run() {
   log('Mulai backup...');
   const tables = {};
   const counts = {};
@@ -113,7 +116,18 @@ try {
     log(`Hapus backup lama: ${f}`);
   }
   log(`Selesai. File backup tersimpan: ${Math.min(files.length, keepLast)} (maks ${keepLast}).`);
-} catch (e) {
-  log(`GAGAL: ${e.message}`);
-  process.exit(1);
 }
+
+for (let i = 1; i <= TRIES; i++) {
+  try {
+    await run();
+    process.exit(0);
+  } catch (e) {
+    log(`GAGAL (percobaan ${i}/${TRIES}): ${e.message}`);
+    if (i < TRIES) {
+      log(`Coba lagi dalam ${DELAY_MS / 60_000} menit...`);
+      await new Promise((r) => setTimeout(r, DELAY_MS));
+    }
+  }
+}
+process.exit(1);
