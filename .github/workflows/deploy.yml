@@ -29,14 +29,24 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
-      # Mode PAUSE: kalau file PAUSED ada di root repo, deploy cuma 404.html
-      # (tanpa index.html) -> semua route balikin HTTP 404 asli. Unpause = hapus file.
-      - name: Ganti output jadi 404 (mode pause)
+      # Mode PAUSE: kalau file PAUSED ada di root repo, deploy cuma handler 500
+      # (tanpa index.html & tanpa functions asli) -> semua route balikin HTTP 500
+      # asli, seperti server rusak. Unpause = hapus file PAUSED + push.
+      - name: Ganti output jadi error 500 (mode pause)
         if: ${{ hashFiles('PAUSED') != '' }}
         run: |
-          rm -rf dist
+          rm -rf dist functions
           mkdir dist
           cp public/404.html dist/
+          mkdir functions
+          cat > 'functions/[[path]].js' <<'EOF'
+          export async function onRequest() {
+            return new Response('Internal Server Error', {
+              status: 500,
+              headers: { 'content-type': 'text/plain; charset=utf-8' },
+            });
+          }
+          EOF
 
       - uses: cloudflare/wrangler-action@v3
         with:
